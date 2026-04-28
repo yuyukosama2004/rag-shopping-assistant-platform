@@ -1,0 +1,7 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f5f7fa; color: #333; }
+a { text-decoration: none; color: inherit; }
+.container { max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+.price { color: #e74c3c; font-weight: 600; font-size: 18px; }
+.price .unit { font-size: 13px; }
+.original-price { text-decoration: line-through; color: #999; font-size: 13px; margin-left: 8px; }

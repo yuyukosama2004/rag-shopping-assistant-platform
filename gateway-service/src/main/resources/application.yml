@@ -1,0 +1,43 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/user/**
+        - id: product-service
+          uri: lb://product-service
+          predicates:
+            - Path=/api/product/**
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/order/**
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+
+jwt:
+  secret: biyesheji-2026-spring-cloud-microservice-phone-mall-platform-secret-key
+  access-token-expire: 7200
+  refresh-token-expire: 604800
+
+logging:
+  level:
+    com.biyesheji: debug

@@ -1,0 +1,13 @@
+package com.biyesheji.user.service;
+
+import com.biyesheji.dto.RegisterDTO;
+import com.biyesheji.entity.User;
+import com.biyesheji.vo.LoginVO;
+
+public interface UserService {
+    LoginVO login(String username, String password);
+    User register(RegisterDTO dto);
+    User getById(Long userId);
+    User updateInfo(Long userId, User user);
+    LoginVO refreshToken(String refreshToken);
+}

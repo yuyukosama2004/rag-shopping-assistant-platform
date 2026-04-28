@@ -1,0 +1,52 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: order-service
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/biyesheji?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: root123
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin123
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  global-config:
+    db-config:
+      id-type: assign_id
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+knife4j:
+  enable: true
+  openapi:
+    title: 订单服务 API
+    description: 购物车、下单、订单管理、AI导购
+
+logging:
+  level:
+    com.biyesheji: debug
+
+# OpenRouter 配置
+openrouter:
+  api-key: your-openrouter-api-key
+  base-url: https://openrouter.ai/api/v1
+  model: anthropic/claude-haiku-3.5

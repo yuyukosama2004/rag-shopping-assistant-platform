@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import docx\")",
+      "Bash(pip3 install:*)",
+      "Bash(python3:*)",
+      "Bash(docker compose:*)",
+      "Bash(java -version)",
+      "Bash(mvn -version)",
+      "Bash(docker ps:*)",
+      "Bash(docker exec:*)",
+      "Bash(curl -s http://localhost:8848/nacos/v1/console/health)",
+      "Bash(curl -s -u admin:admin123 http://localhost:15672/api/overview)",
+      "Bash(curl -s http://localhost:8848/nacos/)",
+      "Bash(npm -v)",
+      "Bash(npm create:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(chmod:*)",
+      "Bash(npm list:*)",
+      "Bash(node:*)"
+    ]
+  }
+}

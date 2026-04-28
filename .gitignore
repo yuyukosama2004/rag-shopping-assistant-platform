@@ -1,0 +1,24 @@
+# 1. 编译产物 (Maven/Gradle)
+target/
+build/
+.gradle/
+*.jar
+*.war
+
+# 2. 前端依赖
+node_modules/
+
+# 3. 开发环境配置与日志
+.idea/
+.vscode/
+*.log
+.DS_Store
+*.swp
+
+# 4. 文本内容
+论文/
+示例pdf/
+
+毕业论文.docx
+实际执行方案.md
+完整方案设计.md
