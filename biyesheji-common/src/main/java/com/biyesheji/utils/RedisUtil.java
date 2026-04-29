@@ -1,9 +1,9 @@
 package com.biyesheji.utils;
 
-import cn.hutool.core.util.StrUtil;
 import org.redisson.api.RBucket;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.StringCodec;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -66,10 +66,10 @@ public class RedisUtil {
     }
 
     /**
-     * 执行 Lua 脚本（简化版，返回 Long）
+     * 执行 Lua 脚本（简化版，返回 Long）。使用 StringCodec 确保参数以纯文本传递。
      */
     public Long executeLua(String script, java.util.List<Object> keys, Object... args) {
-        return redissonClient.getScript().eval(
+        return redissonClient.getScript(StringCodec.INSTANCE).eval(
                 org.redisson.api.RScript.Mode.READ_WRITE,
                 script,
                 org.redisson.api.RScript.ReturnType.INTEGER,
@@ -79,13 +79,13 @@ public class RedisUtil {
     }
 
     /**
-     * Hash 操作
+     * Hash 操作（使用 StringCodec 确保 Lua 脚本可读）
      */
     public void hSet(String key, String field, Object value) {
-        redissonClient.getMap(key).put(field, value);
+        redissonClient.getMap(key, StringCodec.INSTANCE).put(field, value);
     }
 
     public Object hGet(String key, String field) {
-        return redissonClient.getMap(key).get(field);
+        return redissonClient.getMap(key, StringCodec.INSTANCE).get(field);
     }
 }

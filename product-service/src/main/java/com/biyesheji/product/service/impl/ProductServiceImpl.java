@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -122,26 +123,28 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public Map<String, List<String>> getFilters() {
-        // 先查缓存
         Map<String, List<String>> cached = redisUtil.get(CACHE_FILTERS);
         if (cached != null) {
             return cached;
         }
 
         Map<String, List<String>> filters = new HashMap<>();
-        // 所有品牌
-        List<Product> products = productMapper.selectList(
-                new LambdaQueryWrapper<Product>().eq(Product::getStatus, 1)
-        );
 
-        Set<String> brands = new LinkedHashSet<>();
-        Set<String> categories = new LinkedHashSet<>();
-        for (Product p : products) {
-            if (p.getBrand() != null) brands.add(p.getBrand());
-            if (p.getCategory() != null) categories.add(p.getCategory());
-        }
-        filters.put("brands", new ArrayList<>(brands));
-        filters.put("categories", new ArrayList<>(categories));
+        // 使用 SQL DISTINCT 避免全量加载数据到内存
+        LambdaQueryWrapper<Product> brandWrapper = new LambdaQueryWrapper<>();
+        brandWrapper.select(Product::getBrand).eq(Product::getStatus, 1)
+                .groupBy(Product::getBrand);
+        List<String> brands = productMapper.selectList(brandWrapper).stream()
+                .map(Product::getBrand).distinct().collect(Collectors.toList());
+
+        LambdaQueryWrapper<Product> catWrapper = new LambdaQueryWrapper<>();
+        catWrapper.select(Product::getCategory).eq(Product::getStatus, 1)
+                .groupBy(Product::getCategory);
+        List<String> categories = productMapper.selectList(catWrapper).stream()
+                .map(Product::getCategory).distinct().collect(Collectors.toList());
+
+        filters.put("brands", brands);
+        filters.put("categories", categories);
 
         // 缓存 30 分钟
         redisUtil.set(CACHE_FILTERS, filters, 30, TimeUnit.MINUTES);

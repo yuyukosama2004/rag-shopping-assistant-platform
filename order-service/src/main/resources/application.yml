@@ -4,11 +4,18 @@ server:
 spring:
   application:
     name: order-service
+  main:
+    banner-mode: off
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/biyesheji?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root
     password: root123
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      idle-timeout: 300000
+      connection-timeout: 10000
   data:
     redis:
       host: localhost
@@ -18,6 +25,11 @@ spring:
     port: 5672
     username: admin
     password: admin123
+    listener:
+      simple:
+        concurrency: 2
+        max-concurrency: 3
+        prefetch: 5
   cloud:
     nacos:
       discovery:
@@ -33,7 +45,7 @@ mybatis-plus:
       logic-not-delete-value: 0
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
 
 knife4j:
   enable: true
@@ -43,9 +55,14 @@ knife4j:
 
 logging:
   level:
-    com.biyesheji: debug
+    root: WARN
+    com.biyesheji: INFO
 
-# OpenRouter 配置
+jwt:
+  secret: biyesheji-2026-spring-cloud-microservice-phone-mall-platform-secret-key
+  access-token-expire: 7200
+  refresh-token-expire: 604800
+
 openrouter:
   api-key: your-openrouter-api-key
   base-url: https://openrouter.ai/api/v1

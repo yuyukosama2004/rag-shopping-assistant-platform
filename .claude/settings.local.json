@@ -19,7 +19,26 @@
       "Bash(npm uninstall:*)",
       "Bash(chmod:*)",
       "Bash(npm list:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(docker run:*)",
+      "Read(//home/jill/project/biyesheji/biyesheji-frontend/**)",
+      "Bash(1 echo:*)",
+      "Bash(curl -s -u admin:admin123 http://localhost:15672/api/aliveness-test/%2F)",
+      "Bash(curl -s http://localhost:8848/nacos/v1/console/health/readiness)",
+      "Bash(ls -lhS /home/jill/project/biyesheji/*/target/*.jar)",
+      "Bash(docker stop:*)",
+      "Bash(docker rm:*)",
+      "Bash(curl -s http://localhost:8080/api/product/page?pageSize=1)",
+      "Bash(echo \"=== 网关直连测试 ===\" echo \"GET /api/product/page...\" curl -sv http://localhost:8080/api/product/page?pageSize=1)",
+      "Bash(curl -s http://localhost:8848/nacos/v1/ns/instance/list?serviceName=product-service)",
+      "Bash(tail -5 echo \"---\" curl -s http://localhost:8082/api/product/page?pageSize=1)",
+      "Bash(curl -s http://localhost:8083/doc.html -o /dev/null -w \"HTTP %{http_code}\")",
+      "Read(//home/jill/project/biyesheji/**)",
+      "Bash(echo \"$ORDER\")",
+      "Bash(/dev/null docker:*)",
+      "Bash(1 __NEW_LINE_66759b0cffd4b322__ docker run --rm -v /home/jill/project/biyesheji:/app -v maven-repo:/root/.m2 -w /app maven:3.9.9-eclipse-temurin-21 mvn clean package -DskipTests)",
+      "Bash(do docker:*)",
+      "Bash(/dev/null echo:*)"
     ]
   }
 }

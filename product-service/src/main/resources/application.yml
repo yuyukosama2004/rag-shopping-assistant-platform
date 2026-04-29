@@ -4,11 +4,18 @@ server:
 spring:
   application:
     name: product-service
+  main:
+    banner-mode: off
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/biyesheji?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root
     password: root123
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      idle-timeout: 300000
+      connection-timeout: 10000
   data:
     redis:
       host: localhost
@@ -28,7 +35,7 @@ mybatis-plus:
       logic-not-delete-value: 0
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
 
 knife4j:
   enable: true
@@ -38,4 +45,5 @@ knife4j:
 
 logging:
   level:
-    com.biyesheji: debug
+    root: WARN
+    com.biyesheji: INFO

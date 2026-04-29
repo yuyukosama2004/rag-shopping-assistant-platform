@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: gateway-service
+  main:
+    banner-mode: off
   cloud:
     nacos:
       discovery:
@@ -38,6 +40,12 @@ jwt:
   access-token-expire: 7200
   refresh-token-expire: 604800
 
+sentinel:
+  qps:
+    order: 100
+    product: 500
+
 logging:
   level:
-    com.biyesheji: debug
+    root: WARN
+    com.biyesheji: INFO
