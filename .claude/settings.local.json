@@ -38,7 +38,28 @@
       "Bash(/dev/null docker:*)",
       "Bash(1 __NEW_LINE_66759b0cffd4b322__ docker run --rm -v /home/jill/project/biyesheji:/app -v maven-repo:/root/.m2 -w /app maven:3.9.9-eclipse-temurin-21 mvn clean package -DskipTests)",
       "Bash(do docker:*)",
-      "Bash(/dev/null echo:*)"
+      "Bash(/dev/null echo:*)",
+      "Read(//etc/frp/**)",
+      "Read(//etc/**)",
+      "Bash(/dev/null __NEW_LINE_4c868cbf4edb4837__ echo echo '=== nginx 配置 ===')",
+      "Bash(nginx -v)",
+      "Read(//etc/nginx/sites-enabled/**)",
+      "Read(//home/jill/frp_0.54.0_linux_amd64/**)",
+      "Read(//home/jill/**)",
+      "Bash(find /etc/ssl /etc/nginx -name *.pem -o -name *.crt -o -name *.key)",
+      "Bash(find /home/jill -maxdepth 4 -name *.pem -o -name *.crt -o -name *.key -o -name *.cert)",
+      "Bash(find /etc -maxdepth 4 \\\\\\(-name *.pem -o -name *.crt -o -name *.key \\\\\\) -not -path */ca-certificates/*)",
+      "Bash(frpc --version)",
+      "Bash(/home/jill/frp_0.54.0_linux_amd64/frpc --version)",
+      "Bash(cat:*)",
+      "Bash(echo '  ❌ nginx proxy failed' __NEW_LINE_0f812d29eaeab775__ echo echo '=== 局域网模拟测试 \\(192.168.1.123\\) ===' curl -s http://192.168.1.123:80/api/product/page?pageSize=2 --connect-timeout 5 -o /dev/null -w 'HTTP %{http_code}' 2)",
+      "Bash(echo 隧道未通 __NEW_LINE_321c2ea8ff1ef6a4__ echo echo '=== 测试域名 ===' curl -s --connect-timeout 5 http://execute42.top/api/product/page?pageSize=1 -w '\\\\nHTTP %{http_code}\\\\n')",
+      "Bash(ls:*)",
+      "Bash(git config:*)",
+      "Bash(git remote:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   }
 }

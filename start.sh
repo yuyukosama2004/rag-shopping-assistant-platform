@@ -13,6 +13,8 @@ err()   { echo -e "${RED}[ERROR]${NC} $1"; }
 # JVM 低配参数（所有微服务通用）
 # SerialGC: 单线程 GC，4 核 CPU 上避免和其他进程争抢
 JVM_OPTS="-Xms64m -Xmx256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m -Xss320k -XX:+TieredCompilation -Djava.awt.headless=true"
+# Docker 运行微服务用的 JDK 镜像（宿主机只有 JDK11，服务需要 JDK17+）
+JAVA_IMAGE="eclipse-temurin:17-jre-alpine"
 
 wait_http() {
     local url=$1 desc=$2 max=${3:-60}
@@ -34,7 +36,10 @@ start_infra() {
     cd "$PROJECT_DIR"
     docker compose -f docker/docker-compose.infrastructure.yml up -d
 
-    wait_http "http://localhost:3306" "MySQL"      40 || true  # MySQL 不响应 HTTP，用 docker ps 辅助
+    for i in $(seq 1 40); do
+        docker exec biyesheji-mysql mysqladmin ping -uroot -proot123 --silent 2>/dev/null && break
+        sleep 1
+    done
     docker exec biyesheji-mysql mysqladmin ping -uroot -proot123 --silent 2>/dev/null \
         && log "MySQL 就绪" || warn "MySQL 可能未就绪"
 
@@ -55,52 +60,47 @@ stop_infra() {
 build() {
     log "Maven 构建项目..."
     docker run --rm -v "$PROJECT_DIR:/app" -v maven-repo:/root/.m2 -w /app \
-        maven:3.9.9-eclipse-temurin-21 mvn clean install -DskipTests
+        maven:3.9.9-eclipse-temurin-21 mvn clean package -DskipTests
+    # 修复 Docker 构建产生的 root 属主问题
+    sudo chown -R jill:jill "$PROJECT_DIR"/*/target/*.jar 2>/dev/null
     log "构建完成"
 }
 
 # ========== 启动微服务 ==========
 start_services() {
-    log "启动微服务（低配 JVM 参数）..."
+    log "启动微服务（Docker 容器方式，JDK 17，低配 JVM 参数）..."
     cd "$PROJECT_DIR"
 
-    # 1. user-service :8081
-    log "启动 user-service..."
-    nohup java $JVM_OPTS -jar user-service/target/user-service-1.0.0.jar \
-        --spring.profiles.active=low > logs/user-service.log 2>&1 &
-    echo $! > logs/user-service.pid
+    for svc in user-service product-service order-service gateway-service; do
+        local port=$(grep -oP 'port:\s*\K\d+' $svc/src/main/resources/application.yml | head -1)
+        local jar="$svc/target/$svc-1.0.0.jar"
+        if [ ! -f "$jar" ]; then
+            err "$jar 不存在，请先执行 ./start.sh build"
+            exit 1
+        fi
+        docker rm -f biyesheji-$svc 2>/dev/null
+        docker run --rm -d --name biyesheji-$svc --network host \
+            -v "$PROJECT_DIR/$jar:/app.jar" \
+            $JAVA_IMAGE \
+            java $JVM_OPTS -jar /app.jar
+        log "启动 $svc (:${port})..."
+        sleep 8
+    done
+
+    log "等待服务就绪..."
     wait_http "http://localhost:8081/doc.html" "user-service" 90
-
-    # 2. product-service :8082
-    log "启动 product-service..."
-    nohup java $JVM_OPTS -jar product-service/target/product-service-1.0.0.jar \
-        --spring.profiles.active=low > logs/product-service.log 2>&1 &
-    echo $! > logs/product-service.pid
     wait_http "http://localhost:8082/doc.html" "product-service" 60
-
-    # 3. order-service :8083
-    log "启动 order-service..."
-    nohup java $JVM_OPTS -jar order-service/target/order-service-1.0.0.jar \
-        --spring.profiles.active=low > logs/order-service.log 2>&1 &
-    echo $! > logs/order-service.pid
     wait_http "http://localhost:8083/doc.html" "order-service" 90
-
-    # 4. gateway-service :8080
-    log "启动 gateway-service..."
-    nohup java $JVM_OPTS -jar gateway-service/target/gateway-service-1.0.0.jar \
-        --spring.profiles.active=low > logs/gateway-service.log 2>&1 &
-    echo $! > logs/gateway-service.pid
-    wait_http "http://localhost:8080/doc.html" "gateway-service" 60
+    # Gateway 没有 doc.html，用路由测试代替
+    wait_http "http://localhost:8080/api/product/page?pageSize=1" "gateway-service" 90
 
     log "全部微服务启动完成"
-    jps -l 2>/dev/null | grep biyesheji || log "请用 jps 或 ps 检查进程"
+    docker ps --format "table {{.Names}}\t{{.Status}}" --filter "name=biyesheji-" | head -10
 }
 
 stop_services() {
     log "停止微服务..."
-    for pid_file in logs/*.pid; do
-        [ -f "$pid_file" ] && kill "$(cat "$pid_file")" 2>/dev/null && rm "$pid_file"
-    done
+    docker rm -f biyesheji-user-service biyesheji-product-service biyesheji-order-service biyesheji-gateway-service 2>/dev/null
     log "微服务已停止"
 }
 
