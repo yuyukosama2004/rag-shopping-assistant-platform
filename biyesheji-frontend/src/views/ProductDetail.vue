@@ -5,50 +5,39 @@ import { getProductDetail } from '../api/product'
 import { addToCart } from '../api/order'
 import { ElMessage } from 'element-plus'
 
-const route = useRoute()
-const router = useRouter()
-const product = ref<any>(null)
-const spec = ref<any>(null)
-const quantity = ref(1)
+const route = useRoute(); const router = useRouter()
+const product = ref<any>(null); const spec = ref<any>(null); const qty = ref(1)
 
 onMounted(async () => {
-  const res = await getProductDetail(Number(route.params.id))
-  product.value = res.data.data
+  const r = await getProductDetail(Number(route.params.id))
+  product.value = r.data.data
   try { spec.value = JSON.parse(product.value.specJson) } catch {}
 })
 
-const goBuy = () => {
-  addToCart(product.value.id, quantity.value).then(() => router.push('/checkout'))
-}
-const addCart = async () => {
-  try { await addToCart(product.value.id, quantity.value); ElMessage.success('已加入购物车') } catch {}
-}
+const addCart = async () => { try { await addToCart(product.value.id, qty.value); ElMessage.success('已加入购物车') } catch {} }
+const goBuy = () => { addToCart(product.value.id, qty.value).then(() => router.push('/checkout')) }
 </script>
 
 <template>
-  <div v-if="product" style="display:flex;gap:32px;flex-wrap:wrap;margin-top:24px">
-    <div style="flex:1;min-width:350px">
-      <img :src="product.mainImage||'https://picsum.photos/400/400'" style="width:100%;border-radius:8px" />
-    </div>
-    <div style="flex:1;min-width:350px">
-      <h1>{{ product.name }}</h1>
-      <div style="margin:16px 0"><span class="price" style="font-size:28px">¥{{ product.price }}</span><span class="original-price" v-if="product.originalPrice > product.price" style="font-size:16px">¥{{ product.originalPrice }}</span></div>
-      <p style="color:#666">{{ product.brand }} | {{ product.category }} | 月销 {{ product.sales }}</p>
-      <p style="margin:16px 0">{{ product.description }}</p>
-
-      <!-- 参数对比表 -->
-      <el-card v-if="spec" header="核心参数" style="margin:16px 0">
-        <el-descriptions :column="2" size="small" border>
-          <el-descriptions-item v-for="(v,k) in spec" :key="k" :label="k">{{ v }}</el-descriptions-item>
-        </el-descriptions>
-      </el-card>
-
-      <div style="display:flex;align-items:center;gap:12px;margin:24px 0">
-        <el-input-number v-model="quantity" :min="1" :max="99" />
-        <el-button size="large" @click="addCart">加入购物车</el-button>
-        <el-button size="large" type="primary" @click="goBuy">立即购买</el-button>
+  <div v-if="product">
+    <div class="detail-wrap">
+      <div class="detail-img"><img :src="product.mainImage||'https://picsum.photos/400/400'" /></div>
+      <div class="detail-info">
+        <h1>{{ product.name }}</h1>
+        <div class="jd-price"><span style="font-size:16px">¥</span>{{ product.price }}<span class="original-price" v-if="product.originalPrice>product.price" style="font-size:14px">¥{{ product.originalPrice }}</span></div>
+        <p style="color:#999;font-size:13px;margin-bottom:8px">{{ product.brand }} · 月销 {{ product.sales }}</p>
+        <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px">{{ product.description }}</p>
+        <table class="spec-table" v-if="spec">
+          <tr v-for="(v,k) in spec" :key="k"><td>{{ k }}</td><td>{{ v }}</td></tr>
+        </table>
       </div>
     </div>
+    <div class="detail-bottom">
+      <div style="flex:1"></div>
+      <el-input-number v-model="qty" :min="1" :max="99" size="small" />
+      <el-button size="large" @click="addCart">加入购物车</el-button>
+      <el-button size="large" type="primary" @click="goBuy">立即购买</el-button>
+    </div>
   </div>
-  <el-empty v-else description="商品不存在" />
+  <el-empty v-else description="商品不存在" style="padding-top:60px" />
 </template>
