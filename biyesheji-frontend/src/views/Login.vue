@@ -18,13 +18,15 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <div style="max-width:400px;margin:80px auto">
-    <h2 style="text-align:center;margin-bottom:24px">登录 PhoneMall</h2>
-    <el-form :model="form" size="large">
-      <el-form-item><el-input v-model="form.username" placeholder="用户名" /></el-form-item>
-      <el-form-item><el-input v-model="form.password" type="password" placeholder="密码" show-password /></el-form-item>
-      <el-form-item><el-button type="primary" @click="handleLogin" style="width:100%">登录</el-button></el-form-item>
-    </el-form>
-    <p style="text-align:center">还没有账号？<router-link to="/register" style="color:#409EFF">立即注册</router-link></p>
+  <div class="auth-page">
+    <div class="auth-card">
+      <h2 style="color:var(--jd-orange-deep)">PhoneMall</h2>
+      <el-form :model="form" size="large">
+        <el-form-item><el-input v-model="form.username" placeholder="用户名" /></el-form-item>
+        <el-form-item><el-input v-model="form.password" type="password" placeholder="密码" show-password /></el-form-item>
+        <el-form-item><el-button type="primary" @click="handleLogin" style="width:100%">登录</el-button></el-form-item>
+      </el-form>
+      <div class="auth-link">还没有账号？<router-link to="/register">立即注册</router-link></div>
+    </div>
   </div>
 </template>

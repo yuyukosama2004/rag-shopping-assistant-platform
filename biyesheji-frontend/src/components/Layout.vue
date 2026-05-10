@@ -1,50 +1,96 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { getCartCount } from '../api/order'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const cartCount = ref(0)
+const searchKeyword = ref('')
 
 const loadCartCount = async () => {
   if (!userStore.isLoggedIn()) return
   try { const r = await getCartCount(); cartCount.value = r.data.data } catch {}
 }
-
 onMounted(loadCartCount)
 
-const goHome = () => router.push('/')
-const goLogin = () => router.push('/login')
-const goCart = () => router.push('/cart')
-const goOrders = () => router.push('/orders')
-const goAi = () => router.push('/ai-assistant')
-const logout = () => userStore.logout()
+const activeTab = computed(() => {
+  const p = route.path
+  if (p === '/' || p.startsWith('/product')) return 'home'
+  if (p.startsWith('/ai')) return 'ai'
+  if (p.startsWith('/cart') || p.startsWith('/checkout')) return 'cart'
+  if (p.startsWith('/order') || p.startsWith('/login')) return 'me'
+  return 'home'
+})
+
+const tabs = [
+  { key: 'home', label: '首页', icon: '🏠', path: '/' },
+  { key: 'ai', label: 'AI导购', icon: '🤖', path: '/ai-assistant' },
+  { key: 'cart', label: '购物车', icon: '🛒', path: '/cart' },
+  { key: 'me', label: '我的', icon: '👤', path: '/orders' },
+]
+
+const goTab = (t: any) => {
+  if ((t.key === 'cart' || t.key === 'me') && !userStore.isLoggedIn()) {
+    return router.push('/login')
+  }
+  router.push(t.path)
+}
+
+const doSearch = () => {
+  if (searchKeyword.value.trim()) {
+    router.push({ path: '/products', query: { keyword: searchKeyword.value.trim() } })
+    searchKeyword.value = ''
+  }
+}
 </script>
 
 <template>
   <div>
-    <el-menu mode="horizontal" :ellipsis="false" router>
-      <el-menu-item index="/" @click="goHome">
-        <el-icon><Shop /></el-icon>
-        <span style="font-weight:700;font-size:18px">PhoneMall</span>
-      </el-menu-item>
-      <div style="flex-grow:1" />
-      <el-menu-item index="/ai-assistant" @click="goAi">
-        <el-icon><ChatDotRound /></el-icon> AI导购
-      </el-menu-item>
-      <el-menu-item v-if="userStore.isLoggedIn()" @click="goCart">
-        <el-icon><ShoppingCart /></el-icon>
-        购物车
-        <el-badge v-if="cartCount > 0" :value="cartCount" style="margin-left:4px" />
-      </el-menu-item>
-      <el-menu-item v-if="userStore.isLoggedIn()" @click="goOrders">我的订单</el-menu-item>
-      <el-menu-item v-if="userStore.isLoggedIn()" @click="logout">退出</el-menu-item>
-      <el-menu-item v-else index="/login" @click="goLogin">登录</el-menu-item>
-    </el-menu>
-    <main class="container" style="padding-top:20px; padding-bottom:40px">
-      <router-view />
-    </main>
+    <!-- ===== 顶部橙色导航 ===== -->
+    <div class="top-nav">
+      <div class="nav-header">
+        <span class="brand" @click="goTab(tabs[0])">PhoneMall</span>
+        <div class="search-box" @click="router.push('/products')">
+          <span class="search-icon">🔍</span>
+          <input
+            v-model="searchKeyword"
+            placeholder="搜索手机品牌、型号..."
+            @keyup.enter="doSearch"
+          />
+        </div>
+      </div>
+      <div class="category-row">
+        <span
+          v-for="cat in ['推荐','Apple','Samsung','Xiaomi','Huawei','OPPO','vivo']"
+          :key="cat"
+          class="category-tag"
+          :class="{ active: cat === '推荐' }"
+          @click="cat === '推荐' ? router.push('/') : router.push({ path: '/products', query: { brand: cat } })"
+        >{{ cat }}</span>
+      </div>
+    </div>
+
+    <!-- ===== 页面内容 ===== -->
+    <router-view @cart-update="loadCartCount" />
+
+    <!-- ===== 底部 TabBar ===== -->
+    <div class="bottom-tab">
+      <div
+        v-for="t in tabs" :key="t.key"
+        class="tab-item"
+        :class="{ active: activeTab === t.key }"
+        @click="goTab(t)"
+      >
+        <span class="tab-icon">{{ t.icon }}</span>
+        <span>{{ t.label }}</span>
+        <span
+          v-if="t.key==='cart' && cartCount > 0"
+          style="position:absolute;top:0;right:calc(50% - 20px);background:#FF3D00;color:#fff;font-size:10px;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center"
+        >{{ cartCount > 99 ? '99+' : cartCount }}</span>
+      </div>
+    </div>
   </div>
 </template>
