@@ -3,35 +3,67 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getOrderPage, cancelOrder, payOrder } from '../api/order'
 import { ElMessage, ElMessageBox } from 'element-plus'
-const router = useRouter(); const orders = ref<any[]>([]); const total = ref(0); const page = ref(1); const st = ref<number|undefined>()
-const sm: Record<number,string> = {0:'待支付',1:'已支付',2:'已发货',3:'已完成',4:'已取消',5:'已超时'}
-const load = async () => { const r = await getOrderPage({ pageNum: page.value, pageSize: 10, status: st.value }); orders.value = r.data.data.records; total.value = r.data.data.total }
+
+const router = useRouter()
+const orders = ref<any[]>([])
+const total = ref(0)
+const pageNum = ref(1)
+const statusFilter = ref<number | undefined>(undefined)
+
+const statusMap: Record<number, string> = { 0: '待支付', 1: '已支付', 2: '已发货', 3: '已完成', 4: '已取消', 5: '已超时' }
+const statusType: Record<number, string> = { 0: 'warning', 1: 'success', 2: '', 3: 'info', 4: 'info', 5: 'info' }
+
+const load = async () => {
+  const r = await getOrderPage({ pageNum: pageNum.value, pageSize: 10, status: statusFilter.value })
+  orders.value = r.data.data.records
+  total.value = r.data.data.total
+}
+
 onMounted(load)
-const pay = async (no: string) => { await payOrder(no); ElMessage.success('支付成功'); load() }
-const cancel = async (no: string) => { await ElMessageBox.confirm('确定取消？'); await cancelOrder(no); ElMessage.success('已取消'); load() }
-const goDet = (no: string) => router.push('/order/' + no)
+
+const goDetail = (no: string) => router.push(`/order/${no}`)
+const doPay = async (no: string) => {
+  await payOrder(no)
+  ElMessage.success('支付成功')
+  load()
+}
+const doCancel = async (no: string) => {
+  await ElMessageBox.confirm('确定取消订单？')
+  await cancelOrder(no)
+  ElMessage.success('已取消')
+  load()
+}
 </script>
+
 <template>
-  <div class="page-content">
-    <div class="page-title">我的订单</div>
-    <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto">
-      <button v-for="(_,k) of {undefined:'全部',0:'待支付',1:'已支付'}" :key="k" class="filter-chip" :class="{active:st==(k==='undefined'?undefined:Number(k))}" @click="st=(k==='undefined'?undefined:Number(k));load()">{{ (k==='undefined'?'全部':['待支付','已支付'][Number(k)]) }}</button>
-    </div>
-    <div v-if="orders.length===0" style="text-align:center;padding:60px 0;color:#999">暂无订单</div>
-    <div v-for="o in orders" :key="o.orderNo" style="background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:var(--shadow-card)">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span style="font-size:13px;color:#999">{{ o.orderNo }}</span>
-        <el-tag :type="o.status===0?'warning':o.status===1?'success':''" size="small">{{ sm[o.status] }}</el-tag>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="color:var(--jd-red);font-size:20px;font-weight:700">¥{{ o.totalAmount }}</span>
-        <span style="font-size:12px;color:#999">{{ o.createdAt?.substring(0,10) }}</span>
-        <div style="display:flex;gap:6px">
-          <el-button size="small" @click="goDet(o.orderNo)">详情</el-button>
-          <el-button v-if="o.status===0" size="small" type="primary" @click="pay(o.orderNo)">支付</el-button>
-          <el-button v-if="o.status===0" size="small" type="danger" @click="cancel(o.orderNo)">取消</el-button>
-        </div>
-      </div>
-    </div>
+  <h1 class="page-header">我的订单</h1>
+  <el-radio-group v-model="statusFilter" @change="load" style="margin-bottom:16px">
+    <el-radio-button :value="undefined">全部</el-radio-button>
+    <el-radio-button :value="0">待支付</el-radio-button>
+    <el-radio-button :value="1">已支付</el-radio-button>
+    <el-radio-button :value="2">已发货</el-radio-button>
+    <el-radio-button :value="3">已完成</el-radio-button>
+  </el-radio-group>
+
+  <div v-if="orders.length === 0" style="text-align:center;padding:60px 0">
+    <el-empty description="暂无订单" />
   </div>
+
+  <el-card v-for="order in orders" :key="order.orderNo" style="margin-bottom:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div>
+        <el-tag :type="statusType[order.status]">{{ statusMap[order.status] }}</el-tag>
+        <span style="margin-left:8px">订单号: {{ order.orderNo }}</span>
+      </div>
+      <span class="price">¥{{ order.totalAmount }}</span>
+      <span style="color:#999;font-size:13px">{{ order.createdAt }}</span>
+      <div>
+        <el-button size="small" @click="goDetail(order.orderNo)">详情</el-button>
+        <el-button v-if="order.status === 0" size="small" type="success" @click="doPay(order.orderNo)">支付</el-button>
+        <el-button v-if="order.status === 0" size="small" type="danger" @click="doCancel(order.orderNo)">取消</el-button>
+      </div>
+    </div>
+  </el-card>
+
+  <el-pagination v-if="total > 10" v-model:current-page="pageNum" :page-size="10" :total="total" layout="prev,pager,next" @current-change="load" style="margin-top:24px;justify-content:center" />
 </template>

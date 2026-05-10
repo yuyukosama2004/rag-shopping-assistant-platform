@@ -4,38 +4,51 @@ import { useRoute, useRouter } from 'vue-router'
 import { getProductDetail } from '../api/product'
 import { addToCart } from '../api/order'
 import { ElMessage } from 'element-plus'
-const route = useRoute(); const router = useRouter()
-const product = ref<any>(null); const spec = ref<any>(null); const qty = ref(1)
+
+const route = useRoute()
+const router = useRouter()
+const product = ref<any>(null)
+const spec = ref<any>(null)
+const quantity = ref(1)
+
 onMounted(async () => {
-  const r = await getProductDetail(Number(route.params.id))
-  product.value = r.data.data
+  const res = await getProductDetail(Number(route.params.id))
+  product.value = res.data.data
   try { spec.value = JSON.parse(product.value.specJson) } catch {}
 })
-const addCart = async () => { try { await addToCart(product.value.id, qty.value); ElMessage.success('已加入购物车') } catch {} }
-const goBuy = () => { addToCart(product.value.id, qty.value).then(() => router.push('/checkout')) }
+
+const goBuy = () => {
+  addToCart(product.value.id, quantity.value).then(() => router.push('/checkout'))
+}
+const addCart = async () => {
+  try { await addToCart(product.value.id, quantity.value); ElMessage.success('已加入购物车') } catch {}
+}
 </script>
+
 <template>
-  <div v-if="product">
-    <img :src="product.mainImage||'https://picsum.photos/400/400'" style="width:100%;aspect-ratio:1;object-fit:cover" />
-    <div style="padding:16px;background:#fff">
-      <h1 style="font-size:18px;font-weight:600;margin-bottom:8px">{{ product.name }}</h1>
-      <div style="margin-bottom:12px">
-        <span style="color:var(--jd-red);font-size:26px;font-weight:700">¥{{ product.price }}</span>
-        <span v-if="product.originalPrice > product.price" style="color:#999;font-size:14px;text-decoration:line-through;margin-left:8px">¥{{ product.originalPrice }}</span>
-      </div>
-      <p style="color:#999;font-size:13px;margin-bottom:8px">{{ product.brand }} · 月销 {{ product.sales }}</p>
-      <p style="font-size:14px;color:#555;line-height:1.6;margin-bottom:16px">{{ product.description }}</p>
-      <div v-if="spec" style="background:#f8f8f8;border-radius:8px;padding:12px;margin-bottom:16px">
-        <div v-for="(v,k) in spec" :key="k" style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid #eee">
-          <span style="color:#999">{{ k }}</span><span style="font-weight:500">{{ v }}</span>
-        </div>
-      </div>
+  <div v-if="product" style="display:flex;gap:32px;flex-wrap:wrap;margin-top:24px">
+    <div style="flex:1;min-width:350px">
+      <img :src="product.mainImage||'https://picsum.photos/400/400'" style="width:100%;border-radius:8px" />
     </div>
-    <div style="position:sticky;bottom:56px;background:#fff;padding:12px 16px;display:flex;gap:12px;align-items:center;box-shadow:0 -2px 8px rgba(0,0,0,0.04)">
-      <el-input-number v-model="qty" :min="1" :max="99" size="small" style="width:100px" />
-      <el-button @click="addCart" style="flex:1">加入购物车</el-button>
-      <el-button type="primary" @click="goBuy" style="flex:1">立即购买</el-button>
+    <div style="flex:1;min-width:350px">
+      <h1>{{ product.name }}</h1>
+      <div style="margin:16px 0"><span class="price" style="font-size:28px">¥{{ product.price }}</span><span class="original-price" v-if="product.originalPrice > product.price" style="font-size:16px">¥{{ product.originalPrice }}</span></div>
+      <p style="color:#666">{{ product.brand }} | {{ product.category }} | 月销 {{ product.sales }}</p>
+      <p style="margin:16px 0">{{ product.description }}</p>
+
+      <!-- 参数对比表 -->
+      <el-card v-if="spec" header="核心参数" style="margin:16px 0">
+        <el-descriptions :column="2" size="small" border>
+          <el-descriptions-item v-for="(v,k) in spec" :key="k" :label="k">{{ v }}</el-descriptions-item>
+        </el-descriptions>
+      </el-card>
+
+      <div style="display:flex;align-items:center;gap:12px;margin:24px 0">
+        <el-input-number v-model="quantity" :min="1" :max="99" />
+        <el-button size="large" @click="addCart">加入购物车</el-button>
+        <el-button size="large" type="primary" @click="goBuy">立即购买</el-button>
+      </div>
     </div>
   </div>
-  <el-empty v-else description="商品不存在或已下架" style="padding-top:80px" />
+  <el-empty v-else description="商品不存在" />
 </template>

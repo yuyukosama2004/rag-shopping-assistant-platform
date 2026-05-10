@@ -1,89 +1,78 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getProductPage, getFilters } from '../api/product'
+import { addToCart } from '../api/order'
+import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
 const products = ref<any[]>([])
 const total = ref(0)
-const pageNum = ref(1)
-const loading = ref(false)
-const hasMore = ref(true)
 const brands = ref<string[]>([])
+const categories = ref<string[]>([])
+const pageNum = ref(1)
+const pageSize = 12
 
 const filters = ref({
-  brand: (route.query.brand as string) || '',
-  keyword: (route.query.keyword as string) || '',
+  brand: route.query.brand as string || '',
+  category: route.query.category as string || '',
+  minPrice: undefined as number | undefined,
+  maxPrice: undefined as number | undefined,
+  keyword: route.query.keyword as string || '',
   sort: 'sales' as string,
 })
 
-const sortOptions = [
-  { label: '综合', value: 'sales' },
-  { label: '价格升序', value: 'price_asc' },
-  { label: '价格降序', value: 'price_desc' },
-]
-
-const loadProducts = async (reset = false) => {
-  if (loading.value) return
-  if (reset) { pageNum.value = 1; products.value = []; hasMore.value = true }
-  loading.value = true
-  try {
-    const res = await getProductPage({
-      pageNum: pageNum.value, pageSize: 12,
-      brand: filters.value.brand || undefined,
-      keyword: filters.value.keyword || undefined,
-      sort: filters.value.sort,
-    })
-    const data = res.data.data
-    products.value.push(...data.records)
-    hasMore.value = data.current < data.pages
-    pageNum.value++
-    total.value = data.total
-  } catch {} finally { loading.value = false }
+const loadProducts = async () => {
+  const res = await getProductPage({ pageNum: pageNum.value, pageSize, ...filters.value })
+  products.value = res.data.data.records
+  total.value = res.data.data.total
+}
+const loadFilters = async () => {
+  const res = await getFilters()
+  brands.value = res.data.data.brands
+  categories.value = res.data.data.categories
 }
 
-onMounted(async () => {
-  const f = await getFilters()
-  brands.value = f.data.data.brands
+onMounted(() => { loadFilters(); loadProducts() })
+
+watch(() => route.query, (q) => {
+  Object.assign(filters.value, { brand: q.brand||'', category: q.category||'', keyword: q.keyword||'' })
+  pageNum.value = 1
   loadProducts()
 })
 
-const setSort = (s: string) => { filters.value.sort = s; loadProducts(true) }
-const setBrand = (b: string) => { filters.value.brand = b; loadProducts(true) }
-const more = () => { if (hasMore.value) loadProducts() }
-
 const goDetail = (id: number) => router.push(`/product/${id}`)
-// quickAdd removed from ProductList
+const quickAdd = async (id: number) => {
+  try { await addToCart(id); ElMessage.success('已加入购物车') } catch {}
+}
 </script>
 
 <template>
-  <!-- 排序栏 -->
-  <div class="filter-bar">
-    <button v-for="s in sortOptions" :key="s.value"
-      class="filter-chip" :class="{ active: filters.sort === s.value }"
-      @click="setSort(s.value)">{{ s.label }}</button>
-    <span style="color:var(--text-secondary);margin:0 4px">|</span>
-    <button class="filter-chip" :class="{ active: !filters.brand }" @click="setBrand('')">全部</button>
-    <button v-for="b in brands.slice(0,8)" :key="b"
-      class="filter-chip" :class="{ active: filters.brand === b }"
-      @click="setBrand(b)">{{ b }}</button>
+  <h1 class="page-header">全部手机</h1>
+  <!-- 筛选 -->
+  <el-card style="margin-bottom:16px">
+    <el-form inline>
+      <el-form-item label="品牌"><el-select v-model="filters.brand" clearable @change="loadProducts"><el-option v-for="b in brands" :key="b" :label="b" :value="b"/></el-select></el-form-item>
+      <el-form-item label="分类"><el-select v-model="filters.category" clearable @change="loadProducts"><el-option v-for="c in categories" :key="c" :label="c" :value="c"/></el-select></el-form-item>
+      <el-form-item label="价格"><el-input-number v-model="filters.minPrice" :min="0" :step="500" size="small" style="width:110px"/> - <el-input-number v-model="filters.maxPrice" :min="0" :step="500" size="small" style="width:110px;margin-left:6px"/></el-form-item>
+      <el-form-item><el-button type="primary" @click="loadProducts">筛选</el-button></el-form-item>
+      <el-form-item label="排序"><el-radio-group v-model="filters.sort" @change="loadProducts"><el-radio value="sales">销量</el-radio><el-radio value="price_asc">价格升序</el-radio><el-radio value="price_desc">价格降序</el-radio></el-radio-group></el-form-item>
+    </el-form>
+  </el-card>
+
+  <div class="product-grid">
+    <el-card v-for="p in products" :key="p.id" shadow="hover" style="cursor:pointer">
+      <img :src="p.mainImage||'https://picsum.photos/200/200'" style="width:100%;height:200px;object-fit:cover;border-radius:8px" @click="goDetail(p.id)" />
+      <div style="padding:8px 0"><strong @click="goDetail(p.id)">{{ p.name }}</strong></div>
+      <span class="price"><span class="unit">¥</span>{{ p.price }}</span>
+      <span class="original-price" v-if="p.originalPrice > p.price">¥{{ p.originalPrice }}</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+        <span style="color:#999;font-size:13px">{{ p.brand }} | 月销 {{ p.sales }}</span>
+        <el-button size="small" type="primary" @click.stop="quickAdd(p.id)">加购</el-button>
+      </div>
+    </el-card>
   </div>
 
-  <!-- 瀑布流 -->
-  <div class="waterfall">
-    <div v-for="p in products" :key="p.id" class="product-card" @click="goDetail(p.id)">
-      <img :src="p.mainImage || 'https://picsum.photos/400/400'" :alt="p.name" loading="lazy" />
-      <div class="card-info">
-        <div class="card-title">{{ p.name }}</div>
-        <div class="card-price-row">
-          <span class="price-current"><span class="yen">¥</span>{{ p.price }}</span>
-          <span class="price-original" v-if="p.originalPrice > p.price">¥{{ p.originalPrice }}</span>
-        </div>
-        <div class="card-meta">{{ p.brand }} · 月销 {{ p.sales }}</div>
-      </div>
-    </div>
-    <div v-if="loading" class="loading-more">加载中...</div>
-    <div v-if="!loading && hasMore" class="loading-more" style="cursor:pointer" @click="more">加载更多</div>
-  </div>
+  <el-pagination v-if="total > pageSize" v-model:current-page="pageNum" :page-size="pageSize" :total="total" layout="prev,pager,next" @current-change="loadProducts" style="margin-top:24px;justify-content:center" />
 </template>

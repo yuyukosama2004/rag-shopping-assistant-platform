@@ -59,8 +59,7 @@
       "Bash(git remote:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)",
-      "Bash(sudo chown:*)"
+      "Bash(git push:*)"
     ]
   }
 }
