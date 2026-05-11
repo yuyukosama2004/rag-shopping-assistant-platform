@@ -36,8 +36,11 @@ public class AddressServiceImpl implements AddressService {
     @Override
     public Address update(Long userId, Address address) {
         Address db = addressMapper.selectById(address.getId());
-        if (db == null || !db.getUserId().equals(userId)) {
-            throw new BizException("地址不存在");
+        if (db == null) {
+            throw new BizException("地址不存在: id=" + address.getId() + " 未找到");
+        }
+        if (!db.getUserId().equals(userId)) {
+            throw new BizException("地址不存在: 不属于当前用户 userId=" + userId + " dbUserId=" + db.getUserId());
         }
         if (address.getReceiverName() != null) db.setReceiverName(address.getReceiverName());
         if (address.getReceiverPhone() != null) db.setReceiverPhone(address.getReceiverPhone());

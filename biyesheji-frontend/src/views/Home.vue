@@ -47,7 +47,7 @@ const add = async (e: Event, id: number) => { e.stopPropagation(); try { await a
     <div class="section-title">热门推荐</div>
     <div class="product-grid">
       <div class="card" v-for="p in hots" :key="p.id" @click="goD(p.id)">
-        <img :src="p.mainImage||'https://picsum.photos/300/300'" :alt="p.name" />
+        <img :src="p.mainImage||''" :alt="p.name" />
         <div class="info">
           <div class="title">{{ p.name }}</div>
           <div class="price-row"><span class="p"><span style="font-size:12px">¥</span>{{ p.price }}</span><span class="original-price" v-if="p.originalPrice>p.price">¥{{ p.originalPrice }}</span></div>
@@ -60,7 +60,7 @@ const add = async (e: Event, id: number) => { e.stopPropagation(); try { await a
     <div class="section-title">全部机型</div>
     <div class="product-grid">
       <div class="card" v-for="p in products" :key="p.id" @click="goD(p.id)">
-        <img :src="p.mainImage||'https://picsum.photos/300/300'" :alt="p.name" />
+        <img :src="p.mainImage||''" :alt="p.name" />
         <div class="info">
           <div class="title">{{ p.name }}</div>
           <div class="price-row"><span class="p"><span style="font-size:12px">¥</span>{{ p.price }}</span><span class="original-price" v-if="p.originalPrice>p.price">¥{{ p.originalPrice }}</span></div>

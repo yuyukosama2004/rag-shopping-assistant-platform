@@ -62,7 +62,29 @@
       "Bash(git push:*)",
       "WebFetch(domain:home.jd.com)",
       "Read(//tmp/**)",
-      "Bash(docker restart:*)"
+      "Bash(docker restart:*)",
+      "Bash(curl -s http://localhost:8082/api/product/filters)",
+      "Bash(grep:*)",
+      "Bash(curl -s \"http://localhost:8080/api/product/1006\")",
+      "Bash(git checkout:*)",
+      "Bash(sudo chown:*)",
+      "Bash(/dev/null for:*)",
+      "Bash(curl -s http://localhost:8080/api/product/1006)",
+      "Bash(curl -sI \"http://localhost:8080/api/product/1006\")",
+      "Bash(1 sleep:*)",
+      "Bash(git stash:*)",
+      "Bash(done sleep:*)",
+      "Bash(for id:*)",
+      "Bash(do curl:*)",
+      "Bash(/dev/null done:*)",
+      "Bash(curl -s \"http://localhost:8080/api/product/1040\")",
+      "Bash(curl -s http://localhost:5173/account)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://192.168.31.123/account\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://192.168.31.123:5173/src/views/Account.vue\")",
+      "Bash(curl -sI -X OPTIONS http://localhost:8080/api/user/address/123 -H \"Origin: http://192.168.31.123:5173\" -H \"Access-Control-Request-Method: PUT\")",
+      "Bash(for svc:*)",
+      "Bash(do)",
+      "Bash(done)"
     ]
   }
 }

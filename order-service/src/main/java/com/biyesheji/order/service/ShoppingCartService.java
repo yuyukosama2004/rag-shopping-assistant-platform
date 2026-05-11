@@ -14,4 +14,5 @@ public interface ShoppingCartService {
     void checkAll(Long userId, boolean checked);
     List<CartItemVO> list(Long userId);
     int count(Long userId);
+    void updateOptions(Long cartId, String color, String storage);
 }

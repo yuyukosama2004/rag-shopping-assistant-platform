@@ -31,12 +31,12 @@ const doSearch = () => {
       <div class="container">
         <div>
           <span v-if="!userStore.isLoggedIn()" class="red" @click="router.push('/login')">你好，请登录</span>
-          <span v-else @click="router.push('/orders')">你好，{{ userStore.user?.nickname || userStore.user?.username }}</span>
+          <span v-else @click="router.push('/account')">你好，{{ userStore.user?.nickname || userStore.user?.username }}</span>
         </div>
         <div>
           <span @click="router.push('/orders')">我的订单</span>
-          <span @click="router.push('/ai-assistant')">AI导购</span>
-          <span @click="router.push('/cart')">我的购物车</span>
+          <span @click="router.push('/account')">我的账号</span>
+          <span @click="router.push('/cart')">购物车</span>
           <span v-if="userStore.isLoggedIn()" @click="userStore.logout()">退出</span>
         </div>
       </div>
@@ -50,9 +50,10 @@ const doSearch = () => {
           <input v-model="keyword" placeholder="搜索手机品牌、型号..." @keyup.enter="doSearch" />
           <button class="search-btn" @click="doSearch">🔍</button>
         </div>
-        <div class="header-cart" @click="router.push('/cart')">
-          🛒 我的购物车
-          <span class="cart-count" v-if="cartCount > 0">{{ cartCount }}</span>
+        <div class="hdr-btn-red" @click="router.push('/ai-assistant')">AI导购</div>
+        <div style="position:relative;flex-shrink:0" @click="router.push('/cart')">
+          <div class="hdr-btn">🛒 购物车</div>
+          <span class="cart-count" v-if="cartCount > 0" style="position:absolute;top:-6px;right:-4px;background:var(--jd-red);color:#fff;font-size:11px;padding:0 5px;border-radius:10px">{{ cartCount }}</span>
         </div>
       </div>
     </div>
@@ -60,15 +61,21 @@ const doSearch = () => {
     <!-- Row 3: cat-nav -->
     <div class="cat-nav">
       <div class="container">
-        <span class="all-cats">全部商品分类</span>
-        <a href="/products" @click.prevent="router.push('/products')">手机</a>
-        <a href="#" @click.prevent="router.push({path:'/products',query:{brand:'Apple'}})">Apple</a>
-        <a href="#" @click.prevent="router.push({path:'/products',query:{brand:'Samsung'}})">Samsung</a>
-        <a href="#" @click.prevent="router.push({path:'/products',query:{brand:'Xiaomi'}})">Xiaomi</a>
-        <a href="#" @click.prevent="router.push({path:'/products',query:{brand:'Huawei'}})">Huawei</a>
-        <a href="#" @click.prevent="router.push({path:'/products',query:{brand:'OPPO'}})">OPPO</a>
-        <a href="#" @click.prevent="router.push({path:'/products',query:{brand:'vivo'}})">vivo</a>
-        <a href="#" @click.prevent="router.push('/ai-assistant')">AI智能导购</a>
+        <span class="cat-link" @click="router.push('/')">首页</span>
+        <span class="cat-link" @click="router.push({path:'/products'})">全部品牌</span>
+        <span class="cat-link" @click="router.push({path:'/products',query:{brand:'Huawei'}})">华为</span>
+        <span class="cat-link" @click="router.push({path:'/products',query:{brand:'Apple'}})">苹果</span>
+        <span class="cat-link" @click="router.push({path:'/products',query:{brand:'Samsung'}})">三星</span>
+        <span class="cat-link" @click="router.push({path:'/products',query:{brand:'vivo'}})">vivo</span>
+        <span class="cat-link" @click="router.push({path:'/products',query:{brand:'OPPO'}})">OPPO</span>
+        <span class="cat-link" @click="router.push({path:'/products',query:{brand:'Xiaomi'}})">小米</span>
+        <span class="cat-link" @click="router.push({path:'/products',query:{brand:'Honor'}})">荣耀</span>
+        <span class="cat-link" @click="router.push({path:'/products',query:{brand:'iQOO'}})">iQOO</span>
+        <span class="cat-link" @click="router.push({path:'/products',query:{brand:'Redmi'}})">Redmi</span>
+        <span class="cat-link" @click="router.push({path:'/products',query:{brand:'OnePlus'}})">一加</span>
+        <span class="cat-link" @click="router.push({path:'/products',query:{brand:'realme'}})">realme</span>
+        <span class="cat-link" @click="router.push({path:'/products',query:{brand:'Nubia'}})">红魔</span>
+        <span class="cat-link" @click="router.push({path:'/products',query:{brand:'Motorola'}})">摩托罗拉</span>
       </div>
     </div>
 

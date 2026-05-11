@@ -7,10 +7,12 @@ import com.biyesheji.utils.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @Tag(name = "地址接口", description = "收货地址管理")
 @RestController
 @RequestMapping("/api/user/address")
@@ -48,7 +50,10 @@ public class AddressController {
     @PutMapping("/{id}")
     public R<Address> update(@RequestHeader("Authorization") String authHeader,
                               @PathVariable Long id, @RequestBody Address address) {
+        log.info("PUT /address/{} body: name={} phone={} detail={}", id, address.getReceiverName(), address.getReceiverPhone(), address.getDetail());
         address.setId(id);
+        log.info("After setId: address.id={}", address.getId());
+
         return R.ok(addressService.update(getUserId(authHeader), address));
     }
 

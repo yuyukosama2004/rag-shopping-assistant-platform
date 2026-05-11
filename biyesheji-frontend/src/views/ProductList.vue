@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getProductPage, getFilters } from '../api/product'
 import { addToCart } from '../api/order'
@@ -18,6 +18,11 @@ const load = async (reset = false) => {
 onMounted(async () => {
   const f = await getFilters(); brands.value = f.data.data.brands
   load()
+})
+watch(() => route.query, (q) => {
+  filters.value.brand = (q.brand as string) || ''
+  filters.value.keyword = (q.keyword as string) || ''
+  load(true)
 })
 const goD = (id: number) => router.push(`/product/${id}`)
 const add = async (e: Event, id: number) => { e.stopPropagation(); try { await addToCart(id); ElMessage.success('已加入购物车') } catch {} }
@@ -42,7 +47,7 @@ const setBrand = (b: string) => { filters.value.brand = b; load(true) }
       </div>
       <div class="product-grid" style="grid-template-columns:repeat(3,1fr)">
         <div class="card" v-for="p in products" :key="p.id" @click="goD(p.id)">
-          <img :src="p.mainImage||'https://picsum.photos/300/300'" :alt="p.name" />
+          <img :src="p.mainImage||''" :alt="p.name" />
           <div class="info">
             <div class="title">{{ p.name }}</div>
             <div class="price-row"><span class="p"><span style="font-size:12px">¥</span>{{ p.price }}</span><span class="original-price" v-if="p.originalPrice>p.price">¥{{ p.originalPrice }}</span></div>

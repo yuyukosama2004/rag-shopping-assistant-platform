@@ -18,6 +18,8 @@ public class ShoppingCart implements Serializable {
     private Long productId;
     private Integer quantity;
     private Integer checked;
+    private String selectedColor;
+    private String selectedStorage;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

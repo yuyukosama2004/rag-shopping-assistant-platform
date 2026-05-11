@@ -20,6 +20,10 @@ public class CartItemVO implements Serializable {
     private String productName;
     private String productImage;
     private BigDecimal productPrice;
+    private String selectedColor;
+    private String selectedStorage;
+    private String colorOptions;
+    private String storageOptions;
 
     public static CartItemVO from(ShoppingCart cart, Product product) {
         CartItemVO vo = new CartItemVO();
@@ -28,10 +32,14 @@ public class CartItemVO implements Serializable {
         vo.setProductId(cart.getProductId());
         vo.setQuantity(cart.getQuantity());
         vo.setChecked(cart.getChecked());
+        vo.setSelectedColor(cart.getSelectedColor());
+        vo.setSelectedStorage(cart.getSelectedStorage());
         if (product != null) {
             vo.setProductName(product.getName());
             vo.setProductImage(product.getMainImage());
             vo.setProductPrice(product.getPrice());
+            vo.setColorOptions(product.getColorOptions());
+            vo.setStorageOptions(product.getStorageOptions());
         }
         return vo;
     }

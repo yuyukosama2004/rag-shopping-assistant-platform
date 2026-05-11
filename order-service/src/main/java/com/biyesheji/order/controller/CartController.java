@@ -33,7 +33,22 @@ public class CartController {
         Long productId = Long.valueOf(body.get("productId").toString());
         Integer quantity = body.containsKey("quantity")
                 ? Integer.valueOf(body.get("quantity").toString()) : 1;
-        return R.ok(cartService.add(getUserId(auth), productId, quantity));
+        ShoppingCart cart = cartService.add(getUserId(auth), productId, quantity);
+        if (body.containsKey("color")) cart.setSelectedColor(body.get("color").toString());
+        if (body.containsKey("storage")) cart.setSelectedStorage(body.get("storage").toString());
+        if (body.containsKey("color") || body.containsKey("storage")) {
+            cartService.updateOptions(cart.getId(), cart.getSelectedColor(), cart.getSelectedStorage());
+        }
+        return R.ok(cart);
+    }
+
+    @Operation(summary = "修改外观/规格")
+    @PutMapping("/{cartId}/options")
+    public R<Void> updateOptions(@RequestHeader("Authorization") String auth,
+                                  @PathVariable Long cartId,
+                                  @RequestBody Map<String, String> body) {
+        cartService.updateOptions(cartId, body.get("color"), body.get("storage"));
+        return R.ok();
     }
 
     @Operation(summary = "购物车列表")

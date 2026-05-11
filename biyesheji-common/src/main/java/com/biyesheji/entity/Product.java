@@ -27,4 +27,6 @@ public class Product extends BaseEntity {
     private String description;
     private Integer sales;
     private Integer status;
+    private String colorOptions;
+    private String storageOptions;
 }

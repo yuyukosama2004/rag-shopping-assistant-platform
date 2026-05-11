@@ -3,40 +3,121 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getProductDetail } from '../api/product'
 import { addToCart } from '../api/order'
+import { getAddressList } from '../api/user'
 import { ElMessage } from 'element-plus'
 
 const route = useRoute(); const router = useRouter()
 const product = ref<any>(null); const spec = ref<any>(null); const qty = ref(1)
+const selectedColor = ref(''); const selectedStorage = ref('')
+const colors = ref<string[]>([]); const storages = ref<string[]>([])
+const addresses = ref<any[]>([]); const selectedAddr = ref(0); const manualAddr = ref({ name: '', phone: '', address: '' })
 
 onMounted(async () => {
-  const r = await getProductDetail(Number(route.params.id))
-  product.value = r.data.data
-  try { spec.value = JSON.parse(product.value.specJson) } catch {}
+  try {
+    const r = await getProductDetail(Number(route.params.id))
+    if (!r.data || !r.data.data) { return }
+    product.value = r.data.data
+    try { spec.value = JSON.parse(product.value.specJson || '{}') } catch { spec.value = {} }
+    try { colors.value = JSON.parse(product.value.colorOptions || '[]') } catch { colors.value = [] }
+    try { storages.value = JSON.parse(product.value.storageOptions || '[]') } catch { storages.value = [] }
+    if (colors.value.length) selectedColor.value = colors.value[0]
+    if (storages.value.length) selectedStorage.value = storages.value[0]
+    try { const ar = await getAddressList(); addresses.value = ar.data.data || []
+      const def = addresses.value.find((a: any) => a.isDefault === 1)
+      if (def) { selectedAddr.value = def.id; manualAddr.value = { name: def.receiverName, phone: def.receiverPhone, address: def.detail } }
+    } catch {}
+  } catch {}
 })
+const selectAddr = (a: any) => { selectedAddr.value = a.id; manualAddr.value = { name: a.receiverName, phone: a.receiverPhone, address: a.detail } }
 
-const addCart = async () => { try { await addToCart(product.value.id, qty.value); ElMessage.success('已加入购物车') } catch {} }
-const goBuy = () => { addToCart(product.value.id, qty.value).then(() => router.push('/checkout')) }
+const addCart = async () => {
+  try { await addToCart(product.value.id, qty.value, selectedColor.value, selectedStorage.value); ElMessage.success('已加入购物车') } catch {}
+}
+const goBuy = () => { addCart(); setTimeout(() => router.push('/checkout'), 500) }
 </script>
 
 <template>
   <div v-if="product">
     <div class="detail-wrap">
-      <div class="detail-img"><img :src="product.mainImage||'https://picsum.photos/400/400'" /></div>
+      <div class="detail-img"><img :src="product.mainImage||''" /></div>
       <div class="detail-info">
-        <h1>{{ product.name }}</h1>
-        <div class="jd-price"><span style="font-size:16px">¥</span>{{ product.price }}<span class="original-price" v-if="product.originalPrice>product.price" style="font-size:14px">¥{{ product.originalPrice }}</span></div>
-        <p style="color:#999;font-size:13px;margin-bottom:8px">{{ product.brand }} · 月销 {{ product.sales }}</p>
-        <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px">{{ product.description }}</p>
-        <table class="spec-table" v-if="spec">
-          <tr v-for="(v,k) in spec" :key="k"><td>{{ k }}</td><td>{{ v }}</td></tr>
-        </table>
+        <h1 style="font-size:18px;font-weight:600;line-height:1.5;margin-bottom:12px">{{ product.name }}</h1>
+
+        <div style="background:#fdf2f2;padding:12px 16px;margin-bottom:12px;border-radius:4px">
+          <span style="color:var(--jd-red);font-size:28px;font-weight:700">¥{{ product.price }}</span>
+          <span v-if="product.originalPrice > product.price" style="color:#999;font-size:14px;text-decoration:line-through;margin-left:8px">¥{{ product.originalPrice }}</span>
+        </div>
+
+        <div style="margin-bottom:12px;font-size:13px">
+          <span style="color:var(--jd-red);font-weight:600">{{ product.brand }}</span>
+          <span style="color:#999;margin-left:16px">月销 {{ product.sales }} 件</span>
+        </div>
+
+        <!-- 外观 -->
+        <div style="margin-bottom:14px">
+          <div style="font-size:13px;color:#999;margin-bottom:6px">外观</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <span v-for="c in colors" :key="c"
+              @click="selectedColor = c"
+              style="padding:6px 14px;border:1px solid #ddd;border-radius:2px;font-size:13px;cursor:pointer;min-width:70px;text-align:center"
+              :style="selectedColor===c ? {borderColor:'var(--jd-red)',color:'var(--jd-red)',background:'#FFF0F0'} : {}"
+            >{{ c }}</span>
+          </div>
+        </div>
+
+        <!-- 规格 -->
+        <div style="margin-bottom:14px">
+          <div style="font-size:13px;color:#999;margin-bottom:6px">规格</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <span v-for="s in storages" :key="s"
+              @click="selectedStorage = s"
+              style="padding:6px 14px;border:1px solid #ddd;border-radius:2px;font-size:13px;cursor:pointer;min-width:80px;text-align:center"
+              :style="selectedStorage===s ? {borderColor:'var(--jd-red)',color:'var(--jd-red)',background:'#FFF0F0'} : {}"
+            >{{ s }}</span>
+          </div>
+        </div>
+
+        <!-- 送至 -->
+        <div style="background:#fafafa;padding:12px;margin-bottom:12px;font-size:13px;color:#555;line-height:2">
+          <div style="font-weight:600;margin-bottom:4px">送至</div>
+          <div v-if="addresses.length > 0" style="margin-bottom:6px">
+            <div v-for="a in addresses" :key="a.id" @click="selectAddr(a)"
+              style="padding:6px 8px;border:1px solid #eee;margin-bottom:3px;cursor:pointer;font-size:12px;border-radius:3px"
+              :style="selectedAddr===a.id ? {borderColor:'var(--jd-red)',background:'#FFF0F0'} : {}">
+              <span v-if="a.isDefault" style="background:var(--jd-red);color:#fff;font-size:10px;padding:0 3px;margin-right:4px">默认</span>
+              {{ a.detail }}
+            </div>
+          </div>
+          <div style="font-size:12px;color:#999;margin-bottom:4px">或手动输入</div>
+          <el-input v-model="manualAddr.name" placeholder="收货人" size="small" style="width:120px;margin-right:4px" />
+          <el-input v-model="manualAddr.phone" placeholder="手机号" size="small" style="width:140px;margin-right:4px" />
+          <el-input v-model="manualAddr.address" placeholder="详细地址" size="small" style="width:200px" />
+          <div style="margin-top:6px">现在下单，预计 <b>2-3天</b> 内送达 · 包邮</div>
+        </div>
+
+        <div style="display:flex;gap:16px;font-size:12px;color:#999;margin-bottom:16px">
+          <span>✓ 正品保证</span><span>✓ 全国联保</span><span>✓ 7天价保</span><span>✓ 免费退换</span>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:13px;color:#999">数量</span>
+          <el-input-number v-model="qty" :min="1" :max="99" size="small" style="width:120px" />
+          <el-button size="large" @click="addCart" style="width:160px">加入购物车</el-button>
+          <el-button size="large" type="danger" @click="goBuy" style="width:160px">立即购买</el-button>
+        </div>
       </div>
     </div>
-    <div class="detail-bottom">
-      <div style="flex:1"></div>
-      <el-input-number v-model="qty" :min="1" :max="99" size="small" />
-      <el-button size="large" @click="addCart">加入购物车</el-button>
-      <el-button size="large" type="primary" @click="goBuy">立即购买</el-button>
+
+    <div style="background:#fff;padding:20px;margin-top:14px" v-if="spec">
+      <h3 style="font-size:16px;font-weight:600;margin-bottom:14px;padding-left:10px;border-left:4px solid var(--jd-red)">商品描述</h3>
+      <p style="font-size:14px;color:#555;line-height:1.8;margin-bottom:20px">{{ product.description }}</p>
+      <h3 style="font-size:16px;font-weight:600;margin-bottom:14px;padding-left:10px;border-left:4px solid var(--jd-red)">商品参数</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+        <div v-for="(v,k) in spec" :key="k" style="display:flex;border-bottom:1px solid #f0f0f0;padding:10px 0;font-size:13px">
+          <span style="color:#999;width:100px;flex-shrink:0">{{ k }}</span>
+          <span style="color:#333;font-weight:500">{{ v }}</span>
+        </div>
+      </div>
     </div>
   </div>
   <el-empty v-else description="商品不存在" style="padding-top:60px" />

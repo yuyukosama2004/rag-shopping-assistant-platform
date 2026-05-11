@@ -105,6 +105,16 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     }
 
     @Override
+    public void updateOptions(Long cartId, String color, String storage) {
+        ShoppingCart cart = cartMapper.selectById(cartId);
+        if (cart != null) {
+            if (color != null) cart.setSelectedColor(color);
+            if (storage != null) cart.setSelectedStorage(storage);
+            cartMapper.updateById(cart);
+        }
+    }
+
+    @Override
     public int count(Long userId) {
         Long cnt = cartMapper.selectCount(
                 new LambdaQueryWrapper<ShoppingCart>().eq(ShoppingCart::getUserId, userId)

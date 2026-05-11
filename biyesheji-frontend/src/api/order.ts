@@ -1,8 +1,12 @@
 import request from './request'
 
 // 购物车
-export function addToCart(productId: number, quantity = 1) {
-  return request.post('/api/order/cart', { productId, quantity })
+export function addToCart(productId: number, quantity = 1, color?: string, storage?: string) {
+  return request.post('/api/order/cart', { productId, quantity, color, storage })
+}
+
+export function updateCartOptions(cartId: number, color: string, storage: string) {
+  return request.put('/api/order/cart/' + cartId + '/options', { color, storage })
 }
 
 export function getCartList() {
