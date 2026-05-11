@@ -6,9 +6,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
-import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
-import reactor.core.publisher.Flux;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Tag(name = "AI导购接口", description = "对话式智能手机推荐")
 @RestController
@@ -20,15 +19,13 @@ public class AiController {
     private final JwtUtil jwtUtil;
 
     @Operation(summary = "AI 对话（SSE流式）")
-    @PostMapping(value = "/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<ServerSentEvent<String>> chat(
+    @GetMapping(value = "/chat")
+    public SseEmitter chat(
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestParam String query) {
         Long userId = null;
         if (auth != null && auth.startsWith("Bearer ")) {
-            try {
-                userId = jwtUtil.getUserId(auth.replace("Bearer ", ""));
-            } catch (Exception ignored) {}
+            try { userId = jwtUtil.getUserId(auth.replace("Bearer ", "")); } catch (Exception ignored) {}
         }
         return aiService.chat(userId, query);
     }

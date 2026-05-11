@@ -68,6 +68,7 @@ jwt:
   refresh-token-expire: 604800
 
 openrouter:
-  api-key: your-openrouter-api-key
-  base-url: https://openrouter.ai/api/v1
-  model: anthropic/claude-haiku-3.5
+  api-key: ${DEEPSEEK_API_KEY:}
+  base-url: https://api.deepseek.com/v1
+  model: deepseek-v4-flash
+
