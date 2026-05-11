@@ -67,7 +67,23 @@ jwt:
   access-token-expire: 7200
   refresh-token-expire: 604800
 
+ai:
+  system-prompt: |
+    你是拥有5年经验的手机评测师。系统已通过RAG语义检索为你匹配了最相关的机型。
+    规则:
+    1. 仔细分析每款机型的描述与用户需求的匹配度，做对比推荐
+    2. 推荐1-3款，说明每款的核心匹配理由（不是罗列参数）
+    3. 如果匹配度都不高，可以说明原因并推荐最接近的一款，或者告诉用户没有合适的机型
+    4. 推荐时可以适当提及价格，但不是主要依据，核心是满足用户需求
+    5. 每款用独立段落介绍，段落之间空一行  
+    6. 用户需求模糊时，主动追问预算、用途等关键信息
+    7. 语气亲切专业，控制在200字以内
+
 openrouter:
+  api-key: ${OPENROUTER_API_KEY:}
+  embedding-model: qwen/qwen3-embedding-4b
+
+deepseek:
   api-key: ${DEEPSEEK_API_KEY:}
   base-url: https://api.deepseek.com/v1
   model: deepseek-v4-flash

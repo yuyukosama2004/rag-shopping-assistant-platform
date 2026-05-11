@@ -8,21 +8,22 @@ import com.biyesheji.entity.Product;
 import com.biyesheji.order.mapper.AiConversationMapper;
 import com.biyesheji.order.mapper.ProductMapper;
 import com.biyesheji.order.service.AiService;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.math.BigDecimal;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
@@ -31,38 +32,338 @@ public class AiServiceImpl implements AiService {
     private final ProductMapper productMapper;
     private final AiConversationMapper aiConversationMapper;
 
-    @Value("${openrouter.api-key:}")
+    // ====== DeepSeek 配置 ======
+    @Value("${deepseek.api-key:}")
     private String apiKey;
 
-    @Value("${openrouter.model:deepseek-v4-flash}")
+    @Value("${deepseek.model:deepseek-v4-flash}")
     private String model;
 
-    @Value("${openrouter.base-url:https://api.deepseek.com/v1}")
+    @Value("${deepseek.base-url:https://api.deepseek.com/v1}")
     private String baseUrl;
+
+    @Value("${ai.system-prompt:}")
+    private String systemPrompt;
+
+    // ====== OpenRouter Embedding 配置 ======
+    @Value("${openrouter.api-key:}")
+    private String openRouterKey;
+
+    @Value("${openrouter.embedding-model:qwen/qwen3-embedding-4b}")
+    private String embeddingModel;
+
+    // ====== 产品向量缓存 ======
+    private final Map<Long, float[]> productEmbeddings = new ConcurrentHashMap<>();
+    private final Map<Long, Product> productCache = new ConcurrentHashMap<>();
+    private volatile boolean embeddingsReady = false;
+
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
 
     public AiServiceImpl(ProductMapper productMapper, AiConversationMapper aiConversationMapper) {
         this.productMapper = productMapper;
         this.aiConversationMapper = aiConversationMapper;
     }
 
+    // ================================================================
+    //  启动时：为所有商品生成向量
+    // ================================================================
+    @PostConstruct
+    void initEmbeddings() {
+        new Thread(() -> {
+            try {
+                List<Product> all = productMapper.selectList(
+                        new LambdaQueryWrapper<Product>().eq(Product::getStatus, 1));
+                if (all.isEmpty()) {
+                    log.warn("没有商品数据，跳过向量初始化");
+                    return;
+                }
+                // 构建富文本描述
+                List<String> texts = new ArrayList<>();
+                for (Product p : all) {
+                    productCache.put(p.getId(), p);
+                    texts.add(buildProductText(p));
+                }
+                // 批量调用 Embedding API
+                float[][] vectors = batchEmbed(texts);
+                for (int i = 0; i < all.size(); i++) {
+                    productEmbeddings.put(all.get(i).getId(), vectors[i]);
+                }
+                embeddingsReady = true;
+                log.info("RAG 向量初始化完成，共 {} 款商品", all.size());
+            } catch (Exception e) {
+                log.error("向量初始化失败，回退到全量模式", e);
+            }
+        }).start();
+    }
+
+    private String buildProductText(Product p) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(p.getName()).append(" ").append(p.getBrand()).append(" ");
+        if (p.getCategory() != null) sb.append(p.getCategory()).append(" ");
+        sb.append("¥").append(p.getPrice()).append(" ");
+        if (p.getDescription() != null && !p.getDescription().isBlank()) {
+            sb.append(p.getDescription()).append(" ");
+        }
+        if (p.getSpecJson() != null && !p.getSpecJson().isBlank()) {
+            String spec = p.getSpecJson();
+            try {
+                JSONObject specObj = JSONUtil.parseObj(spec);
+                StringBuilder specStr = new StringBuilder();
+                for (String key : specObj.keySet()) {
+                    specStr.append(key).append(":").append(specObj.getStr(key)).append(" ");
+                }
+                sb.append(specStr);
+            } catch (Exception e) {
+                sb.append(spec);
+            }
+        }
+        return sb.toString().trim();
+    }
+
+    // ================================================================
+    //  商品描述自动丰富（DeepSeek 批处理）
+    // ================================================================
+    private static final String ENRICH_PROMPT =
+            "你是手机评测师。请根据真实市场定位+以下硬件参数，" +
+            "为这款手机写一段60-80字卖点描述。\n" +
+            "格式: [目标用户群体] [2-3个核心卖点] [适用场景]\n" +
+            "要求: 结合你对这款机型的真实了解来写，禁止虚构不存在的功能。" +
+            "若参数与你了解的信息有冲突，以参数为准。\n\n" +
+            "示例:\n" +
+            "适合学生党和轻度游戏玩家。骁龙7+Gen3性能均衡功耗低，" +
+            "120Hz高刷屏游戏画面流畅，5000mAh大电池续航一整天无压力，" +
+            "67W快充回血迅速，千元档性价比标杆。";
+
+    @Override
+    public Map<String, Object> enrichProducts() {
+        Map<String, Object> result = new LinkedHashMap<>();
+        List<String> success = new ArrayList<>();
+        List<String> failed = new ArrayList<>();
+        long start = System.currentTimeMillis();
+
+        List<Product> all = productMapper.selectList(
+                new LambdaQueryWrapper<Product>().eq(Product::getStatus, 1));
+
+        if (all.isEmpty()) {
+            result.put("status", "error");
+            result.put("message", "没有可处理的商品");
+            return result;
+        }
+
+        for (Product p : all) {
+            try {
+                String params = p.getName() + " | " + p.getBrand() + " | ¥" + p.getPrice() + " | " + p.getSpecJson();
+                String desc = generateDescription(params);
+                if (desc != null && !desc.isBlank()) {
+                    p.setDescription(desc.trim());
+                    productMapper.updateById(p);
+                    productCache.put(p.getId(), p);
+                    success.add(p.getName());
+                    log.info("描述已更新: {}", p.getName());
+                } else {
+                    failed.add(p.getName());
+                }
+                // 避免限流，每次间隔500ms
+                Thread.sleep(500);
+            } catch (Exception e) {
+                log.error("处理失败: {}", p.getName(), e);
+                failed.add(p.getName());
+            }
+        }
+
+        // 重建向量缓存
+        if (!success.isEmpty()) {
+            try {
+                embeddingsReady = false;
+                List<String> texts = new ArrayList<>();
+                for (Product p : all) {
+                    texts.add(buildProductText(p));
+                }
+                float[][] vectors = batchEmbed(texts);
+                productEmbeddings.clear();
+                for (int i = 0; i < all.size(); i++) {
+                    productEmbeddings.put(all.get(i).getId(), vectors[i]);
+                }
+                embeddingsReady = true;
+                log.info("向量缓存已重建，共 {} 款", all.size());
+            } catch (Exception e) {
+                log.error("向量重建失败", e);
+            }
+        }
+
+        result.put("status", "ok");
+        result.put("success", success.size());
+        result.put("failed", failed.size());
+        result.put("successList", success);
+        result.put("failedList", failed);
+        result.put("durationMs", System.currentTimeMillis() - start);
+        return result;
+    }
+
+    private String generateDescription(String params) {
+        try {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("model", model);
+            body.put("stream", false);
+            body.put("messages", List.of(
+                    Map.of("role", "system", "content", ENRICH_PROMPT),
+                    Map.of("role", "user", "content", params)
+            ));
+            body.put("max_tokens", 300);
+
+            String json = JSONUtil.toJsonStr(body);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(baseUrl + "/chat/completions"))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + apiKey)
+                    .timeout(Duration.ofSeconds(30))
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                log.error("DeepSeek 返回 {}: {}", response.statusCode(), response.body());
+                return null;
+            }
+            return JSONUtil.parseObj(response.body())
+                    .getByPath("choices[0].message.content", String.class);
+        } catch (Exception e) {
+            log.error("生成描述失败", e);
+            return null;
+        }
+    }
+
+    // ================================================================
+    //  Embedding API 调用
+    // ================================================================
+    private float[][] batchEmbed(List<String> texts) throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("model", embeddingModel);
+        body.put("input", texts);
+        body.put("encoding_format", "float");
+
+        String json = JSONUtil.toJsonStr(body);
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://openrouter.ai/api/v1/embeddings"))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + openRouterKey)
+                .timeout(Duration.ofSeconds(30))
+                .POST(HttpRequest.BodyPublishers.ofString(json))
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200) {
+            throw new RuntimeException("Embedding API 返回 " + response.statusCode() + ": " + response.body());
+        }
+
+        JSONObject resp = JSONUtil.parseObj(response.body());
+        int n = resp.getJSONArray("data").size();
+        float[][] result = new float[n][];
+        for (int i = 0; i < n; i++) {
+            JSONObject item = resp.getJSONArray("data").getJSONObject(i);
+            result[item.getInt("index")] = toFloatArray(item.getJSONArray("embedding"));
+        }
+        return result;
+    }
+
+    private float[] embedText(String text) {
+        try {
+            float[][] batch = batchEmbed(List.of(text));
+            return batch[0];
+        } catch (Exception e) {
+            log.error("Embedding 调用失败", e);
+            return null;
+        }
+    }
+
+    private float[] toFloatArray(cn.hutool.json.JSONArray arr) {
+        float[] f = new float[arr.size()];
+        for (int i = 0; i < arr.size(); i++) {
+            f[i] = arr.getFloat(i);
+        }
+        return f;
+    }
+
+    // ================================================================
+    //  余弦相似度 + RAG 检索
+    // ================================================================
+    private double cosineSimilarity(float[] a, float[] b) {
+        double dot = 0, normA = 0, normB = 0;
+        for (int i = 0; i < a.length; i++) {
+            dot += (double) a[i] * b[i];
+            normA += (double) a[i] * a[i];
+            normB += (double) b[i] * b[i];
+        }
+        return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+    }
+
+    private List<Product> ragSearch(String query, int topK) {
+        if (!embeddingsReady) {
+            // 向量未就绪，回退到全量
+            return new ArrayList<>(productCache.values());
+        }
+
+        float[] queryVec = embedText(query);
+        if (queryVec == null) {
+            return new ArrayList<>(productCache.values());
+        }
+
+        // 计算所有产品与查询的余弦相似度
+        record ScoredProduct(Product product, double score) {}
+        List<ScoredProduct> scored = new ArrayList<>();
+
+        for (Map.Entry<Long, float[]> entry : productEmbeddings.entrySet()) {
+            Product p = productCache.get(entry.getKey());
+            if (p != null) {
+                double score = cosineSimilarity(queryVec, entry.getValue());
+                scored.add(new ScoredProduct(p, score));
+            }
+        }
+
+        scored.sort((a, b) -> Double.compare(b.score, a.score));
+
+        List<Product> result = new ArrayList<>();
+        for (int i = 0; i < Math.min(topK, scored.size()); i++) {
+            result.add(scored.get(i).product);
+        }
+        return result;
+    }
+
+    // ================================================================
+    //  AI 对话（SSE 流式）
+    // ================================================================
     @Override
     public SseEmitter chat(Long userId, String query) {
         saveMessage(userId, "user", query, null);
-        SseEmitter emitter = new SseEmitter(120_000L); // 2 分钟超时
+        SseEmitter emitter = new SseEmitter(120_000L);
 
         new Thread(() -> {
             try {
-                AiIntent intent = parseIntent(query);
-                List<Product> candidates = searchProducts(intent);
+                // RAG 检索：向量语义匹配 Top-10
+                List<Product> candidates = ragSearch(query, 10);
                 String prompt = buildPrompt(query, candidates);
 
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("model", model);
                 body.put("stream", true);
-                body.put("messages", List.of(
-                        Map.of("role", "system", "content", SYSTEM_PROMPT),
-                        Map.of("role", "user", "content", prompt)
-                ));
+
+                List<Map<String, String>> messages = new ArrayList<>();
+                messages.add(Map.of("role", "system", "content", systemPrompt));
+
+                List<AiConversation> history = userId != null ? aiConversationMapper.selectList(
+                        new LambdaQueryWrapper<AiConversation>()
+                                .eq(AiConversation::getUserId, userId)
+                                .orderByDesc(AiConversation::getId)
+                                .last("LIMIT 10")) : List.of();
+                Collections.reverse(history);
+                for (AiConversation h : history) {
+                    messages.add(Map.of("role", h.getRole(), "content", h.getContent()));
+                }
+                messages.add(Map.of("role", "user", "content", prompt));
+
+                body.put("messages", messages);
 
                 String json = JSONUtil.toJsonStr(body);
                 HttpRequest request = HttpRequest.newBuilder()
@@ -73,8 +374,7 @@ public class AiServiceImpl implements AiService {
                         .POST(HttpRequest.BodyPublishers.ofString(json))
                         .build();
 
-                HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
-                HttpResponse<java.io.InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+                HttpResponse<java.io.InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
 
                 if (response.statusCode() != 200) {
                     String errBody = new String(response.body().readAllBytes());
@@ -84,32 +384,21 @@ public class AiServiceImpl implements AiService {
                     return;
                 }
 
-                java.io.InputStream is = response.body();
-                byte[] buf = new byte[4096];
-                int n;
                 StringBuilder fullReply = new StringBuilder();
-                StringBuilder lineBuf = new StringBuilder();
-
-                while ((n = is.read(buf)) != -1) {
-                    String chunk = new String(buf, 0, n);
-                    for (char c : chunk.toCharArray()) {
-                        lineBuf.append(c);
-                        if (c == '\n') {
-                            String line = lineBuf.toString().trim();
-                            lineBuf.setLength(0);
-                            if (line.startsWith("data:")) {
-                                String data = line.substring(5).trim();
-                                if ("[DONE]".equals(data)) continue;
-                                String text = extractContent(data);
-                                if (text != null && !text.isEmpty()) {
-                                    fullReply.append(text);
-                                    emitter.send(SseEmitter.event().data(text));
-                                }
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.body()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        if (line.startsWith("data:")) {
+                            String data = line.substring(5).trim();
+                            if ("[DONE]".equals(data)) continue;
+                            String text = extractContent(data);
+                            if (text != null && !text.isEmpty()) {
+                                fullReply.append(text);
+                                emitter.send(SseEmitter.event().data(text));
                             }
                         }
                     }
                 }
-                is.close();
                 if (fullReply.length() > 0) {
                     saveMessage(userId, "assistant", fullReply.toString(), null);
                 }
@@ -138,73 +427,30 @@ public class AiServiceImpl implements AiService {
         return conv;
     }
 
-    private static final String SYSTEM_PROMPT =
-            "你是一位拥有5年经验的手机产品评测师。基于提供的商品数据库，根据用户需求推荐最合适的手机。\n\n" +
-            "规则:\n" +
-            "1. 只推荐数据库中存在的机型，禁止虚构\n" +
-            "2. 优先考虑用户最关心的需求维度\n" +
-            "3. 每组推荐包含: 机型名称 + 核心配置 + 推荐理由\n" +
-            "4. 推荐末尾附上 SKU ID (skuId) 和直达购买链接格式: /product/{id}\n" +
-            "5. 回复语气专业但亲切，控制在200字以内";
-
+    // ================================================================
+    //  工具方法
+    // ================================================================
     private String extractContent(String data) {
         try { return JSONUtil.parseObj(data).getByPath("choices[0].delta.content", String.class); }
         catch (Exception e) { return ""; }
-    }
-
-    private AiIntent parseIntent(String query) {
-        AiIntent intent = new AiIntent();
-        Pattern pricePattern = Pattern.compile("(\\d+)\\s*[-到至]\\s*(\\d+)\\s*(元|块)?");
-        Matcher m = pricePattern.matcher(query);
-        if (m.find()) {
-            intent.minPrice = new BigDecimal(m.group(1));
-            intent.maxPrice = new BigDecimal(m.group(2));
-        } else {
-            Pattern singlePrice = Pattern.compile("(\\d{3,5})\\s*(元|块|以内|以下|左右)?");
-            Matcher sm = singlePrice.matcher(query);
-            if (sm.find()) {
-                BigDecimal price = new BigDecimal(sm.group(1));
-                intent.maxPrice = price.add(new BigDecimal("1000"));
-                intent.minPrice = price.subtract(new BigDecimal("500"));
-            }
-        }
-        String[] brands = {"Apple","Samsung","Xiaomi","Huawei","OPPO","vivo","OnePlus","Honor","realme","Redmi","iQOO","Nubia","Motorola"};
-        for (String b : brands) { if (query.toLowerCase().contains(b.toLowerCase())) { intent.brand = b; break; } }
-        String lower = query.toLowerCase();
-        if (lower.contains("游戏") || lower.contains("打游戏") || lower.contains("性能")) intent.gaming = true;
-        if (lower.contains("拍照") || lower.contains("相机") || lower.contains("摄像")) intent.camera = true;
-        if (lower.contains("续航") || lower.contains("电池")) intent.battery = true;
-        if (lower.contains("轻薄") || lower.contains("轻") || lower.contains("薄")) intent.slim = true;
-        if (lower.contains("屏幕") || lower.contains("显示")) intent.screen = true;
-        return intent;
-    }
-
-    private List<Product> searchProducts(AiIntent intent) {
-        LambdaQueryWrapper<Product> w = new LambdaQueryWrapper<>();
-        w.eq(Product::getStatus, 1);
-        if (intent.brand != null) w.eq(Product::getBrand, intent.brand);
-        if (intent.minPrice != null) w.ge(Product::getPrice, intent.minPrice);
-        if (intent.maxPrice != null) w.le(Product::getPrice, intent.maxPrice);
-        w.orderByDesc(Product::getSales);
-        w.last("LIMIT 15");
-        return productMapper.selectList(w);
     }
 
     private String buildPrompt(String query, List<Product> candidates) {
         StringBuilder sb = new StringBuilder();
         sb.append("用户需求: ").append(query).append("\n\n可选机型:\n");
         for (Product p : candidates) {
-            sb.append("- ").append(p.getName()).append(" | ").append(p.getBrand())
-              .append(" | ¥").append(p.getPrice()).append(" | 配置: ").append(p.getSpecJson())
-              .append(" | 销量: ").append(p.getSales()).append(" | SKU: ").append(p.getId()).append("\n");
+            sb.append("- ").append(p.getName())
+              .append(" | ").append(p.getBrand())
+              .append(" | ¥").append(p.getPrice());
+            if (p.getDescription() != null && !p.getDescription().isBlank()) {
+                sb.append(" | ").append(p.getDescription().trim());
+            }
+            sb.append(" | 配置: ").append(p.getSpecJson())
+              .append(" | 销量: ").append(p.getSales())
+              .append(" | SKU: ").append(p.getId()).append("\n");
         }
         sb.append("\n请基于以上数据推荐1-3款最合适的手机。");
         if (candidates.isEmpty()) sb.append("（无匹配机型，请告知用户扩大范围。）");
         return sb.toString();
-    }
-
-    static class AiIntent {
-        BigDecimal minPrice; BigDecimal maxPrice; String brand;
-        boolean gaming, camera, battery, slim, screen;
     }
 }

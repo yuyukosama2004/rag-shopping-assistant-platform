@@ -9,6 +9,8 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.util.Map;
+
 @Tag(name = "AI导购接口", description = "对话式智能手机推荐")
 @RestController
 @RequestMapping("/api/order/ai")
@@ -28,5 +30,11 @@ public class AiController {
             try { userId = jwtUtil.getUserId(auth.replace("Bearer ", "")); } catch (Exception ignored) {}
         }
         return aiService.chat(userId, query);
+    }
+
+    @Operation(summary = "AI 丰富商品描述（一次性批处理）")
+    @PostMapping("/enrich")
+    public Map<String, Object> enrich() {
+        return aiService.enrichProducts();
     }
 }
