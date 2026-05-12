@@ -45,7 +45,7 @@ const setBrand = (b: string) => { filters.value.brand = b; load(true) }
         <span :class="{active:filters.sort==='price_desc'}" @click="setSort('price_desc')">价格降序</span>
         <span style="margin-left:auto;color:#999">{{ total }} 件商品</span>
       </div>
-      <div class="product-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="product-grid grid-3">
         <div class="card" v-for="p in products" :key="p.id" @click="goD(p.id)">
           <img :src="p.mainImage||''" :alt="p.name" />
           <div class="info">

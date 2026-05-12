@@ -80,7 +80,7 @@ const doSearch = () => {
     </div>
 
     <!-- main content -->
-    <div class="container" style="padding-top:14px;padding-bottom:24px;min-height:60vh">
+    <div class="container" style="padding-top:14px;padding-bottom:24px;min-height:80vh">
       <router-view />
     </div>
 

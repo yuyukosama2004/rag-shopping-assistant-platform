@@ -14,7 +14,7 @@ const submit = async () => {
 </script>
 <template>
   <div style="display:flex;justify-content:center;padding:60px 0">
-    <div style="width:400px;background:#fff;padding:40px 30px">
+    <div style="max-width:400px;width:100%;background:#fff;padding:40px 30px">
       <div style="background:var(--jd-red);color:#fff;text-align:center;padding:16px;margin:-40px -30px 30px;font-size:18px;font-weight:600">注册账号</div>
       <el-form :model="form" size="large">
         <el-form-item><el-input v-model="form.username" placeholder="用户名" /></el-form-item>

@@ -25,6 +25,7 @@ const chgStorage = async (it: any, s: string) => { await updateCartOptions(it.id
     <h2 style="font-size:18px;font-weight:600;margin-bottom:14px">购物车</h2>
     <el-empty v-if="items.length===0" description="购物车还是空的，去逛逛吧" />
     <template v-else>
+      <!-- 桌面端表格 -->
       <table class="cart-table">
         <thead><tr>
           <th style="width:50px;text-align:center"><el-checkbox :model-value="items.every(i=>i.checked)" @change="tglAll">全选</el-checkbox></th>
@@ -59,6 +60,28 @@ const chgStorage = async (it: any, s: string) => { await updateCartOptions(it.id
           </tr>
         </tbody>
       </table>
+      <!-- 手机端卡片 -->
+      <div class="cart-mobile-cards">
+        <div class="cart-mobile-card" v-for="it in items" :key="'m'+it.id">
+          <div class="cm-row">
+            <el-checkbox :model-value="it.checked===1" @change="tgl(it.id)" />
+            <img :src="it.productImage||''" class="cm-img" />
+            <span class="cm-name">{{ it.productName }}</span>
+          </div>
+          <div class="cm-options" v-if="it.selectedColor||it.selectedStorage">
+            外观: {{ it.selectedColor || '-' }} / 规格: {{ it.selectedStorage || '-' }}
+          </div>
+          <div class="cm-bottom">
+            <span class="cm-price">¥{{ (it.productPrice*it.quantity).toFixed(2) }}</span>
+            <div class="cm-qty">
+              <button @click="chgQty(it, it.quantity-1)">−</button>
+              <span>{{ it.quantity }}</span>
+              <button @click="chgQty(it, it.quantity+1)">+</button>
+            </div>
+            <el-button size="small" type="danger" text @click="del(it.id)">删除</el-button>
+          </div>
+        </div>
+      </div>
       <div class="cart-footer">
         <span>已选 <b>{{ checked.length }}</b> 件</span>
         <span class="total">合计: <span class="num">¥{{ total.toFixed(2) }}</span></span>
