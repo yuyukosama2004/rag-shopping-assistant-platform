@@ -11,7 +11,7 @@ const filters = ref({ brand: (route.query.brand as string)||'', keyword: (route.
 
 const load = async (reset = false) => {
   if (reset) { pageNum.value = 1; products.value = [] }
-  const r = await getProductPage({ pageNum: pageNum.value, pageSize: 12, brand: filters.value.brand||undefined, keyword: filters.value.keyword||undefined, sort: filters.value.sort })
+  const r = await getProductPage({ pageNum: 1, pageSize: 100, brand: filters.value.brand||undefined, keyword: filters.value.keyword||undefined, sort: filters.value.sort })
   products.value = r.data.data.records; total.value = r.data.data.total
 }
 
@@ -55,7 +55,6 @@ const setBrand = (b: string) => { filters.value.brand = b; load(true) }
           </div>
         </div>
       </div>
-      <el-pagination v-if="total > 12" v-model:current-page="pageNum" :page-size="12" :total="total" layout="prev,pager,next" @current-change="load" />
     </div>
   </div>
 </template>
