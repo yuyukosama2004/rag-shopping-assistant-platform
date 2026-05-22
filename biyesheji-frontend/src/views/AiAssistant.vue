@@ -24,6 +24,9 @@ const send = () => {
       <div v-for="(m,i) in msgs" :key="i" :style="{textAlign:m.role==='user'?'right':'left',marginBottom:'10px'}">
         <div style="display:inline-block;max-width:80%;padding:10px 14px;border-radius:6px;text-align:left;font-size:14px;line-height:1.6"
           :style="m.role==='user'?{background:'#E04A4F',color:'#fff'}:{background:'#f5f5f5',color:'#333'}">
+          <span v-if="m.role==='assistant' && !m.content && loading" style="color:#999;font-style:italic">
+            <span class="ai-thinking">AI 思考中</span>
+          </span>
           <span style="white-space:pre-wrap">{{ m.content }}</span>
         </div>
       </div>
