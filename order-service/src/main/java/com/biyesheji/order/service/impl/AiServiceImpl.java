@@ -337,7 +337,7 @@ public class AiServiceImpl implements AiService {
     @Override
     public SseEmitter chat(Long userId, String query) {
         saveMessage(userId, "user", query, null);
-        SseEmitter emitter = new SseEmitter(120_000L);
+        SseEmitter emitter = new SseEmitter(180_000L);
 
         new Thread(() -> {
             try {
@@ -370,7 +370,7 @@ public class AiServiceImpl implements AiService {
                         .uri(URI.create(baseUrl + "/chat/completions"))
                         .header("Content-Type", "application/json")
                         .header("Authorization", "Bearer " + apiKey)
-                        .timeout(Duration.ofSeconds(60))
+                        .timeout(Duration.ofSeconds(120))
                         .POST(HttpRequest.BodyPublishers.ofString(json))
                         .build();
 
@@ -431,8 +431,12 @@ public class AiServiceImpl implements AiService {
     //  工具方法
     // ================================================================
     private String extractContent(String data) {
-        try { return JSONUtil.parseObj(data).getByPath("choices[0].delta.content", String.class); }
-        catch (Exception e) { return ""; }
+        try {
+            JSONObject obj = JSONUtil.parseObj(data);
+            // 只取 content（最终结果），跳过 reasoning_content（思考过程）
+            String content = obj.getByPath("choices[0].delta.content", String.class);
+            return content != null ? content : "";
+        } catch (Exception e) { return ""; }
     }
 
     private String buildPrompt(String query, List<Product> candidates) {
