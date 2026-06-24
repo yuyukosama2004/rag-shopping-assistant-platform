@@ -1,0 +1,206 @@
+/* ============================================================
+   PhoneMall — 京东 Web 风格全局样式
+   ============================================================ */
+
+/* ---- Element Plus 主题 ---- */
+:root {
+  --jd-red: #C91623;
+  --jd-red-deep: #A0121A;
+  --jd-red-bright: #D42027;
+  --jd-red-light: #FFF0F0;
+  --el-color-primary: var(--jd-red);
+  --el-color-primary-light-3: #E04A4F;
+  --el-color-primary-light-5: #F2ADB2;
+  --el-color-primary-light-7: #F9D6D8;
+  --el-color-primary-light-9: #FDEBEC;
+  --el-color-primary-dark-2: var(--jd-red-deep);
+  --el-color-danger: var(--jd-red);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: "Microsoft YaHei","PingFang SC",sans-serif; background: #f4f4f4; color: #333; font-size: 14px; }
+a { text-decoration: none; color: inherit; }
+.container { max-width: 1200px; margin: 0 auto; padding: 0 10px; }
+
+/* ---- 价格 ---- */
+.price { color: var(--jd-red); font-weight: 700; }
+.price .unit { font-size: 12px; }
+.original-price { text-decoration: line-through; color: #999; font-size: 12px; margin-left: 6px; }
+
+/* ====== 三行式导航栏 ====== */
+
+/* Row 1 — mini-bar */
+.mini-bar { background: #fff; border-bottom: 1px solid #eee; font-size: 12px; line-height: 30px; }
+.mini-bar .container { display: flex; justify-content: space-between; color: #999; }
+.mini-bar span { cursor: pointer; margin: 0 8px; }
+.mini-bar span:hover { color: var(--jd-red); }
+.mini-bar .red { color: var(--jd-red); }
+
+/* Row 2 — header-bar */
+.header-bar { background: #fff; border-bottom: 1px solid #eee; padding: 12px 0; }
+.header-bar .container { display: flex; align-items: center; gap: 16px; }
+.header-bar .logo { font-size: 26px; font-weight: 700; color: var(--jd-red); flex-shrink: 0; cursor: pointer; }
+.header-bar .search-wrap { flex: 1; display: flex; }
+.header-bar .search-wrap input { flex: 1; height: 36px; border: 2px solid var(--jd-red); border-right: none; padding: 0 12px; font-size: 14px; outline: none; border-radius: 0; }
+.header-bar .search-wrap .search-btn { width: 70px; height: 36px; background: var(--jd-red); color: #fff; border: none; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 0 4px 4px 0; }
+.header-bar .hdr-btn { flex-shrink: 0; font-size: 13px; cursor: pointer; padding: 6px 14px; border: 1px solid #333; color: #333; background: #fff; border-radius: 2px; white-space: nowrap; }
+.header-bar .hdr-btn:hover { border-color: #000; }
+.header-bar .hdr-btn-red { flex-shrink: 0; font-size: 13px; cursor: pointer; padding: 6px 14px; border: 1px solid var(--jd-red); color: #fff; background: var(--jd-red); border-radius: 2px; white-space: nowrap; }
+.header-bar .hdr-btn-red:hover { background: var(--jd-red-deep); }
+.header-bar .cart-count { position: absolute; top: -6px; right: -4px; background: var(--jd-red); color: #fff; font-size: 11px; padding: 0 5px; border-radius: 10px; }
+
+/* Row 3 — cat-nav */
+.cat-nav { background: var(--jd-red); border-bottom: 2px solid var(--jd-red-deep); }
+.cat-nav .container { display: flex; align-items: center; }
+.cat-nav .cat-link { color: #fff; font-size: 14px; padding: 10px 18px; display: inline-block; cursor: pointer; }
+.cat-nav .cat-link:hover { background: var(--jd-red-deep); }
+
+/* ====== 首页 Banner ====== */
+.home-banner { background: linear-gradient(135deg,#D42027,#C91623); padding: 36px 24px; text-align: center; color: #fff; margin-bottom: 20px; }
+.home-banner h1 { font-size: 30px; margin-bottom: 16px; }
+.home-banner .brand-tags { margin-top: 14px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.home-banner .brand-tags span { background: rgba(255,255,255,0.2); color: #fff; padding: 4px 14px; border-radius: 14px; font-size: 13px; cursor: pointer; }
+.home-banner .brand-tags span:hover { background: rgba(255,255,255,0.35); }
+
+/* ====== 版块标题 ====== */
+.section-title { font-size: 20px; font-weight: 700; margin: 24px 0 14px; padding-left: 12px; border-left: 4px solid var(--jd-red); }
+
+/* ====== 商品网格 ====== */
+.product-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.product-grid.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.product-grid .card { background: #fff; cursor: pointer; transition: box-shadow .2s; }
+.product-grid .card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+.product-grid .card img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: linear-gradient(135deg, #FFF0F0, #FDEBEC); }
+.product-grid .card img[src=""] { object-fit: contain; padding: 20%; }
+.product-grid .card .info { padding: 10px 12px 14px; }
+.product-grid .card .title { font-size: 14px; line-height: 1.5; height: 42px; overflow: hidden; margin-bottom: 8px; }
+.product-grid .card .price-row { display: flex; align-items: baseline; gap: 4px; margin-bottom: 6px; }
+.product-grid .card .price-row .p { color: var(--jd-red); font-size: 18px; font-weight: 700; }
+.product-grid .card .meta { font-size: 12px; color: #999; display: flex; justify-content: space-between; align-items: center; }
+.product-grid .card .add-btn { background: var(--jd-red); color: #fff; border: none; padding: 4px 12px; border-radius: 3px; font-size: 12px; cursor: pointer; }
+.product-grid .card .add-btn:hover { background: var(--jd-red-deep); }
+
+/* ====== ProductList 左侧分类 ====== */
+.plist-wrap { display: flex; gap: 14px; margin-top: 14px; }
+.plist-side { width: 180px; flex-shrink: 0; background: #fff; padding: 8px 0; }
+.plist-side .side-item { display: block; padding: 8px 16px; font-size: 13px; color: #333; cursor: pointer; }
+.plist-side .side-item:hover,.plist-side .side-item.active { color: var(--jd-red); background: #FFF0F0; }
+.plist-main { flex: 1; }
+.plist-main .sort-bar { background: #fff; padding: 8px 14px; margin-bottom: 10px; display: flex; gap: 12px; font-size: 13px; }
+.plist-main .sort-bar span { cursor: pointer; color: #333; }
+.plist-main .sort-bar span:hover,.plist-main .sort-bar span.active { color: var(--jd-red); font-weight: 700; }
+
+/* ====== ProductDetail ====== */
+.detail-wrap { display: flex; gap: 30px; margin-top: 14px; background: #fff; padding: 24px; }
+.detail-img { flex: 1; min-width: 400px; }
+.detail-img img { width: 100%; border-radius: 4px; }
+.detail-info { flex: 1; min-width: 400px; }
+.detail-info h1 { font-size: 20px; margin-bottom: 12px; }
+.detail-info .jd-price { color: var(--jd-red); font-size: 28px; font-weight: 700; margin-bottom: 10px; }
+.detail-info .spec-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+.detail-info .spec-table td { padding: 6px 8px; border-bottom: 1px solid #eee; }
+.detail-info .spec-table td:first-child { color: #999; width: 30%; }
+.detail-bottom { background: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 14px; margin-top: 14px; }
+
+/* ====== 购物车表格 ====== */
+.cart-table { width: 100%; background: #fff; border-collapse: collapse; }
+.cart-table th { background: #f5f5f5; padding: 10px 8px; font-size: 13px; font-weight: 600; border-bottom: 2px solid #ddd; }
+.cart-table td { padding: 12px 8px; border-bottom: 1px solid #eee; font-size: 13px; vertical-align: middle; }
+.cart-table .cart-img { width: 60px; height: 60px; object-fit: cover; border-radius: 4px; }
+.cart-footer { background: #fff; padding: 14px 16px; display: flex; align-items: center; justify-content: flex-end; gap: 16px; margin-top: 10px; border-top: 2px solid #ddd; }
+.cart-footer .total { font-size: 16px; }
+.cart-footer .total .num { color: var(--jd-red); font-size: 22px; font-weight: 700; }
+
+/* ====== 页脚 ====== */
+.site-footer { text-align: center; padding: 24px; color: #999; font-size: 12px; margin-top: 30px; border-top: 1px solid #ddd; background: #fff; }
+
+/* ====== Element Plus 微调 ====== */
+.el-pagination { justify-content: center; margin-top: 20px; }
+.el-button--primary { --el-button-bg-color: var(--jd-red); --el-button-border-color: var(--jd-red); --el-button-hover-bg-color: var(--jd-red-deep); --el-button-hover-border-color: var(--jd-red-deep); }
+.el-tag { border-radius: 2px; }
+
+/* ============================================================
+   响应式 — 手机端 (<768px)
+   ============================================================ */
+@media (max-width: 767px) {
+  .container { padding: 0 8px; }
+
+  /* mini-bar 隐藏 */
+  .mini-bar { display: none; }
+
+  /* header-bar 压缩成一行 */
+  .header-bar { padding: 8px 0; }
+  .header-bar .container { gap: 8px; flex-wrap: wrap; }
+  .header-bar .logo { font-size: 20px; }
+  .header-bar .search-wrap { order: 10; flex: 1 1 100%; margin-top: 6px; }
+  .header-bar .search-wrap input { height: 32px; font-size: 13px; }
+  .header-bar .search-wrap .search-btn { width: 50px; height: 32px; font-size: 14px; }
+  .header-bar .hdr-btn-red,
+  .header-bar .hdr-btn { font-size: 11px; padding: 4px 10px; }
+
+  /* cat-nav 横滚 */
+  .cat-nav { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .cat-nav .container { flex-wrap: nowrap; white-space: nowrap; padding: 0 4px; }
+  .cat-nav .cat-link { font-size: 12px; padding: 8px 10px; flex-shrink: 0; }
+
+  /* 商品网格: 2列 */
+  .product-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .product-grid.grid-3 { grid-template-columns: repeat(2, 1fr); }
+  .product-grid .card .title { font-size: 12px; height: 36px; }
+  .product-grid .card .price-row .p { font-size: 14px; }
+  .product-grid .card .info { padding: 6px 8px 10px; }
+  .product-grid .card .meta { font-size: 11px; }
+
+  /* Banner */
+  .home-banner { padding: 24px 12px; }
+  .home-banner h1 { font-size: 22px; }
+
+  /* 分类页侧栏收起 */
+  .plist-wrap { flex-direction: column; }
+  .plist-side { width: 100%; display: flex; overflow-x: auto; gap: 4px; padding: 4px 8px; }
+  .plist-side .side-item { white-space: nowrap; flex-shrink: 0; padding: 6px 12px; font-size: 12px; }
+  .plist-main .sort-bar { font-size: 12px; gap: 8px; }
+
+  /* 详情页上下排列 */
+  .detail-wrap { flex-direction: column; gap: 14px; padding: 14px; }
+  .detail-img, .detail-info { min-width: unset; flex: unset; width: 100%; }
+  .detail-info h1 { font-size: 18px; }
+  .detail-info .jd-price { font-size: 24px; }
+  .detail-bottom { flex-wrap: wrap; gap: 10px; padding: 10px 14px; }
+
+  /* 购物车表格隐藏 → 卡片 */
+  .cart-table { display: none; }
+  .cart-mobile-cards { display: flex; flex-direction: column; gap: 10px; }
+  .cart-mobile-card { background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 12px; }
+  .cart-mobile-card .cm-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .cart-mobile-card .cm-img { width: 70px; height: 70px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+  .cart-mobile-card .cm-name { font-size: 13px; font-weight: 500; flex: 1; line-height: 1.4; }
+  .cart-mobile-card .cm-options { font-size: 12px; color: #666; margin: 4px 0; }
+  .cart-mobile-card .cm-bottom { display: flex; align-items: center; justify-content: space-between; }
+  .cart-mobile-card .cm-price { font-size: 16px; font-weight: 700; color: var(--jd-red); }
+  .cart-mobile-card .cm-qty { display: flex; align-items: center; gap: 4px; }
+  .cart-mobile-card .cm-qty button { width: 28px; height: 28px; border: 1px solid #ddd; background: #fff; border-radius: 4px; font-size: 14px; cursor: pointer; }
+  .cart-mobile-card .cm-qty span { min-width: 24px; text-align: center; }
+  .cart-footer { flex-wrap: wrap; justify-content: center; font-size: 13px; }
+  .cart-footer .total .num { font-size: 18px; }
+
+  /* 页脚 */
+  .site-footer { padding: 16px; font-size: 11px; }
+}
+
+/* AI 思考动画 */
+.ai-thinking::after { content: ''; animation: dots 1.5s steps(4, end) infinite; }
+@keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } 100% { content: '...'; } }
+
+/* 移动端购物车卡片（桌面端隐藏） */
+.cart-mobile-cards { display: none; }
+
+/* ============================================================
+   响应式 — 平板 (768px-1023px)
+   ============================================================ */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .product-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .product-grid.grid-3 { grid-template-columns: repeat(2, 1fr); }
+  .plist-side { width: 140px; }
+  .detail-img, .detail-info { min-width: 280px; }
+}

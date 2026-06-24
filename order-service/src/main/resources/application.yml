@@ -1,0 +1,90 @@
+server:
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+  port: 8083
+
+spring:
+  application:
+    name: order-service
+  main:
+    banner-mode: off
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/biyesheji?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: root123
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      idle-timeout: 300000
+      connection-timeout: 10000
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin123
+    listener:
+      simple:
+        concurrency: 2
+        max-concurrency: 3
+        prefetch: 5
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  global-config:
+    db-config:
+      id-type: assign_id
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+
+knife4j:
+  enable: true
+  openapi:
+    title: 订单服务 API
+    description: 购物车、下单、订单管理、AI导购
+
+logging:
+  level:
+    root: WARN
+    com.biyesheji: INFO
+
+jwt:
+  secret: biyesheji-2026-spring-cloud-microservice-phone-mall-platform-secret-key
+  access-token-expire: 7200
+  refresh-token-expire: 604800
+
+ai:
+  system-prompt: |
+    你是拥有5年经验的手机评测师。系统已通过RAG语义检索为你匹配了最相关的机型。
+    规则:
+    1. 仔细分析每款机型的描述与用户需求的匹配度，做对比推荐
+    2. 推荐1-3款，说明每款的核心匹配理由（不是罗列参数）
+    3. 如果匹配度都不高，可以说明原因并推荐最接近的一款，或者告诉用户没有合适的机型
+    4. 推荐时可以适当提及价格，但不是主要依据，核心是满足用户需求
+    5. 每款用独立段落介绍，段落之间空一行  
+    6. 用户需求模糊时，主动追问预算、用途等关键信息
+    7. 语气亲切专业，控制在200字以内
+
+openrouter:
+  api-key: ${OPENROUTER_API_KEY:}
+  embedding-model: qwen/qwen3-embedding-4b
+
+deepseek:
+  api-key: ${DEEPSEEK_API_KEY:}
+  base-url: https://api.deepseek.com/v1
+  model: deepseek-v4-flash
+

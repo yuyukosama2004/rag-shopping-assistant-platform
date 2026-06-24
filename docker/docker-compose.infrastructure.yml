@@ -1,0 +1,76 @@
+# 手机电商平台 基础设施编排（低配优化版）
+# 适配 AMD A8 4500M + 12GB DDR3 + Ubuntu Server
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: biyesheji-mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: biyesheji
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+      - --innodb_buffer_pool_size=128M
+      - --innodb_log_file_size=32M
+      - --max_connections=30
+      - --performance_schema=OFF
+      - --skip-log-bin
+    volumes:
+      - ../sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ../sql/mock_data.sql:/docker-entrypoint-initdb.d/02-mock.sql
+      - mysql-data:/var/lib/mysql
+    mem_limit: 512M
+
+  redis:
+    image: redis:7-alpine
+    container_name: biyesheji-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru --save ""
+    volumes:
+      - redis-data:/data
+    mem_limit: 128M
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: biyesheji-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    mem_limit: 384M
+
+  nacos:
+    image: nacos/nacos-server:v2.3.2
+    container_name: biyesheji-nacos
+    restart: unless-stopped
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+    environment:
+      MODE: standalone
+      PREFER_HOST_MODE: hostname
+      JVM_XMS: 128m
+      JVM_XMX: 512m
+      JVM_XMN: 64m
+    volumes:
+      - nacos-data:/home/nacos/data
+    mem_limit: 640M
+
+volumes:
+  mysql-data:
+  redis-data:
+  rabbitmq-data:
+  nacos-data:

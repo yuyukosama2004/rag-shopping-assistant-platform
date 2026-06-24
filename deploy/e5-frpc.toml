@@ -1,0 +1,22 @@
+# ============================================================
+# PhoneMall E5 服务器 frpc 配置
+# 连接阿里云 frps, 暴露本地 Web 服务
+# ============================================================
+
+serverAddr = "8.153.98.251"
+serverPort = 7000
+
+[[proxies]]
+name = "web-e5"
+type = "tcp"
+localIP = "127.0.0.1"
+localPort = 80
+remotePort = 6080
+
+# SSH 管理（可选）
+# [[proxies]]
+# name = "ssh-e5"
+# type = "tcp"
+# localIP = "127.0.0.1"
+# localPort = 22
+# remotePort = 6001
