@@ -65,6 +65,12 @@ build() {
     "${MAVEN_IMAGE:-maven:3.9-eclipse-temurin-17}" mvn -B clean verify
 }
 
+build_frontend() {
+  info "Building frontend with Node 22"
+  docker run --rm -v "$PROJECT_DIR/biyesheji-frontend:/workspace" -w /workspace \
+    "${NODE_IMAGE:-node:22-bookworm-slim}" sh -c 'npm ci && npm run build'
+}
+
 wait_healthy() {
   local container="$1" attempts="${2:-90}" status
   for _ in $(seq 1 "$attempts"); do
@@ -113,17 +119,19 @@ case "${1:-help}" in
   infra-start) start_infra ;;
   infra-stop) stop_infra ;;
   build) build ;;
+  frontend-build) build_frontend ;;
   start) start_services ;;
   stop) stop_services ;;
   restart) stop_services; start_services ;;
   status) status ;;
-  all) start_infra; build; start_services ;;
+  all) start_infra; build; build_frontend; start_services ;;
   *)
     cat <<'EOF'
-Usage: ./start.sh {infra-start|infra-stop|build|start|stop|restart|status|all}
+Usage: ./start.sh {infra-start|infra-stop|build|frontend-build|start|stop|restart|status|all}
 
 All commands require a populated .env file. Services are attached to the private
 Docker network; only the gateway is bound to its configured loopback port for Nginx.
+The frontend is built in the Node 22 container, so no host Node.js installation is required.
 EOF
     ;;
 esac

@@ -340,6 +340,7 @@ http://localhost:8080
 | `infra-start` | 启动 MySQL、Redis 和 Nacos |
 | `infra-stop` | 停止基础设施 |
 | `build` | 构建全部后端模块 |
+| `frontend-build` | 使用 Node 22 Docker 镜像构建前端静态资源 |
 | `start` | 通过应用 Compose 构建并启动四个微服务 |
 | `stop` | 停止并删除应用服务容器，不删除数据卷 |
 | `restart` | 重建并重启应用服务容器 |
@@ -351,6 +352,7 @@ http://localhost:8080
 ```bash
 ./start.sh infra-start
 ./start.sh build
+./start.sh frontend-build
 ./start.sh start
 ```
 
