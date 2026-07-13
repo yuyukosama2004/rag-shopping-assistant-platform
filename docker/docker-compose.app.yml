@@ -1,6 +1,8 @@
 # Application services. Build the backend first with ./start.sh build.
 # This compose file intentionally reuses the private network created by the
 # infrastructure compose file, so the database and service registry stay private.
+name: biyesheji-app
+
 services:
   user-service:
     build:

@@ -99,7 +99,7 @@ start_services() {
 
 stop_services() {
   [ -f "$ENV_FILE" ] || die "Missing $ENV_FILE"
-  app_compose down --remove-orphans
+  app_compose down
 }
 
 status() {
