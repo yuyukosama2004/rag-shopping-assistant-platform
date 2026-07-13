@@ -83,10 +83,14 @@ start_services() {
   for service in user-service product-service order-service gateway-service; do
     [ -f "$PROJECT_DIR/$service/target/$service-1.0.0.jar" ] \
       || die "Missing $service build artifact; run ./start.sh build first"
+  done
+  info "Building application runtime images"
+  app_compose build
+  for service in user-service product-service order-service gateway-service; do
     docker rm -f "biyesheji-$service" >/dev/null 2>&1 || true
   done
   info "Starting application services through Docker Compose"
-  app_compose up -d --build
+  app_compose up -d
   for service in user-service product-service order-service gateway-service; do
     wait_healthy "biyesheji-$service"
   done
