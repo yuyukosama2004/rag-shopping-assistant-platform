@@ -9,9 +9,11 @@ import com.biyesheji.dto.StoreSettingUpdateDTO;
 import com.biyesheji.dto.StaffCreateDTO;
 import com.biyesheji.dto.StaffStatusUpdateDTO;
 import com.biyesheji.entity.StoreSetting;
+import com.biyesheji.entity.MerchantAuditLog;
 import com.biyesheji.entity.User;
 import com.biyesheji.exception.BizException;
 import com.biyesheji.user.mapper.StoreSettingMapper;
+import com.biyesheji.user.mapper.MerchantAuditLogMapper;
 import com.biyesheji.user.mapper.UserMapper;
 import com.biyesheji.user.service.MerchantService;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +32,7 @@ public class MerchantServiceImpl implements MerchantService {
 
     private final UserMapper userMapper;
     private final StoreSettingMapper storeSettingMapper;
+    private final MerchantAuditLogMapper merchantAuditLogMapper;
 
     @Value("${merchant.owner-init-token:}")
     private String ownerInitToken;
@@ -66,6 +69,7 @@ public class MerchantServiceImpl implements MerchantService {
         setting.setServiceEmail(dto.getServiceEmail());
         setting.setBusinessStatus(1);
         storeSettingMapper.insert(setting);
+        recordAudit(owner.getId(), "INITIALIZE_STORE", "STORE_SETTING", setting.getId());
     }
 
     @Override
@@ -96,6 +100,7 @@ public class MerchantServiceImpl implements MerchantService {
         setting.setShippingNotice(dto.getShippingNotice());
         setting.setAfterSalesNotice(dto.getAfterSalesNotice());
         storeSettingMapper.updateById(setting);
+        recordAudit(userId, "UPDATE_STORE_SETTING", "STORE_SETTING", setting.getId());
         return setting;
     }
 
@@ -125,6 +130,7 @@ public class MerchantServiceImpl implements MerchantService {
         staff.setRole(UserRole.STAFF);
         staff.setStatus(1);
         userMapper.insert(staff);
+        recordAudit(userId, "CREATE_STAFF", "USER", staff.getId());
         staff.setPassword(null);
         return staff;
     }
@@ -139,6 +145,7 @@ public class MerchantServiceImpl implements MerchantService {
         }
         staff.setStatus(dto.getStatus());
         userMapper.updateById(staff);
+        recordAudit(userId, "UPDATE_STAFF_STATUS", "USER", staffId);
         staff.setPassword(null);
         return staff;
     }
@@ -148,5 +155,15 @@ public class MerchantServiceImpl implements MerchantService {
         if (user == null || user.getStatus() == null || user.getStatus() == 0 || !Integer.valueOf(UserRole.OWNER).equals(user.getRole())) {
             throw new BizException(ResultCode.FORBIDDEN, "仅店主可执行此操作");
         }
+    }
+
+    private void recordAudit(Long operatorId, String action, String resourceType, Long resourceId) {
+        MerchantAuditLog log = new MerchantAuditLog();
+        log.setOperatorId(operatorId);
+        log.setAction(action);
+        log.setResourceType(resourceType);
+        log.setResourceId(resourceId);
+        log.setResult("SUCCESS");
+        merchantAuditLogMapper.insert(log);
     }
 }

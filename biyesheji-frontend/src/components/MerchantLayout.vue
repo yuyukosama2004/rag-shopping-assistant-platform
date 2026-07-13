@@ -13,6 +13,7 @@ const userStore = useUserStore()
       <el-menu router background-color="#1f2937" text-color="#cbd5e1" active-text-color="#fff" :default-active="router.currentRoute.value.path">
         <el-menu-item index="/merchant"><el-icon><HomeFilled /></el-icon><span>概览</span></el-menu-item>
         <el-menu-item index="/merchant/store"><el-icon><Setting /></el-icon><span>店铺设置</span></el-menu-item>
+        <el-menu-item index="/merchant/staff"><el-icon><User /></el-icon><span>店员管理</span></el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>

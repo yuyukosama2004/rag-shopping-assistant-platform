@@ -8,6 +8,7 @@ import com.biyesheji.entity.StoreSetting;
 import com.biyesheji.entity.User;
 import com.biyesheji.exception.BizException;
 import com.biyesheji.user.mapper.StoreSettingMapper;
+import com.biyesheji.user.mapper.MerchantAuditLogMapper;
 import com.biyesheji.user.mapper.UserMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +32,8 @@ class MerchantServiceImplTest {
     private UserMapper userMapper;
     @Mock
     private StoreSettingMapper storeSettingMapper;
+    @Mock
+    private MerchantAuditLogMapper merchantAuditLogMapper;
     @InjectMocks
     private MerchantServiceImpl merchantService;
 
