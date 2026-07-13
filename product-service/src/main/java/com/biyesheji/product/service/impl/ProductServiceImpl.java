@@ -4,6 +4,7 @@ import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biyesheji.entity.Product;
+import com.biyesheji.dto.MerchantProductSaveDTO;
 import com.biyesheji.exception.BizException;
 import com.biyesheji.product.mapper.ProductMapper;
 import com.biyesheji.product.service.ProductService;
@@ -149,5 +150,59 @@ public class ProductServiceImpl implements ProductService {
         // 缓存 30 分钟
         redisUtil.set(CACHE_FILTERS, filters, 30, TimeUnit.MINUTES);
         return filters;
+    }
+
+    @Override
+    public Page<Product> merchantPage(int pageNum, int pageSize, String keyword) {
+        LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
+        if (keyword != null && !keyword.isBlank()) wrapper.and(w -> w.like(Product::getName, keyword).or().like(Product::getBrand, keyword));
+        return productMapper.selectPage(new Page<>(pageNum, pageSize), wrapper.orderByDesc(Product::getUpdatedAt));
+    }
+
+    @Override
+    public Product create(MerchantProductSaveDTO dto) {
+        Product product = new Product();
+        copy(dto, product);
+        product.setSales(0);
+        product.setStatus(2);
+        productMapper.insert(product);
+        clearCache(product.getId());
+        return product;
+    }
+
+    @Override
+    public Product update(Long id, MerchantProductSaveDTO dto) {
+        Product product = requireProduct(id);
+        copy(dto, product);
+        productMapper.updateById(product);
+        clearCache(id);
+        return product;
+    }
+
+    @Override
+    public Product updateStatus(Long id, Integer status) {
+        Product product = requireProduct(id);
+        product.setStatus(status);
+        productMapper.updateById(product);
+        clearCache(id);
+        return product;
+    }
+
+    private Product requireProduct(Long id) {
+        Product product = productMapper.selectById(id);
+        if (product == null) throw new BizException(404, "商品不存在");
+        return product;
+    }
+
+    private void copy(MerchantProductSaveDTO dto, Product product) {
+        product.setName(dto.getName()); product.setBrand(dto.getBrand()); product.setCategory(dto.getCategory());
+        product.setPrice(dto.getPrice()); product.setOriginalPrice(dto.getOriginalPrice()); product.setSpecJson(dto.getSpecJson());
+        product.setMainImage(dto.getMainImage()); product.setImages(dto.getImages()); product.setDescription(dto.getDescription());
+        product.setColorOptions(dto.getColorOptions()); product.setStorageOptions(dto.getStorageOptions());
+    }
+
+    private void clearCache(Long productId) {
+        redisUtil.delete(CACHE_PRODUCT + productId); redisUtil.delete(CACHE_PRODUCT + productId + ":null");
+        redisUtil.deleteByPattern(CACHE_HOT + ":*"); redisUtil.delete(CACHE_FILTERS);
     }
 }

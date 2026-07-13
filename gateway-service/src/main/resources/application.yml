@@ -25,14 +25,14 @@ spring:
           uri: lb://order-service
           predicates:
             - Path=/api/order/ai/**
-        - id: user-service
-          uri: lb://user-service
-          predicates:
-            - Path=/api/user/**,/api/merchant/**,/api/store/**
         - id: product-service
           uri: lb://product-service
           predicates:
-            - Path=/api/product/**
+            - Path=/api/product/**,/api/merchant/products/**
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/user/**,/api/merchant/initialize,/api/merchant/store/**,/api/merchant/staff/**,/api/store/**
         - id: order-service
           uri: lb://order-service
           predicates:

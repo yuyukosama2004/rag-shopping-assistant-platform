@@ -112,8 +112,8 @@ public class UserServiceImpl implements UserService {
     }
 
     private LoginVO issueTokens(User user) {
-        String accessToken = jwtUtil.generateAccessToken(user.getId(), user.getUsername());
-        String refreshToken = jwtUtil.generateRefreshToken(user.getId(), user.getUsername());
+        String accessToken = jwtUtil.generateAccessToken(user.getId(), user.getUsername(), user.getRole());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getId(), user.getUsername(), user.getRole());
         redisUtil.set(refreshTokenKey(user.getId()), jwtUtil.getTokenId(refreshToken),
                 jwtUtil.getRefreshTokenExpire(), TimeUnit.SECONDS);
         return LoginVO.of(accessToken, refreshToken, user.getId(), user.getUsername(),

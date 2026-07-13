@@ -2,6 +2,7 @@ package com.biyesheji.product.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biyesheji.entity.Product;
+import com.biyesheji.dto.MerchantProductSaveDTO;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -14,4 +15,8 @@ public interface ProductService {
     List<Product> listByBrand(String brand);
     List<Product> hot(int limit);
     Map<String, List<String>> getFilters();
+    Page<Product> merchantPage(int pageNum, int pageSize, String keyword);
+    Product create(MerchantProductSaveDTO dto);
+    Product update(Long id, MerchantProductSaveDTO dto);
+    Product updateStatus(Long id, Integer status);
 }

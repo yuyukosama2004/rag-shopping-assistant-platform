@@ -1,0 +1,36 @@
+package com.biyesheji.product.controller;
+
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.biyesheji.constant.UserRole;
+import com.biyesheji.dto.MerchantProductSaveDTO;
+import com.biyesheji.dto.MerchantProductStatusDTO;
+import com.biyesheji.dto.R;
+import com.biyesheji.entity.Product;
+import com.biyesheji.exception.BizException;
+import com.biyesheji.product.service.ProductService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/merchant/products")
+@RequiredArgsConstructor
+@Validated
+public class MerchantProductController {
+    private final ProductService productService;
+
+    @GetMapping
+    public R<Page<Product>> page(@RequestHeader("X-User-Role") Integer role, @RequestParam(defaultValue = "1") @Min(1) int pageNum, @RequestParam(defaultValue = "20") @Min(1) @Max(100) int pageSize, @RequestParam(required = false) String keyword) {
+        requireOwner(role); return R.ok(productService.merchantPage(pageNum, pageSize, keyword));
+    }
+    @PostMapping
+    public R<Product> create(@RequestHeader("X-User-Role") Integer role, @Valid @RequestBody MerchantProductSaveDTO dto) { requireOwner(role); return R.ok(productService.create(dto)); }
+    @PutMapping("/{id}")
+    public R<Product> update(@RequestHeader("X-User-Role") Integer role, @PathVariable Long id, @Valid @RequestBody MerchantProductSaveDTO dto) { requireOwner(role); return R.ok(productService.update(id, dto)); }
+    @PutMapping("/{id}/status")
+    public R<Product> status(@RequestHeader("X-User-Role") Integer role, @PathVariable Long id, @Valid @RequestBody MerchantProductStatusDTO dto) { requireOwner(role); return R.ok(productService.updateStatus(id, dto.getStatus())); }
+    private void requireOwner(Integer role) { if (!Integer.valueOf(UserRole.OWNER).equals(role)) throw new BizException(403, "仅店主可管理商品"); }
+}

@@ -47,14 +47,27 @@ public class JwtUtil {
         return generateToken(userId, username, accessTokenExpire, ACCESS_TOKEN);
     }
 
+    public String generateAccessToken(Long userId, String username, Integer role) {
+        return generateToken(userId, username, accessTokenExpire, ACCESS_TOKEN, role);
+    }
+
     public String generateRefreshToken(Long userId, String username) {
         return generateToken(userId, username, refreshTokenExpire, REFRESH_TOKEN);
     }
 
+    public String generateRefreshToken(Long userId, String username, Integer role) {
+        return generateToken(userId, username, refreshTokenExpire, REFRESH_TOKEN, role);
+    }
+
     private String generateToken(Long userId, String username, Long expireSeconds, String tokenType) {
+        return generateToken(userId, username, expireSeconds, tokenType, null);
+    }
+
+    private String generateToken(Long userId, String username, Long expireSeconds, String tokenType, Integer role) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put(TOKEN_TYPE_CLAIM, tokenType);
+        if (role != null) claims.put("role", role);
 
         Date now = new Date();
         Date expiration = new Date(now.getTime() + expireSeconds * 1000);
