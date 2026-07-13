@@ -1,3 +1,11 @@
+-- Older data can contain negative stock locks left by interrupted rollbacks.
+-- Normalize those derived values before enforcing the invariant.
+UPDATE t_stock
+SET locked = LEAST(GREATEST(locked, 0), GREATEST(total, 0)),
+    available = GREATEST(total, 0) - LEAST(GREATEST(locked, 0), GREATEST(total, 0)),
+    total = GREATEST(total, 0)
+WHERE total < 0 OR locked < 0 OR available < 0 OR total <> locked + available;
+
 ALTER TABLE t_order
     ADD CONSTRAINT chk_order_amount CHECK (total_amount >= 0);
 
