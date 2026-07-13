@@ -546,6 +546,12 @@ docker compose -f docker/docker-compose.infrastructure.yml up -d
 应用服务与 MySQL、Redis、Nacos 使用私有 Docker 网络；对宿主机仅暴露可配置的
 网关回环端口。Nginx 应将 `/api/` 反向代理到 `127.0.0.1:${GATEWAY_HOST_PORT}`。
 
+部署后可执行冒烟测试。若网关使用非默认端口，显式传入对应地址：
+
+```bash
+API_BASE_URL=http://127.0.0.1:18080 WEB_BASE_URL=http://127.0.0.1 ./scripts/smoke-test.sh
+```
+
 E5 服务器配置：
 
 ```bash
