@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { login as loginApi } from '../api/user'
+import { login as loginApi, logout as logoutApi } from '../api/user'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem('accessToken') || '')
@@ -24,6 +24,7 @@ function parseLocalUser() {
   }
 
   function logout() {
+    logoutApi().catch(() => undefined)
     token.value = ''
     user.value = null
     localStorage.removeItem('accessToken')

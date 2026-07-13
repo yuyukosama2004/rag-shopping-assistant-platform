@@ -7,7 +7,10 @@ import com.biyesheji.product.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -17,6 +20,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/product")
 @RequiredArgsConstructor
+@Validated
 public class ProductController {
 
     private final ProductService productService;
@@ -24,8 +28,8 @@ public class ProductController {
     @Operation(summary = "商品分页列表")
     @GetMapping("/page")
     public R<Page<Product>> page(
-            @RequestParam(defaultValue = "1") int pageNum,
-            @RequestParam(defaultValue = "12") int pageSize,
+            @RequestParam(defaultValue = "1") @Min(1) int pageNum,
+            @RequestParam(defaultValue = "12") @Min(1) @Max(100) int pageSize,
             @RequestParam(required = false) String brand,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) BigDecimal minPrice,
@@ -44,7 +48,7 @@ public class ProductController {
 
     @Operation(summary = "热门推荐")
     @GetMapping("/hot")
-    public R<List<Product>> hot(@RequestParam(defaultValue = "8") int limit) {
+    public R<List<Product>> hot(@RequestParam(defaultValue = "8") @Min(1) @Max(100) int limit) {
         return R.ok(productService.hot(limit));
     }
 

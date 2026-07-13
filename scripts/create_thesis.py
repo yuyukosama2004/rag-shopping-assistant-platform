@@ -572,7 +572,7 @@ def build_chapter5():
     add_heading("5.4 高并发下单链路实现", 2)
     add_para("高并发下单链路是本系统的技术核心，其完整实现涉及三个层面的协作——订单服务Controller层的同步处理、Redis的原子Lua脚本执行以及RabbitMQ的异步消息消费。")
     add_para("下单接口submit的核心实现流程如下：（1）幂等防重——以order:dedup:{userId}:{itemsMd5}为键，通过Redisson的setIfAbsent方法（底层调用Redis SETNX命令）设置5分钟过期时间，若返回false则表示重复提交，直接抛出ORDER_DUPLICATE异常；（2）循环调用StockService的deduct方法，通过Redisson执行预部署的Lua脚本对每件商品进行原子性库存预扣，若任一商品库存不足，则回滚已扣库存并抛出STOCK_INSUFFICIENT异常；（3）通过Hutool的IdUtil.getSnowflake()工具方法生成全局唯一的19位订单号；（4）将订单信息封装为HashMap消息对象，通过RabbitTemplate.convertAndSend方法投递至order.exchange交换机，路由键为order.submit；（5）向客户端返回包含订单号和processing状态的响应。若消息投递出现异常，则执行库存回滚逻辑并向用户返回失败提示。")
-    add_para("RabbitMQ消费者processOrder方法标注了@RabbitListener注解以监听order.submit.queue队列。该方法在@Transactional事务保护下依次完成三项数据库操作：创建订单主记录（插入t_order表，状态设为PENDING，超时时间设为当前时间加30分钟）、循环创建订单明细记录（插入t_order_item表，保存商品快照信息以确保历史订单数据的稳定性）、调用StockService的confirmDeduct方法更新MySQL中的库存记录（减少total和locked字段，重新计算available字段）。消费者通过检查订单号是否已存在来防止消息的重复消费。")
+    add_para("订单提交采用同步事务：先校验商品和金额，再预留库存、创建订单主记录和订单明细。订单明细保存商品名称、图片、单价和小计快照；支付成功后才确认扣减库存，取消或超时则释放预留库存。该设计避免了消息投递失败导致库存已锁定而订单未落库的窗口。")
     add_para("超时补偿方面，OrderTimeoutTask类使用@Scheduled(fixedRate = 300000)注解，每5分钟执行一次超时扫描。扫描逻辑查询订单表中status为PENDING且timeout_time小于当前时间的订单记录，将其状态标记为TIMEOUT，并遍历订单中的每件商品调用StockService的restore方法恢复Redis中的锁定库存。")
     img_placeholder("图5.5 订单提交接口Knife4j调试截图")
     img_placeholder("图5.6 RabbitMQ管理界面截图")

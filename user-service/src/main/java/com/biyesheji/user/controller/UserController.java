@@ -3,7 +3,9 @@ package com.biyesheji.user.controller;
 import com.biyesheji.dto.LoginDTO;
 import com.biyesheji.dto.R;
 import com.biyesheji.dto.RegisterDTO;
+import com.biyesheji.dto.UserUpdateDTO;
 import com.biyesheji.entity.User;
+import com.biyesheji.exception.BizException;
 import com.biyesheji.user.service.UserService;
 import com.biyesheji.utils.JwtUtil;
 import com.biyesheji.vo.LoginVO;
@@ -25,42 +27,47 @@ public class UserController {
     @Operation(summary = "注册")
     @PostMapping("/register")
     public R<User> register(@Valid @RequestBody RegisterDTO dto) {
-        User user = userService.register(dto);
-        user.setPassword(null);
-        return R.ok(user);
+        return R.ok(userService.register(dto));
     }
 
     @Operation(summary = "登录")
     @PostMapping("/login")
     public R<LoginVO> login(@Valid @RequestBody LoginDTO dto) {
-        LoginVO vo = userService.login(dto.getUsername(), dto.getPassword());
-        return R.ok(vo);
+        return R.ok(userService.login(dto.getUsername(), dto.getPassword()));
     }
 
-    @Operation(summary = "刷新Token")
+    @Operation(summary = "刷新令牌")
     @PostMapping("/refresh")
     public R<LoginVO> refresh(@RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
-        LoginVO vo = userService.refreshToken(token);
-        return R.ok(vo);
+        if (!JwtUtil.REFRESH_TOKEN.equals(jwtUtil.getTokenType(token))) {
+            throw new BizException(401, "仅允许使用刷新令牌");
+        }
+        return R.ok(userService.refreshToken(token));
+    }
+
+    @Operation(summary = "退出登录")
+    @PostMapping("/logout")
+    public R<Void> logout(@RequestHeader("Authorization") String authHeader) {
+        userService.logout(jwtUtil.getAccessUserId(authHeader.replace("Bearer ", "")));
+        return R.ok();
     }
 
     @Operation(summary = "获取用户信息")
     @GetMapping("/info")
     public R<User> info(@RequestHeader("Authorization") String authHeader) {
-        String token = authHeader.replace("Bearer ", "");
-        Long userId = jwtUtil.getUserId(token);
-        User user = userService.getById(userId);
-        return R.ok(user);
+        return R.ok(userService.getById(jwtUtil.getAccessUserId(authHeader.replace("Bearer ", ""))));
     }
 
     @Operation(summary = "修改用户信息")
     @PutMapping("/info")
     public R<User> updateInfo(@RequestHeader("Authorization") String authHeader,
-                               @RequestBody User updateUser) {
-        String token = authHeader.replace("Bearer ", "");
-        Long userId = jwtUtil.getUserId(token);
-        User user = userService.updateInfo(userId, updateUser);
-        return R.ok(user);
+                              @Valid @RequestBody UserUpdateDTO body) {
+        User updateUser = new User();
+        updateUser.setNickname(body.getNickname());
+        updateUser.setPhone(body.getPhone());
+        updateUser.setEmail(body.getEmail());
+        updateUser.setAvatar(body.getAvatar());
+        return R.ok(userService.updateInfo(jwtUtil.getAccessUserId(authHeader.replace("Bearer ", "")), updateUser));
     }
 }

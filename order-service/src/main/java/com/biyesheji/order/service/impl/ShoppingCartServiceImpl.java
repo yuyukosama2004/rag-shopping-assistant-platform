@@ -24,6 +24,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
 
     @Override
     public ShoppingCart add(Long userId, Long productId, Integer quantity) {
+        validateQuantity(quantity);
         Product product = productMapper.selectById(productId);
         if (product == null || product.getStatus() == 0) {
             throw new BizException("商品不存在或已下架");
@@ -53,6 +54,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
 
     @Override
     public ShoppingCart updateQuantity(Long userId, Long cartId, Integer quantity) {
+        validateQuantity(quantity);
         ShoppingCart cart = cartMapper.selectById(cartId);
         if (cart == null || !cart.getUserId().equals(userId)) {
             throw new BizException("购物车项不存在");
@@ -105,13 +107,14 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     }
 
     @Override
-    public void updateOptions(Long cartId, String color, String storage) {
+    public void updateOptions(Long userId, Long cartId, String color, String storage) {
         ShoppingCart cart = cartMapper.selectById(cartId);
-        if (cart != null) {
-            if (color != null) cart.setSelectedColor(color);
-            if (storage != null) cart.setSelectedStorage(storage);
-            cartMapper.updateById(cart);
+        if (cart == null || !cart.getUserId().equals(userId)) {
+            throw new BizException("购物车项不存在");
         }
+        if (color != null) cart.setSelectedColor(color);
+        if (storage != null) cart.setSelectedStorage(storage);
+        cartMapper.updateById(cart);
     }
 
     @Override
@@ -120,5 +123,11 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
                 new LambdaQueryWrapper<ShoppingCart>().eq(ShoppingCart::getUserId, userId)
         );
         return cnt.intValue();
+    }
+
+    private void validateQuantity(Integer quantity) {
+        if (quantity == null || quantity <= 0) {
+            throw new BizException("商品数量必须大于0");
+        }
     }
 }

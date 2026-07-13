@@ -1,4 +1,5 @@
 server:
+  address: ${SERVER_ADDRESS:127.0.0.1}
   servlet:
     encoding:
       charset: UTF-8
@@ -13,13 +14,17 @@ spring:
   cloud:
     nacos:
       discovery:
-        server-addr: localhost:8848
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
     gateway:
       discovery:
         locator:
           enabled: true
           lower-case-service-id: true
       routes:
+        - id: ai-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/order/ai/**
         - id: user-service
           uri: lb://user-service
           predicates:
@@ -35,12 +40,14 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOriginPatterns: "*"
-            allowedMethods: "*"
-            allowedHeaders: "*"
+            allowedOriginPatterns:
+              - ${CORS_ALLOWED_ORIGIN_PATTERN:http://localhost:5173}
+            allowedMethods: [GET, POST, PUT, DELETE, OPTIONS]
+            allowedHeaders: [Authorization, Content-Type]
+            allowCredentials: true
 
 jwt:
-  secret: biyesheji-2026-spring-cloud-microservice-phone-mall-platform-secret-key
+  secret: ${JWT_SECRET:}
   access-token-expire: 7200
   refresh-token-expire: 604800
 
@@ -48,6 +55,7 @@ sentinel:
   qps:
     order: 100
     product: 500
+    ai: 5
 
 logging:
   level:

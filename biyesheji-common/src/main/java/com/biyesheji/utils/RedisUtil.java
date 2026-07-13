@@ -43,6 +43,10 @@ public class RedisUtil {
         return redissonClient.getBucket(key).delete();
     }
 
+    public long deleteByPattern(String pattern) {
+        return redissonClient.getKeys().deleteByPattern(pattern);
+    }
+
     /**
      * SETNX - 仅当 key 不存在时设置（用于幂等/防重）
      */

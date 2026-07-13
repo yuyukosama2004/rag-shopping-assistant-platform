@@ -12,6 +12,10 @@ export function getUserInfo() {
   return request.get('/api/user/info')
 }
 
+export function logout() {
+  return request.post('/api/user/logout')
+}
+
 export function updateUserInfo(data: any) {
   return request.put('/api/user/info', data)
 }

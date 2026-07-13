@@ -1,6 +1,5 @@
 package com.biyesheji.user.service.impl;
 
-import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.crypto.digest.BCrypt;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.biyesheji.constant.ResultCode;
@@ -10,43 +9,41 @@ import com.biyesheji.exception.BizException;
 import com.biyesheji.user.mapper.UserMapper;
 import com.biyesheji.user.service.UserService;
 import com.biyesheji.utils.JwtUtil;
+import com.biyesheji.utils.RedisUtil;
 import com.biyesheji.vo.LoginVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
+    private static final String REFRESH_TOKEN_KEY_PREFIX = "auth:refresh:";
+
     private final UserMapper userMapper;
     private final JwtUtil jwtUtil;
+    private final RedisUtil redisUtil;
 
     @Override
     public LoginVO login(String username, String password) {
-        User user = userMapper.selectOne(
-                new LambdaQueryWrapper<User>().eq(User::getUsername, username)
-        );
+        User user = userMapper.selectOne(new LambdaQueryWrapper<User>()
+                .eq(User::getUsername, username));
         if (user == null || !BCrypt.checkpw(password, user.getPassword())) {
             throw new BizException(ResultCode.PASSWORD_ERROR, "用户名或密码错误");
         }
-        if (user.getStatus() == 0) {
-            throw new BizException(ResultCode.FORBIDDEN, "账号已被禁用");
-        }
-
-        String accessToken = jwtUtil.generateAccessToken(user.getId(), user.getUsername());
-        String refreshToken = jwtUtil.generateRefreshToken(user.getId(), user.getUsername());
-
-        return LoginVO.of(accessToken, refreshToken, user.getId(),
-                user.getUsername(), user.getNickname(), jwtUtil.getAccessTokenExpire());
+        ensureEnabled(user);
+        return issueTokens(user);
     }
 
     @Override
     public User register(RegisterDTO dto) {
-        Long count = userMapper.selectCount(
-                new LambdaQueryWrapper<User>().eq(User::getUsername, dto.getUsername())
-        );
+        Long count = userMapper.selectCount(new LambdaQueryWrapper<User>()
+                .eq(User::getUsername, dto.getUsername()));
         if (count > 0) {
             throw new BizException(ResultCode.USER_EXISTS, "用户名已存在");
         }
@@ -59,7 +56,6 @@ public class UserServiceImpl implements UserService {
         user.setEmail(dto.getEmail());
         user.setRole(0);
         user.setStatus(1);
-
         userMapper.insert(user);
         user.setPassword(null);
         return user;
@@ -81,7 +77,6 @@ public class UserServiceImpl implements UserService {
         if (user == null) {
             throw new BizException(ResultCode.USER_NOT_FOUND, "用户不存在");
         }
-        // 字段白名单：仅允许更新 nickname, phone, email, avatar
         if (updateUser.getNickname() != null) user.setNickname(updateUser.getNickname());
         if (updateUser.getPhone() != null) user.setPhone(updateUser.getPhone());
         if (updateUser.getEmail() != null) user.setEmail(updateUser.getEmail());
@@ -93,20 +88,44 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public LoginVO refreshToken(String refreshToken) {
-        if (jwtUtil.isExpired(refreshToken)) {
-            throw new BizException(ResultCode.TOKEN_EXPIRED, "Token已过期，请重新登录");
+        if (jwtUtil.isExpired(refreshToken) || !JwtUtil.REFRESH_TOKEN.equals(jwtUtil.getTokenType(refreshToken))) {
+            throw new BizException(ResultCode.TOKEN_EXPIRED, "刷新令牌无效或已过期");
         }
         Long userId = jwtUtil.getUserId(refreshToken);
-        String username = jwtUtil.getUsername(refreshToken);
+        String tokenId = jwtUtil.getTokenId(refreshToken);
+        String storedTokenId = redisUtil.get(refreshTokenKey(userId));
+        if (!Objects.equals(tokenId, storedTokenId)) {
+            throw new BizException(ResultCode.TOKEN_EXPIRED, "刷新令牌已失效");
+        }
         User user = userMapper.selectById(userId);
         if (user == null) {
             throw new BizException(ResultCode.USER_NOT_FOUND, "用户不存在");
         }
+        ensureEnabled(user);
+        return issueTokens(user);
+    }
 
-        String newAccessToken = jwtUtil.generateAccessToken(userId, username);
-        String newRefreshToken = jwtUtil.generateRefreshToken(userId, username);
+    @Override
+    public void logout(Long userId) {
+        redisUtil.delete(refreshTokenKey(userId));
+    }
 
-        return LoginVO.of(newAccessToken, newRefreshToken, user.getId(),
-                user.getUsername(), user.getNickname(), jwtUtil.getAccessTokenExpire());
+    private LoginVO issueTokens(User user) {
+        String accessToken = jwtUtil.generateAccessToken(user.getId(), user.getUsername());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getId(), user.getUsername());
+        redisUtil.set(refreshTokenKey(user.getId()), jwtUtil.getTokenId(refreshToken),
+                jwtUtil.getRefreshTokenExpire(), TimeUnit.SECONDS);
+        return LoginVO.of(accessToken, refreshToken, user.getId(), user.getUsername(),
+                user.getNickname(), jwtUtil.getAccessTokenExpire());
+    }
+
+    private void ensureEnabled(User user) {
+        if (user.getStatus() == null || user.getStatus() == 0) {
+            throw new BizException(ResultCode.FORBIDDEN, "账号已被禁用");
+        }
+    }
+
+    private String refreshTokenKey(Long userId) {
+        return REFRESH_TOKEN_KEY_PREFIX + userId;
     }
 }

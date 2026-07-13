@@ -7,8 +7,10 @@ const send = () => {
   if (!query.value.trim()) return
   msgs.value.push({ role:'user', content: query.value.trim() }); const t = query.value.trim(); query.value = ''; loading.value = true
   const am: Msg = { role:'assistant', content:'' }; msgs.value.push(am); scroll()
-  const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
-  fetch(`${base}/api/order/ai/chat?query=${encodeURIComponent(t)}`)
+  const base = import.meta.env.VITE_API_BASE_URL || ''
+  fetch(`${base}/api/order/ai/chat?query=${encodeURIComponent(t)}`, {
+    headers: { Authorization: `Bearer ${localStorage.getItem('accessToken') || ''}` },
+  })
     .then(res => { if (!res.ok || !res.body) throw new Error(); const r = res.body.getReader(); const d = new TextDecoder(); let b = ''
       const read = () => { r.read().then(({ done, value }) => { if (done) { loading.value = false; return }; b += d.decode(value, { stream:true }); const ls = b.split('\n'); b = ls.pop()||''
         for (const l of ls) { if (l.startsWith('data:')) { const dt = l.slice(5).trim(); if (dt && dt !== '[DONE]') am.content += dt } }; scroll(); read() }) }; read() })

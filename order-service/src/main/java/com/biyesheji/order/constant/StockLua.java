@@ -1,31 +1,38 @@
 package com.biyesheji.order.constant;
 
-/**
- * 库存预扣 Lua 脚本
- * KEYS[1] = "stock:product:{id}" hash key
- * ARGV[1] = quantity
- * 返回: 1-预扣成功, 0-库存不足
- */
-public class StockLua {
+public final class StockLua {
 
-    public static final String STOCK_DEDUCT =
-            "local key = KEYS[1]\n" +
-            "local quantity = tonumber(ARGV[1])\n" +
-            "local available = redis.call('HGET', key, 'available')\n" +
-            "if not available then return 0 end\n" +
-            "available = tonumber(available)\n" +
-            "if available >= quantity then\n" +
-            "    redis.call('HINCRBY', key, 'locked', quantity)\n" +
-            "    redis.call('HINCRBY', key, 'available', -quantity)\n" +
-            "    return 1\n" +
-            "else\n" +
-            "    return 0\n" +
-            "end";
+    private StockLua() {
+    }
 
-    public static final String STOCK_RESTORE =
-            "local key = KEYS[1]\n" +
-            "local quantity = tonumber(ARGV[1])\n" +
-            "redis.call('HINCRBY', key, 'locked', -quantity)\n" +
-            "redis.call('HINCRBY', key, 'available', quantity)\n" +
-            "return 1";
+    public static final String STOCK_DEDUCT = """
+            local quantity = tonumber(ARGV[1])
+            if not quantity or quantity <= 0 then return 0 end
+            local available = redis.call('HGET', KEYS[1], 'available')
+            if not available or tonumber(available) < quantity then return 0 end
+            redis.call('HINCRBY', KEYS[1], 'locked', quantity)
+            redis.call('HINCRBY', KEYS[1], 'available', -quantity)
+            return 1
+            """;
+
+    public static final String STOCK_RESTORE = """
+            local quantity = tonumber(ARGV[1])
+            if not quantity or quantity <= 0 then return 0 end
+            local locked = redis.call('HGET', KEYS[1], 'locked')
+            if not locked or tonumber(locked) < quantity then return 0 end
+            redis.call('HINCRBY', KEYS[1], 'locked', -quantity)
+            redis.call('HINCRBY', KEYS[1], 'available', quantity)
+            return 1
+            """;
+
+    public static final String STOCK_CONFIRM = """
+            local quantity = tonumber(ARGV[1])
+            if not quantity or quantity <= 0 then return 0 end
+            local total = redis.call('HGET', KEYS[1], 'total')
+            local locked = redis.call('HGET', KEYS[1], 'locked')
+            if not total or not locked or tonumber(total) < quantity or tonumber(locked) < quantity then return 0 end
+            redis.call('HINCRBY', KEYS[1], 'total', -quantity)
+            redis.call('HINCRBY', KEYS[1], 'locked', -quantity)
+            return 1
+            """;
 }

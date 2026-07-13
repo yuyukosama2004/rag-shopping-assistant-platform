@@ -8,15 +8,19 @@ import com.biyesheji.entity.Product;
 import com.biyesheji.order.mapper.AiConversationMapper;
 import com.biyesheji.order.mapper.ProductMapper;
 import com.biyesheji.order.service.AiService;
+import com.biyesheji.utils.RedisUtil;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -24,6 +28,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
 
 @Slf4j
 @Service
@@ -31,6 +36,8 @@ public class AiServiceImpl implements AiService {
 
     private final ProductMapper productMapper;
     private final AiConversationMapper aiConversationMapper;
+    private final RedisUtil redisUtil;
+    private final Executor aiExecutor;
 
     // ====== DeepSeek 配置 ======
     @Value("${deepseek.api-key:}")
@@ -61,9 +68,12 @@ public class AiServiceImpl implements AiService {
             .connectTimeout(Duration.ofSeconds(10))
             .build();
 
-    public AiServiceImpl(ProductMapper productMapper, AiConversationMapper aiConversationMapper) {
+    public AiServiceImpl(ProductMapper productMapper, AiConversationMapper aiConversationMapper,
+                         RedisUtil redisUtil, @Qualifier("aiExecutor") Executor aiExecutor) {
         this.productMapper = productMapper;
         this.aiConversationMapper = aiConversationMapper;
+        this.redisUtil = redisUtil;
+        this.aiExecutor = aiExecutor;
     }
 
     // ================================================================
@@ -71,7 +81,7 @@ public class AiServiceImpl implements AiService {
     // ================================================================
     @PostConstruct
     void initEmbeddings() {
-        new Thread(() -> {
+        aiExecutor.execute(() -> {
             try {
                 List<Product> all = productMapper.selectList(
                         new LambdaQueryWrapper<Product>().eq(Product::getStatus, 1));
@@ -85,6 +95,10 @@ public class AiServiceImpl implements AiService {
                     productCache.put(p.getId(), p);
                     texts.add(buildProductText(p));
                 }
+                if (!StringUtils.hasText(openRouterKey)) {
+                    log.warn("未配置 OPENROUTER_API_KEY，RAG向量检索已禁用");
+                    return;
+                }
                 // 批量调用 Embedding API
                 float[][] vectors = batchEmbed(texts);
                 for (int i = 0; i < all.size(); i++) {
@@ -95,7 +109,7 @@ public class AiServiceImpl implements AiService {
             } catch (Exception e) {
                 log.error("向量初始化失败，回退到全量模式", e);
             }
-        }).start();
+        });
     }
 
     private String buildProductText(Product p) {
@@ -142,6 +156,12 @@ public class AiServiceImpl implements AiService {
         List<String> success = new ArrayList<>();
         List<String> failed = new ArrayList<>();
         long start = System.currentTimeMillis();
+
+        if (!StringUtils.hasText(apiKey) || !StringUtils.hasText(openRouterKey)) {
+            result.put("status", "error");
+            result.put("message", "AI服务未配置");
+            return result;
+        }
 
         List<Product> all = productMapper.selectList(
                 new LambdaQueryWrapper<Product>().eq(Product::getStatus, 1));
@@ -191,6 +211,7 @@ public class AiServiceImpl implements AiService {
             } catch (Exception e) {
                 log.error("向量重建失败", e);
             }
+            redisUtil.deleteByPattern("product:*");
         }
 
         result.put("status", "ok");
@@ -239,6 +260,9 @@ public class AiServiceImpl implements AiService {
     //  Embedding API 调用
     // ================================================================
     private float[][] batchEmbed(List<String> texts) throws Exception {
+        if (!StringUtils.hasText(openRouterKey)) {
+            throw new IllegalStateException("OPENROUTER_API_KEY 未配置");
+        }
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("model", embeddingModel);
         body.put("input", texts);
@@ -336,10 +360,18 @@ public class AiServiceImpl implements AiService {
     // ================================================================
     @Override
     public SseEmitter chat(Long userId, String query) {
-        saveMessage(userId, "user", query, null);
         SseEmitter emitter = new SseEmitter(180_000L);
 
-        new Thread(() -> {
+        if (!StringUtils.hasText(apiKey)) {
+            try {
+                emitter.send(SseEmitter.event().data("AI导购尚未配置，请联系管理员。"));
+            } catch (IOException ignored) {
+            }
+            emitter.complete();
+            return emitter;
+        }
+
+        aiExecutor.execute(() -> {
             try {
                 // RAG 检索：向量语义匹配 Top-10
                 List<Product> candidates = ragSearch(query, 10);
@@ -361,6 +393,7 @@ public class AiServiceImpl implements AiService {
                 for (AiConversation h : history) {
                     messages.add(Map.of("role", h.getRole(), "content", h.getContent()));
                 }
+                saveMessage(userId, "user", query, null);
                 messages.add(Map.of("role", "user", "content", prompt));
 
                 body.put("messages", messages);
@@ -377,7 +410,7 @@ public class AiServiceImpl implements AiService {
                 HttpResponse<java.io.InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
 
                 if (response.statusCode() != 200) {
-                    String errBody = new String(response.body().readAllBytes());
+                    String errBody = new String(response.body().readAllBytes(), StandardCharsets.UTF_8);
                     log.error("AI API 返回非200: status={}, body={}", response.statusCode(), errBody);
                     emitter.send(SseEmitter.event().data("抱歉，AI助手暂时无法响应（" + response.statusCode() + "）。"));
                     emitter.complete();
@@ -385,7 +418,7 @@ public class AiServiceImpl implements AiService {
                 }
 
                 StringBuilder fullReply = new StringBuilder();
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.body()))) {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.body(), StandardCharsets.UTF_8))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         if (line.startsWith("data:")) {
@@ -411,7 +444,7 @@ public class AiServiceImpl implements AiService {
                 } catch (IOException ignored) {}
                 saveMessage(userId, "assistant", "抱歉，AI助手暂时无法响应，请重试。", null);
             }
-        }).start();
+        });
 
         return emitter;
     }

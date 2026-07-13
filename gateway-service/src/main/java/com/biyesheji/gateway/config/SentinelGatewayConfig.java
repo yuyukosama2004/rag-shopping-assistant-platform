@@ -26,6 +26,9 @@ public class SentinelGatewayConfig {
     @Value("${sentinel.qps.product:500}")
     private int productQps;
 
+    @Value("${sentinel.qps.ai:5}")
+    private int aiQps;
+
     @PostConstruct
     public void initSentinelRules() {
         Set<GatewayFlowRule> rules = new HashSet<>();
@@ -43,6 +46,13 @@ public class SentinelGatewayConfig {
         productRule.setCount(productQps);
         productRule.setIntervalSec(1);
         rules.add(productRule);
+
+        GatewayFlowRule aiRule = new GatewayFlowRule();
+        aiRule.setResource("ai-service");
+        aiRule.setResourceMode(SentinelGatewayConstants.RESOURCE_MODE_ROUTE_ID);
+        aiRule.setCount(aiQps);
+        aiRule.setIntervalSec(1);
+        rules.add(aiRule);
 
         GatewayRuleManager.loadRules(rules);
 
