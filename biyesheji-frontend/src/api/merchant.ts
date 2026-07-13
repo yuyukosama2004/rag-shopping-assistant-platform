@@ -42,6 +42,23 @@ export interface MerchantProductInput {
   description?: string
 }
 
+export interface MerchantSku {
+  id: number
+  skuCode: string
+  specJson?: string
+  price: number
+  originalPrice?: number
+  status: number
+}
+
+export interface MerchantSkuInput {
+  skuCode: string
+  specJson?: string
+  price: number | null
+  originalPrice?: number | null
+  initialStock: number | null
+}
+
 export function getPublicStoreSetting() {
   return request.get('/api/store/setting')
 }
@@ -61,3 +78,5 @@ export function getMerchantProducts(pageNum = 1, pageSize = 20, keyword = '') { 
 export function createMerchantProduct(data: MerchantProductInput) { return request.post('/api/merchant/products', data) }
 export function updateMerchantProduct(id: number, data: MerchantProductInput) { return request.put(`/api/merchant/products/${id}`, data) }
 export function updateMerchantProductStatus(id: number, status: number) { return request.put(`/api/merchant/products/${id}/status`, { status }) }
+export function getMerchantSkus(productId: number) { return request.get(`/api/merchant/products/${productId}/skus`) }
+export function createMerchantSku(productId: number, data: MerchantSkuInput) { return request.post(`/api/merchant/products/${productId}/skus`, data) }
