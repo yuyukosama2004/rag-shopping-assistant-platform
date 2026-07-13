@@ -63,8 +63,8 @@ class MerchantServiceImplTest {
                 () -> merchantService.initializeOwner("wrong-token", new OwnerInitializeDTO()));
 
         assertEquals(ResultCode.FORBIDDEN, exception.getCode());
-        verify(userMapper, never()).insert(any());
-        verify(storeSettingMapper, never()).insert(any());
+        verify(userMapper, never()).insert(any(User.class));
+        verify(storeSettingMapper, never()).insert(any(StoreSetting.class));
     }
 
     @Test
@@ -78,6 +78,6 @@ class MerchantServiceImplTest {
                 () -> merchantService.updateStoreSetting(1L, new StoreSettingUpdateDTO()));
 
         assertEquals(ResultCode.FORBIDDEN, exception.getCode());
-        verify(storeSettingMapper, never()).updateById(any());
+        verify(storeSettingMapper, never()).updateById(any(StoreSetting.class));
     }
 }
