@@ -4,9 +4,7 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="$PROJECT_DIR/.env"
 COMPOSE_FILE="${COMPOSE_FILE:-$PROJECT_DIR/docker/docker-compose.infrastructure.yml}"
-NETWORK="biyesheji-internal"
-JVM_OPTS="-Xms64m -Xmx256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m -Djava.awt.headless=true"
-JAVA_IMAGE="eclipse-temurin:17-jre-jammy"
+APP_COMPOSE_FILE="${APP_COMPOSE_FILE:-$PROJECT_DIR/docker/docker-compose.app.yml}"
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 info() { echo "INFO: $*"; }
@@ -21,10 +19,17 @@ load_env() {
     [ -n "${!key:-}" ] || die "$key must be set in .env"
   done
   [ "${#JWT_SECRET}" -ge 32 ] || die "JWT_SECRET must contain at least 32 bytes"
+  GATEWAY_HOST_PORT="${GATEWAY_HOST_PORT:-8080}"
+  [[ "$GATEWAY_HOST_PORT" =~ ^[0-9]+$ ]] && [ "$GATEWAY_HOST_PORT" -ge 1 ] && [ "$GATEWAY_HOST_PORT" -le 65535 ] \
+    || die "GATEWAY_HOST_PORT must be a valid TCP port"
 }
 
 compose() {
   docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
+}
+
+app_compose() {
+  docker compose --env-file "$ENV_FILE" -f "$APP_COMPOSE_FILE" "$@"
 }
 
 wait_http() {
@@ -40,17 +45,17 @@ start_infra() {
   load_env
   info "Starting MySQL, Redis and Nacos"
   compose up -d
-  for _ in $(seq 1 60); do
-    docker exec -e "MYSQL_PWD=$MYSQL_ROOT_PASSWORD" biyesheji-mysql mysqladmin ping -uroot --silent >/dev/null 2>&1 && break
-    sleep 1
-  done
-  docker exec -e "MYSQL_PWD=$MYSQL_ROOT_PASSWORD" biyesheji-mysql mysqladmin ping -uroot --silent >/dev/null 2>&1 \
-    || die "MySQL did not become ready"
-  wait_http "http://127.0.0.1:8848/nacos" "Nacos" 60
+  wait_healthy biyesheji-mysql 60
+  wait_healthy biyesheji-redis 30
+  wait_healthy biyesheji-nacos 90
 }
 
 stop_infra() {
   load_env
+  for service in user-service product-service order-service gateway-service; do
+    [ "$(docker inspect --format '{{.State.Running}}' "biyesheji-$service" 2>/dev/null || true)" != "true" ] \
+      || die "Stop application services before stopping infrastructure"
+  done
   compose down
 }
 
@@ -60,34 +65,43 @@ build() {
     maven:3.9.9-eclipse-temurin-17 mvn -B clean verify
 }
 
-run_service() {
-  local service="$1" jar="$PROJECT_DIR/$1/target/$1-1.0.0.jar"
-  [ -f "$jar" ] || die "Missing $jar; run ./start.sh build first"
-  docker rm -f "biyesheji-$service" >/dev/null 2>&1 || true
-  local -a args=(run -d --name "biyesheji-$service" --restart unless-stopped --network "$NETWORK" --env-file "$ENV_FILE" -v "$jar:/app.jar:ro")
-  if [ "$service" = "gateway-service" ]; then
-    args+=(-p 127.0.0.1:8080:8080)
-  fi
-  docker "${args[@]}" "$JAVA_IMAGE" java $JVM_OPTS -jar /app.jar >/dev/null
+wait_healthy() {
+  local container="$1" attempts="${2:-90}" status
+  for _ in $(seq 1 "$attempts"); do
+    status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container" 2>/dev/null || true)"
+    [ "$status" = "healthy" ] && { info "$container is healthy"; return 0; }
+    [ "$status" = "exited" ] || [ "$status" = "dead" ] && break
+    sleep 1
+  done
+  docker logs --tail 100 "$container" >&2 || true
+  die "$container did not become healthy"
 }
 
 start_services() {
   load_env
+  start_infra
   for service in user-service product-service order-service gateway-service; do
-    run_service "$service"
+    [ -f "$PROJECT_DIR/$service/target/$service-1.0.0.jar" ] \
+      || die "Missing $service build artifact; run ./start.sh build first"
+    docker rm -f "biyesheji-$service" >/dev/null 2>&1 || true
   done
-  wait_http "http://127.0.0.1:8080/api/product/page?pageNum=1&pageSize=1" "Gateway" 90
+  info "Starting application services through Docker Compose"
+  app_compose up -d --build
+  for service in user-service product-service order-service gateway-service; do
+    wait_healthy "biyesheji-$service"
+  done
+  wait_http "http://127.0.0.1:$GATEWAY_HOST_PORT/api/product/page?pageNum=1&pageSize=1" "Gateway" 30
 }
 
 stop_services() {
-  for service in user-service product-service order-service gateway-service; do
-    docker rm -f "biyesheji-$service" >/dev/null 2>&1 || true
-  done
+  [ -f "$ENV_FILE" ] || die "Missing $ENV_FILE"
+  app_compose down --remove-orphans
 }
 
 status() {
-  docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" --filter "name=biyesheji-"
-  curl --fail --silent "http://127.0.0.1:8080/api/product/page?pageNum=1&pageSize=1" >/dev/null \
+  load_env
+  app_compose ps
+  curl --fail --silent "http://127.0.0.1:$GATEWAY_HOST_PORT/api/product/page?pageNum=1&pageSize=1" >/dev/null \
     && info "Gateway request succeeded" || die "Gateway request failed"
 }
 
@@ -105,7 +119,7 @@ case "${1:-help}" in
 Usage: ./start.sh {infra-start|infra-stop|build|start|stop|restart|status|all}
 
 All commands require a populated .env file. Services are attached to the private
-Docker network; only the gateway is bound to 127.0.0.1:8080 for Nginx.
+Docker network; only the gateway is bound to its configured loopback port for Nginx.
 EOF
     ;;
 esac

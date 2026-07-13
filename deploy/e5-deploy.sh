@@ -22,9 +22,9 @@ COMPOSE_FILE="$PROJECT_DIR/docker/docker-compose.e5.yml" bash "$PROJECT_DIR/star
 if [ "${1:-}" != "skip-build" ]; then
   bash "$PROJECT_DIR/start.sh" build
 fi
-bash "$PROJECT_DIR/start.sh" restart
+COMPOSE_FILE="$PROJECT_DIR/docker/docker-compose.e5.yml" bash "$PROJECT_DIR/start.sh" restart
 
-sed "s|PROJECT_DIR|$PROJECT_DIR|g" "$PROJECT_DIR/deploy/e5-nginx.conf" \
+sed -e "s|PROJECT_DIR|$PROJECT_DIR|g" -e "s|GATEWAY_HOST_PORT|${GATEWAY_HOST_PORT:-8080}|g" "$PROJECT_DIR/deploy/e5-nginx.conf" \
   | sudo tee /etc/nginx/conf.d/biyesheji.conf >/dev/null
 sudo nginx -t
 sudo nginx -s reload

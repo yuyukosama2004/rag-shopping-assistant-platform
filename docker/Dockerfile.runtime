@@ -1,0 +1,10 @@
+FROM eclipse-temurin:17-jre-jammy
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+ARG JAR_FILE
+COPY ${JAR_FILE} /app/app.jar
+
+ENTRYPOINT ["java", "-Xms128m", "-Xmx384m", "-XX:+UseSerialGC", "-Djava.awt.headless=true", "-jar", "/app/app.jar"]

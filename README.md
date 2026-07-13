@@ -340,12 +340,11 @@ http://localhost:8080
 | `infra-start` | 启动 MySQL、Redis 和 Nacos |
 | `infra-stop` | 停止基础设施 |
 | `build` | 构建全部后端模块 |
-| `start` | 启动四个微服务 |
-| `stop` | 停止全部微服务 |
-| `restart` | 重启微服务 |
-| `frontend` | 启动前端开发服务器 |
+| `start` | 通过应用 Compose 构建并启动四个微服务 |
+| `stop` | 停止并删除应用服务容器，不删除数据卷 |
+| `restart` | 重建并重启应用服务容器 |
 | `status` | 查看容器和服务状态 |
-| `all` | 启动基础设施、微服务和前端 |
+| `all` | 启动基础设施、构建后端并启动微服务 |
 
 首次运行建议依次执行：
 
@@ -353,8 +352,11 @@ http://localhost:8080
 ./start.sh infra-start
 ./start.sh build
 ./start.sh start
-./start.sh frontend
 ```
+
+`start` 会复用 `docker/docker-compose.app.yml`，并等待四个应用服务的
+`/actuator/health` 健康检查通过。网关仅绑定在 `127.0.0.1`；如宿主机的
+8080 已被占用，请在 `.env` 设置 `GATEWAY_HOST_PORT`，并让 Nginx 指向该端口。
 
 ## API 路由
 
@@ -533,6 +535,16 @@ sql/mock_data.sql
 ```bash
 docker compose -f docker/docker-compose.infrastructure.yml up -d
 ```
+
+推荐使用项目脚本启动完整后端。它会先构建 JAR，再构建运行时镜像，并通过
+`docker-compose.app.yml` 启动应用服务：
+
+```bash
+./start.sh all
+```
+
+应用服务与 MySQL、Redis、Nacos 使用私有 Docker 网络；对宿主机仅暴露可配置的
+网关回环端口。Nginx 应将 `/api/` 反向代理到 `127.0.0.1:${GATEWAY_HOST_PORT}`。
 
 E5 服务器配置：
 

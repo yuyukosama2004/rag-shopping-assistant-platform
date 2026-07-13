@@ -51,8 +51,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate Compose files
         run: |
-          docker compose -f docker/docker-compose.infrastructure.yml config -q
-          docker compose -f docker/docker-compose.e5.yml config -q
+          cp .env.example .env
+          trap 'rm -f .env' EXIT
+          docker compose --env-file .env -f docker/docker-compose.infrastructure.yml config -q
+          docker compose --env-file .env -f docker/docker-compose.e5.yml config -q
+          docker compose --env-file .env -f docker/docker-compose.app.yml config -q
       - name: Validate shell syntax
         run: bash -n start.sh deploy/e5-deploy.sh deploy/e5-ctl.sh
       - name: Validate Nginx syntax template
