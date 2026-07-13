@@ -27,6 +27,7 @@ const routes = [
       { path: '', name: 'MerchantHome', component: () => import('../views/MerchantHome.vue') },
       { path: 'store', name: 'MerchantStoreSetting', component: () => import('../views/MerchantStoreSetting.vue') },
       { path: 'staff', name: 'MerchantStaff', component: () => import('../views/MerchantStaff.vue') },
+      { path: 'products', name: 'MerchantProducts', component: () => import('../views/MerchantProducts.vue') },
     ],
   },
   {

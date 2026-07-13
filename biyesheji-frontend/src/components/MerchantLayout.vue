@@ -14,6 +14,7 @@ const userStore = useUserStore()
         <el-menu-item index="/merchant"><el-icon><HomeFilled /></el-icon><span>概览</span></el-menu-item>
         <el-menu-item index="/merchant/store"><el-icon><Setting /></el-icon><span>店铺设置</span></el-menu-item>
         <el-menu-item index="/merchant/staff"><el-icon><User /></el-icon><span>店员管理</span></el-menu-item>
+        <el-menu-item index="/merchant/products"><el-icon><Goods /></el-icon><span>商品管理</span></el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
