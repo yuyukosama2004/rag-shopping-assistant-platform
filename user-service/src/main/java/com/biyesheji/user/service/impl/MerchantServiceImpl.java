@@ -6,6 +6,8 @@ import com.biyesheji.constant.ResultCode;
 import com.biyesheji.constant.UserRole;
 import com.biyesheji.dto.OwnerInitializeDTO;
 import com.biyesheji.dto.StoreSettingUpdateDTO;
+import com.biyesheji.dto.StaffCreateDTO;
+import com.biyesheji.dto.StaffStatusUpdateDTO;
 import com.biyesheji.entity.StoreSetting;
 import com.biyesheji.entity.User;
 import com.biyesheji.exception.BizException;
@@ -20,6 +22,7 @@ import org.springframework.util.StringUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -94,6 +97,50 @@ public class MerchantServiceImpl implements MerchantService {
         setting.setAfterSalesNotice(dto.getAfterSalesNotice());
         storeSettingMapper.updateById(setting);
         return setting;
+    }
+
+    @Override
+    public List<User> listStaff(Long userId) {
+        requireOwner(userId);
+        List<User> staff = userMapper.selectList(new LambdaQueryWrapper<User>()
+                .eq(User::getRole, UserRole.STAFF)
+                .orderByDesc(User::getCreatedAt));
+        staff.forEach(user -> user.setPassword(null));
+        return staff;
+    }
+
+    @Override
+    @Transactional
+    public User createStaff(Long userId, StaffCreateDTO dto) {
+        requireOwner(userId);
+        if (userMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getUsername, dto.getUsername())) > 0) {
+            throw new BizException(ResultCode.USER_EXISTS, "用户名已存在");
+        }
+        User staff = new User();
+        staff.setUsername(dto.getUsername());
+        staff.setPassword(BCrypt.hashpw(dto.getPassword()));
+        staff.setNickname(StringUtils.hasText(dto.getNickname()) ? dto.getNickname() : dto.getUsername());
+        staff.setPhone(dto.getPhone());
+        staff.setEmail(dto.getEmail());
+        staff.setRole(UserRole.STAFF);
+        staff.setStatus(1);
+        userMapper.insert(staff);
+        staff.setPassword(null);
+        return staff;
+    }
+
+    @Override
+    @Transactional
+    public User updateStaffStatus(Long userId, Long staffId, StaffStatusUpdateDTO dto) {
+        requireOwner(userId);
+        User staff = userMapper.selectById(staffId);
+        if (staff == null || !Integer.valueOf(UserRole.STAFF).equals(staff.getRole())) {
+            throw new BizException(ResultCode.USER_NOT_FOUND, "店员不存在");
+        }
+        staff.setStatus(dto.getStatus());
+        userMapper.updateById(staff);
+        staff.setPassword(null);
+        return staff;
     }
 
     private void requireOwner(Long userId) {
