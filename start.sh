@@ -62,7 +62,7 @@ stop_infra() {
 build() {
   info "Building backend with Java 17 and running tests"
   docker run --rm -v "$PROJECT_DIR:/workspace" -v maven-repo:/root/.m2 -w /workspace \
-    maven:3.9.9-eclipse-temurin-17 mvn -B clean verify
+    "${MAVEN_IMAGE:-maven:3.9-eclipse-temurin-17}" mvn -B clean verify
 }
 
 wait_healthy() {
