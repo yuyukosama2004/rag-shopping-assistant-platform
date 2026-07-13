@@ -5,13 +5,21 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biyesheji.entity.Product;
 import com.biyesheji.dto.MerchantProductSaveDTO;
+import com.biyesheji.dto.MerchantSkuSaveDTO;
+import com.biyesheji.entity.ProductSku;
+import com.biyesheji.entity.Stock;
+import com.biyesheji.entity.StockLedger;
 import com.biyesheji.exception.BizException;
 import com.biyesheji.product.mapper.ProductMapper;
+import com.biyesheji.product.mapper.ProductSkuMapper;
+import com.biyesheji.product.mapper.StockMapper;
+import com.biyesheji.product.mapper.StockLedgerMapper;
 import com.biyesheji.product.service.ProductService;
 import com.biyesheji.utils.RedisUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -25,6 +33,9 @@ public class ProductServiceImpl implements ProductService {
 
     private final ProductMapper productMapper;
     private final RedisUtil redisUtil;
+    private final ProductSkuMapper productSkuMapper;
+    private final StockMapper stockMapper;
+    private final StockLedgerMapper stockLedgerMapper;
 
     private static final String CACHE_PRODUCT = "product:detail:";
     private static final String CACHE_HOT = "product:hot";
@@ -204,5 +215,35 @@ public class ProductServiceImpl implements ProductService {
     private void clearCache(Long productId) {
         redisUtil.delete(CACHE_PRODUCT + productId); redisUtil.delete(CACHE_PRODUCT + productId + ":null");
         redisUtil.deleteByPattern(CACHE_HOT + ":*"); redisUtil.delete(CACHE_FILTERS);
+    }
+
+    @Override
+    public List<ProductSku> listSkus(Long productId) {
+        requireProduct(productId);
+        return productSkuMapper.selectList(new LambdaQueryWrapper<ProductSku>()
+                .eq(ProductSku::getProductId, productId).orderByDesc(ProductSku::getCreatedAt));
+    }
+
+    @Override
+    @Transactional
+    public ProductSku createSku(Long productId, Long operatorId, MerchantSkuSaveDTO dto) {
+        requireProduct(productId);
+        if (productSkuMapper.selectCount(new LambdaQueryWrapper<ProductSku>().eq(ProductSku::getSkuCode, dto.getSkuCode())) > 0) {
+            throw new BizException(400, "SKU编码已存在");
+        }
+        ProductSku sku = new ProductSku();
+        sku.setProductId(productId); sku.setSkuCode(dto.getSkuCode()); sku.setSpecJson(dto.getSpecJson());
+        sku.setPrice(dto.getPrice()); sku.setOriginalPrice(dto.getOriginalPrice()); sku.setStatus(1);
+        productSkuMapper.insert(sku);
+        Stock stock = new Stock();
+        stock.setProductId(productId); stock.setSkuId(sku.getId()); stock.setTotal(dto.getInitialStock());
+        stock.setLocked(0); stock.setAvailable(dto.getInitialStock()); stock.setVersion(0);
+        stockMapper.insert(stock);
+        StockLedger ledger = new StockLedger();
+        ledger.setSkuId(sku.getId()); ledger.setAction("INITIAL_STOCK"); ledger.setQuantity(dto.getInitialStock());
+        ledger.setBeforeAvailable(0); ledger.setAfterAvailable(dto.getInitialStock()); ledger.setOperatorId(operatorId);
+        stockLedgerMapper.insert(ledger);
+        clearCache(productId);
+        return sku;
     }
 }

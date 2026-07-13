@@ -3,6 +3,8 @@ package com.biyesheji.product.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biyesheji.entity.Product;
 import com.biyesheji.dto.MerchantProductSaveDTO;
+import com.biyesheji.dto.MerchantSkuSaveDTO;
+import com.biyesheji.entity.ProductSku;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -19,4 +21,6 @@ public interface ProductService {
     Product create(MerchantProductSaveDTO dto);
     Product update(Long id, MerchantProductSaveDTO dto);
     Product updateStatus(Long id, Integer status);
+    List<ProductSku> listSkus(Long productId);
+    ProductSku createSku(Long productId, Long operatorId, MerchantSkuSaveDTO dto);
 }

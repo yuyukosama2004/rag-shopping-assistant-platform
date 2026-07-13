@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biyesheji.constant.UserRole;
 import com.biyesheji.dto.MerchantProductSaveDTO;
 import com.biyesheji.dto.MerchantProductStatusDTO;
+import com.biyesheji.dto.MerchantSkuSaveDTO;
 import com.biyesheji.dto.R;
 import com.biyesheji.entity.Product;
+import com.biyesheji.entity.ProductSku;
 import com.biyesheji.exception.BizException;
 import com.biyesheji.product.service.ProductService;
 import jakarta.validation.Valid;
@@ -14,6 +16,8 @@ import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/merchant/products")
@@ -32,5 +36,9 @@ public class MerchantProductController {
     public R<Product> update(@RequestHeader("X-User-Role") Integer role, @PathVariable Long id, @Valid @RequestBody MerchantProductSaveDTO dto) { requireOwner(role); return R.ok(productService.update(id, dto)); }
     @PutMapping("/{id}/status")
     public R<Product> status(@RequestHeader("X-User-Role") Integer role, @PathVariable Long id, @Valid @RequestBody MerchantProductStatusDTO dto) { requireOwner(role); return R.ok(productService.updateStatus(id, dto.getStatus())); }
+    @GetMapping("/{id}/skus")
+    public R<List<ProductSku>> skus(@RequestHeader("X-User-Role") Integer role, @PathVariable Long id) { requireOwner(role); return R.ok(productService.listSkus(id)); }
+    @PostMapping("/{id}/skus")
+    public R<ProductSku> createSku(@RequestHeader("X-User-Role") Integer role, @RequestHeader("X-User-Id") Long userId, @PathVariable Long id, @Valid @RequestBody MerchantSkuSaveDTO dto) { requireOwner(role); return R.ok(productService.createSku(id, userId, dto)); }
     private void requireOwner(Integer role) { if (!Integer.valueOf(UserRole.OWNER).equals(role)) throw new BizException(403, "仅店主可管理商品"); }
 }
