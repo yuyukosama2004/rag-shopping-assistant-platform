@@ -14,6 +14,21 @@ const routes = [
     meta: { guest: true },
   },
   {
+    path: '/merchant/login',
+    name: 'MerchantLogin',
+    component: () => import('../views/MerchantLogin.vue'),
+    meta: { merchantGuest: true },
+  },
+  {
+    path: '/merchant',
+    component: () => import('../components/MerchantLayout.vue'),
+    meta: { merchant: true },
+    children: [
+      { path: '', name: 'MerchantHome', component: () => import('../views/MerchantHome.vue') },
+      { path: 'store', name: 'MerchantStoreSetting', component: () => import('../views/MerchantStoreSetting.vue') },
+    ],
+  },
+  {
     path: '/',
     component: () => import('../components/Layout.vue'),
     children: [
@@ -37,6 +52,16 @@ const router = createRouter({
 
 // 路由守卫：未登录跳转
 router.beforeEach((to) => {
+  const user = (() => { try { return JSON.parse(localStorage.getItem('userInfo') || 'null') } catch { return null } })()
+  if (to.meta.merchant && !localStorage.getItem('accessToken')) {
+    return '/merchant/login'
+  }
+  if (to.meta.merchant && user?.role !== 1) {
+    return '/'
+  }
+  if (to.meta.merchantGuest && localStorage.getItem('accessToken') && user?.role === 1) {
+    return '/merchant'
+  }
   if (to.meta.auth && !localStorage.getItem('accessToken')) {
     return '/login'
   }

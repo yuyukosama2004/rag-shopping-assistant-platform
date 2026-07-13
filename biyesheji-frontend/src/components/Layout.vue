@@ -3,18 +3,26 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { getCartCount } from '../api/order'
 import { onMounted, ref } from 'vue'
+import { getPublicStoreSetting } from '../api/merchant'
 
 const router = useRouter()
 const userStore = useUserStore()
 const cartCount = ref(0)
 const keyword = ref('')
+const storeName = ref('PhoneMall')
 
 const loadCartCount = async () => {
   if (!userStore.isLoggedIn()) return
   try { const r = await getCartCount(); cartCount.value = r.data.data } catch {}
 }
 
-onMounted(loadCartCount)
+onMounted(async () => {
+  loadCartCount()
+  try {
+    const setting = (await getPublicStoreSetting()).data.data
+    if (setting?.storeName) storeName.value = setting.storeName
+  } catch {}
+})
 
 const doSearch = () => {
   if (keyword.value.trim()) {
@@ -45,7 +53,7 @@ const doSearch = () => {
     <!-- Row 2: header-bar -->
     <div class="header-bar">
       <div class="container">
-        <div class="logo" @click="router.push('/')">PhoneMall</div>
+        <div class="logo" @click="router.push('/')">{{ storeName }}</div>
         <div class="search-wrap">
           <input v-model="keyword" placeholder="搜索手机品牌、型号..." @keyup.enter="doSearch" />
           <button class="search-btn" @click="doSearch">🔍</button>
@@ -86,7 +94,7 @@ const doSearch = () => {
 
     <!-- footer -->
     <div class="site-footer">
-      <p>PhoneMall 手机电商平台 &copy; 2026 · 基于Spring Cloud微服务架构</p>
+      <p>{{ storeName }} &copy; 2026</p>
     </div>
   </div>
 </template>
