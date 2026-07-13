@@ -38,7 +38,8 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             "/api/user/login",
             "/api/user/register",
             "/api/user/refresh",
-            "/api/product"
+            "/api/product",
+            "/api/store"
     );
 
     @PostConstruct
@@ -55,7 +56,7 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         }
 
         String path = exchange.getRequest().getURI().getPath();
-        if (WHITE_LIST.stream().anyMatch(path::startsWith)) {
+        if ("/api/merchant/initialize".equals(path) || WHITE_LIST.stream().anyMatch(path::startsWith)) {
             return chain.filter(exchange);
         }
 

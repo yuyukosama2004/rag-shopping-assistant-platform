@@ -223,11 +223,11 @@ cd biyesheji
 
 ```bash
 cp .env.example .env
-# 编辑 .env：必须设置 MYSQL_ROOT_PASSWORD、REDIS_PASSWORD、JWT_SECRET；
+# 编辑 .env：必须设置 MYSQL_ROOT_PASSWORD、REDIS_PASSWORD、JWT_SECRET、OWNER_INIT_TOKEN；
 # Docker 部署还应保留 MYSQL_HOST=mysql、REDIS_HOST=redis、NACOS_SERVER_ADDR=nacos:8848。
 ```
 
-`.env` 不会提交到 Git。JWT 密钥至少为 32 字节；不要把真实 AI Key 或数据库口令写回配置文件。
+`.env` 不会提交到 Git。JWT 密钥至少为 32 字节；`OWNER_INIT_TOKEN` 是仅用于首次创建店主的随机密钥，创建成功后接口会永久拒绝再次初始化。不要把真实 AI Key、初始化令牌或数据库口令写回配置文件。
 
 ### 3. 启动基础设施
 
@@ -357,6 +357,22 @@ http://localhost:8080
 `start` 会复用 `docker/docker-compose.app.yml`，并等待四个应用服务的
 `/actuator/health` 健康检查通过。网关仅绑定在 `127.0.0.1`；如宿主机的
 8080 已被占用，请在 `.env` 设置 `GATEWAY_HOST_PORT`，并让 Nginx 指向该端口。
+
+### 7. 首次初始化店主
+
+首次部署后，在 HTTPS 已配置的环境中，用 `.env` 中的 `OWNER_INIT_TOKEN` 创建唯一
+店主和店铺。该接口仅在尚未存在店主时可调用；成功后即使令牌仍留在环境变量中也会被
+永久拒绝。请使用密码管理器生成并保存密码与初始化令牌。
+
+```bash
+curl -X POST http://127.0.0.1:${GATEWAY_HOST_PORT:-8080}/api/merchant/initialize \
+  -H "Content-Type: application/json" \
+  -H "X-Owner-Init-Token: $OWNER_INIT_TOKEN" \
+  -d '{"username":"owner","password":"change-this-to-a-strong-password","storeName":"我的店铺"}'
+```
+
+初始化后的店主使用现有 `/api/user/login` 登录；`GET /api/store/setting` 为消费者公开
+读取店铺信息，`GET` 和 `PUT /api/merchant/store/setting` 仅店主可访问。
 
 ## API 路由
 

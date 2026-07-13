@@ -3,6 +3,7 @@ package com.biyesheji.user.service.impl;
 import cn.hutool.crypto.digest.BCrypt;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.biyesheji.constant.ResultCode;
+import com.biyesheji.constant.UserRole;
 import com.biyesheji.dto.RegisterDTO;
 import com.biyesheji.entity.User;
 import com.biyesheji.exception.BizException;
@@ -54,7 +55,7 @@ public class UserServiceImpl implements UserService {
         user.setNickname(dto.getNickname() != null ? dto.getNickname() : dto.getUsername());
         user.setPhone(dto.getPhone());
         user.setEmail(dto.getEmail());
-        user.setRole(0);
+        user.setRole(UserRole.CUSTOMER);
         user.setStatus(1);
         userMapper.insert(user);
         user.setPassword(null);
