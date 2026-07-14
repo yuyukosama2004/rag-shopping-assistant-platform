@@ -258,6 +258,7 @@ public class ProductServiceImpl implements ProductService {
         stock.setProductId(productId); stock.setSkuId(sku.getId()); stock.setTotal(dto.getInitialStock());
         stock.setLocked(0); stock.setAvailable(dto.getInitialStock()); stock.setVersion(0);
         stockMapper.insert(stock);
+        syncStockCache(stock);
         StockLedger ledger = new StockLedger();
         ledger.setSkuId(sku.getId()); ledger.setAction("INITIAL_STOCK"); ledger.setQuantity(dto.getInitialStock());
         ledger.setBeforeAvailable(0); ledger.setAfterAvailable(dto.getInitialStock()); ledger.setOperatorId(operatorId);
@@ -298,6 +299,7 @@ public class ProductServiceImpl implements ProductService {
                 stockLedgerMapper.insert(ledger);
                 clearCache(sku.getProductId());
                 stock.setAvailable(nextAvailable); stock.setTotal(nextTotal); stock.setVersion(stock.getVersion() + 1);
+                syncStockCache(stock);
                 return stock;
             }
         }
@@ -315,5 +317,12 @@ public class ProductServiceImpl implements ProductService {
         ProductSku sku = productSkuMapper.selectById(skuId);
         if (sku == null) throw new BizException(404, "SKU不存在");
         return sku;
+    }
+
+    private void syncStockCache(Stock stock) {
+        String key = "stock:sku:" + stock.getSkuId();
+        redisUtil.hSet(key, "total", stock.getTotal().toString());
+        redisUtil.hSet(key, "locked", stock.getLocked().toString());
+        redisUtil.hSet(key, "available", stock.getAvailable().toString());
     }
 }
