@@ -2,6 +2,7 @@ package com.biyesheji.vo;
 
 import com.biyesheji.entity.ShoppingCart;
 import com.biyesheji.entity.Product;
+import com.biyesheji.entity.ProductSku;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -15,6 +16,9 @@ public class CartItemVO implements Serializable {
     private Long id;              // cart id
     private Long userId;
     private Long productId;
+    private Long skuId;
+    private String skuCode;
+    private String skuSpecJson;
     private Integer quantity;
     private Integer checked;
     private String productName;
@@ -25,11 +29,12 @@ public class CartItemVO implements Serializable {
     private String colorOptions;
     private String storageOptions;
 
-    public static CartItemVO from(ShoppingCart cart, Product product) {
+    public static CartItemVO from(ShoppingCart cart, Product product, ProductSku sku) {
         CartItemVO vo = new CartItemVO();
         vo.setId(cart.getId());
         vo.setUserId(cart.getUserId());
         vo.setProductId(cart.getProductId());
+        vo.setSkuId(cart.getSkuId());
         vo.setQuantity(cart.getQuantity());
         vo.setChecked(cart.getChecked());
         vo.setSelectedColor(cart.getSelectedColor());
@@ -37,9 +42,13 @@ public class CartItemVO implements Serializable {
         if (product != null) {
             vo.setProductName(product.getName());
             vo.setProductImage(product.getMainImage());
-            vo.setProductPrice(product.getPrice());
+            vo.setProductPrice(sku == null ? product.getPrice() : sku.getPrice());
             vo.setColorOptions(product.getColorOptions());
             vo.setStorageOptions(product.getStorageOptions());
+        }
+        if (sku != null) {
+            vo.setSkuCode(sku.getSkuCode());
+            vo.setSkuSpecJson(sku.getSpecJson());
         }
         return vo;
     }

@@ -3,11 +3,13 @@ package com.biyesheji.order.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.biyesheji.entity.Product;
+import com.biyesheji.entity.ProductSku;
 import com.biyesheji.entity.ShoppingCart;
 import com.biyesheji.exception.BizException;
 import com.biyesheji.order.mapper.ShoppingCartMapper;
 import com.biyesheji.order.service.ShoppingCartService;
 import com.biyesheji.order.mapper.ProductMapper;
+import com.biyesheji.order.mapper.ProductSkuMapper;
 import com.biyesheji.vo.CartItemVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,20 +23,25 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
 
     private final ShoppingCartMapper cartMapper;
     private final ProductMapper productMapper;
+    private final ProductSkuMapper productSkuMapper;
 
     @Override
-    public ShoppingCart add(Long userId, Long productId, Integer quantity) {
+    public ShoppingCart add(Long userId, Long productId, Long skuId, Integer quantity) {
         validateQuantity(quantity);
         Product product = productMapper.selectById(productId);
         if (product == null || product.getStatus() == 0) {
             throw new BizException("商品不存在或已下架");
+        }
+        ProductSku sku = productSkuMapper.selectById(skuId);
+        if (sku == null || sku.getStatus() != 1 || !productId.equals(sku.getProductId())) {
+            throw new BizException("SKU不存在、已停用或不属于该商品");
         }
 
         // 检查是否已在购物车
         ShoppingCart existing = cartMapper.selectOne(
                 new LambdaQueryWrapper<ShoppingCart>()
                         .eq(ShoppingCart::getUserId, userId)
-                        .eq(ShoppingCart::getProductId, productId)
+                        .eq(ShoppingCart::getSkuId, skuId)
         );
 
         if (existing != null) {
@@ -46,6 +53,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
         ShoppingCart cart = new ShoppingCart();
         cart.setUserId(userId);
         cart.setProductId(productId);
+        cart.setSkuId(skuId);
         cart.setQuantity(quantity);
         cart.setChecked(1);
         cartMapper.insert(cart);
@@ -102,7 +110,8 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
         );
         return carts.stream().map(cart -> {
             Product product = productMapper.selectById(cart.getProductId());
-            return CartItemVO.from(cart, product);
+            ProductSku sku = productSkuMapper.selectById(cart.getSkuId());
+            return CartItemVO.from(cart, product, sku);
         }).collect(Collectors.toList());
     }
 

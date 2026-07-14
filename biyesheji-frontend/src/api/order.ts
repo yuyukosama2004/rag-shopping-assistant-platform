@@ -1,7 +1,7 @@
 import request from './request'
 
-export function addToCart(productId: number, quantity = 1, color?: string, storage?: string) {
-  return request.post('/api/order/cart', { productId, quantity, color, storage })
+export function addToCart(productId: number, skuId: number, quantity = 1) {
+  return request.post('/api/order/cart', { productId, skuId, quantity })
 }
 
 export function updateCartOptions(cartId: number, color: string, storage: string) {

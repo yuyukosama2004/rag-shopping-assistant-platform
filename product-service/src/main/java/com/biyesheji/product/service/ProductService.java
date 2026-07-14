@@ -20,6 +20,7 @@ public interface ProductService {
     List<Product> listByBrand(String brand);
     List<Product> hot(int limit);
     Map<String, List<String>> getFilters();
+    List<ProductSku> listAvailableSkus(Long productId);
     Page<Product> merchantPage(int pageNum, int pageSize, String keyword);
     Product create(MerchantProductSaveDTO dto);
     Product update(Long id, MerchantProductSaveDTO dto);

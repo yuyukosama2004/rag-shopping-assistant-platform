@@ -6,7 +6,7 @@ import com.biyesheji.vo.CartItemVO;
 import java.util.List;
 
 public interface ShoppingCartService {
-    ShoppingCart add(Long userId, Long productId, Integer quantity);
+    ShoppingCart add(Long userId, Long productId, Long skuId, Integer quantity);
     ShoppingCart updateQuantity(Long userId, Long cartId, Integer quantity);
     void remove(Long userId, Long cartId);
     void removeBatch(Long userId, List<Long> cartIds);

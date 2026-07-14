@@ -227,6 +227,23 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public List<ProductSku> listAvailableSkus(Long productId) {
+        Product product = productMapper.selectById(productId);
+        if (product == null || product.getStatus() != 1) {
+            throw new BizException(404, "商品不存在或已下架");
+        }
+        List<ProductSku> skus = productSkuMapper.selectList(new LambdaQueryWrapper<ProductSku>()
+                .eq(ProductSku::getProductId, productId)
+                .eq(ProductSku::getStatus, 1)
+                .orderByAsc(ProductSku::getCreatedAt));
+        for (ProductSku sku : skus) {
+            Stock stock = stockMapper.selectOne(new LambdaQueryWrapper<Stock>().eq(Stock::getSkuId, sku.getId()));
+            sku.setAvailable(stock == null ? 0 : stock.getAvailable());
+        }
+        return skus;
+    }
+
+    @Override
     @Transactional
     public ProductSku createSku(Long productId, Long operatorId, MerchantSkuSaveDTO dto) {
         requireProduct(productId);

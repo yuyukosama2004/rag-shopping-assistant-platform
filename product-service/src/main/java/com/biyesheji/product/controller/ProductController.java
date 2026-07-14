@@ -3,6 +3,7 @@ package com.biyesheji.product.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biyesheji.dto.R;
 import com.biyesheji.entity.Product;
+import com.biyesheji.entity.ProductSku;
 import com.biyesheji.product.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -44,6 +45,12 @@ public class ProductController {
     @GetMapping("/{id}")
     public R<Product> detail(@PathVariable Long id) {
         return R.ok(productService.getById(id));
+    }
+
+    @Operation(summary = "商品可售SKU")
+    @GetMapping("/{id}/skus")
+    public R<List<ProductSku>> skus(@PathVariable Long id) {
+        return R.ok(productService.listAvailableSkus(id));
     }
 
     @Operation(summary = "热门推荐")

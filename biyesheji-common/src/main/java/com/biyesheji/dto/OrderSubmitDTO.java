@@ -31,6 +31,8 @@ public class OrderSubmitDTO implements Serializable {
     public static class OrderItemDTO {
         @NotNull(message = "商品ID不能为空")
         private Long productId;
+        @NotNull(message = "SKU ID不能为空")
+        private Long skuId;
         @NotNull(message = "商品数量不能为空")
         @Positive(message = "商品数量必须大于0")
         private Integer quantity;

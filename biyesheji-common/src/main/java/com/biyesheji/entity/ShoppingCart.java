@@ -16,6 +16,7 @@ public class ShoppingCart implements Serializable {
     private Long id;
     private Long userId;
     private Long productId;
+    private Long skuId;
     private Integer quantity;
     private Integer checked;
     private String selectedColor;

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { getCartList, updateCartQuantity, removeCartItem, toggleCartCheck, checkAllCart, updateCartOptions } from '../api/order'
+import { getCartList, updateCartQuantity, removeCartItem, toggleCartCheck, checkAllCart } from '../api/order'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter(); const items = ref<any[]>([])
@@ -14,10 +14,7 @@ const del = async (id: number) => { await removeCartItem(id); ElMessage.success(
 const tgl = async (id: number) => { await toggleCartCheck(id); load() }
 const tglAll = async (v: boolean) => { await checkAllCart(v); load() }
 
-const parseColors = (it: any) => { try { return JSON.parse(it.colorOptions || '[]') } catch { return [] } }
-const parseStorages = (it: any) => { try { return JSON.parse(it.storageOptions || '[]') } catch { return [] } }
-const chgColor = async (it: any, c: string) => { await updateCartOptions(it.id, c, it.selectedStorage); load() }
-const chgStorage = async (it: any, s: string) => { await updateCartOptions(it.id, it.selectedColor, s); load() }
+const skuLabel = (it: any) => { try { return Object.entries(JSON.parse(it.skuSpecJson || '{}')).map(([key, value]) => `${key}: ${String(value)}`).join(' / ') || '-' } catch { return '-' } }
 </script>
 
 <template>
@@ -31,8 +28,8 @@ const chgStorage = async (it: any, s: string) => { await updateCartOptions(it.id
           <th style="width:50px;text-align:center"><el-checkbox :model-value="items.every(i=>i.checked)" @change="tglAll">全选</el-checkbox></th>
           <th style="width:70px;text-align:center">图片</th>
           <th style="text-align:left">商品名称</th>
-          <th style="width:90px;text-align:center">外观</th>
-          <th style="width:100px;text-align:center">规格</th>
+          <th style="width:110px;text-align:center">SKU</th>
+          <th style="width:150px;text-align:center">规格</th>
           <th style="width:80px;text-align:center">单价</th>
           <th style="width:110px;text-align:center">数量</th>
           <th style="width:80px;text-align:center">小计</th>
@@ -43,16 +40,8 @@ const chgStorage = async (it: any, s: string) => { await updateCartOptions(it.id
             <td style="text-align:center"><el-checkbox :model-value="it.checked===1" @change="tgl(it.id)" /></td>
             <td style="text-align:center"><img :src="it.productImage||''" class="cart-img" /></td>
             <td style="font-weight:500;text-align:left">{{ it.productName }}</td>
-            <td style="text-align:center">
-              <select v-model="it.selectedColor" @change="chgColor(it, it.selectedColor)" style="font-size:12px;padding:2px;border:1px solid #ddd">
-                <option v-for="c in parseColors(it)" :key="c" :value="c">{{ c }}</option>
-              </select>
-            </td>
-            <td style="text-align:center">
-              <select v-model="it.selectedStorage" @change="chgStorage(it, it.selectedStorage)" style="font-size:12px;padding:2px;border:1px solid #ddd">
-                <option v-for="s in parseStorages(it)" :key="s" :value="s">{{ s }}</option>
-              </select>
-            </td>
+            <td style="text-align:center">{{ it.skuCode }}</td>
+            <td style="text-align:center">{{ skuLabel(it) }}</td>
             <td class="price" style="text-align:center">¥{{ it.productPrice }}</td>
             <td style="text-align:center"><el-input-number :model-value="it.quantity" :min="1" :max="99" size="small" style="width:80px" @change="(v:any)=>v&&chgQty(it,v)" /></td>
             <td class="price" style="text-align:center">¥{{ (it.productPrice*it.quantity).toFixed(2) }}</td>
@@ -68,8 +57,8 @@ const chgStorage = async (it: any, s: string) => { await updateCartOptions(it.id
             <img :src="it.productImage||''" class="cm-img" />
             <span class="cm-name">{{ it.productName }}</span>
           </div>
-          <div class="cm-options" v-if="it.selectedColor||it.selectedStorage">
-            外观: {{ it.selectedColor || '-' }} / 规格: {{ it.selectedStorage || '-' }}
+          <div class="cm-options">
+            {{ it.skuCode }} · {{ skuLabel(it) }}
           </div>
           <div class="cm-bottom">
             <span class="cm-price">¥{{ (it.productPrice*it.quantity).toFixed(2) }}</span>
