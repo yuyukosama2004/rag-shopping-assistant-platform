@@ -20,7 +20,10 @@ public class OrderVO implements Serializable {
     private String receiverName;
     private String receiverPhone;
     private String receiverAddress;
+    private String shippingCarrier;
+    private String trackingNo;
     private LocalDateTime payTime;
+    private LocalDateTime shippedAt;
     private LocalDateTime cancelTime;
     private LocalDateTime timeoutTime;
     private LocalDateTime createdAt;
@@ -39,7 +42,10 @@ public class OrderVO implements Serializable {
         vo.setReceiverName(order.getReceiverName());
         vo.setReceiverPhone(order.getReceiverPhone());
         vo.setReceiverAddress(order.getReceiverAddress());
+        vo.setShippingCarrier(order.getShippingCarrier());
+        vo.setTrackingNo(order.getTrackingNo());
         vo.setPayTime(order.getPayTime());
+        vo.setShippedAt(order.getShippedAt());
         vo.setCancelTime(order.getCancelTime());
         vo.setTimeoutTime(order.getTimeoutTime());
         vo.setCreatedAt(order.getCreatedAt());

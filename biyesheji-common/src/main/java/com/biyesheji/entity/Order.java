@@ -24,7 +24,10 @@ public class Order extends BaseEntity {
     private String receiverName;
     private String receiverPhone;
     private String receiverAddress;
+    private String shippingCarrier;
+    private String trackingNo;
     private LocalDateTime payTime;
+    private LocalDateTime shippedAt;
     private LocalDateTime cancelTime;
     private LocalDateTime timeoutTime;
 }

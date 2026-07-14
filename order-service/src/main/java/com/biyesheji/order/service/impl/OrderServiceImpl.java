@@ -8,13 +8,16 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biyesheji.constant.OrderStatus;
 import com.biyesheji.constant.ResultCode;
 import com.biyesheji.dto.OrderSubmitDTO;
+import com.biyesheji.dto.MerchantShipmentDTO;
 import com.biyesheji.entity.Order;
 import com.biyesheji.entity.OrderItem;
+import com.biyesheji.entity.OrderOperation;
 import com.biyesheji.entity.Product;
 import com.biyesheji.entity.ProductSku;
 import com.biyesheji.exception.BizException;
 import com.biyesheji.order.mapper.OrderItemMapper;
 import com.biyesheji.order.mapper.OrderMapper;
+import com.biyesheji.order.mapper.OrderOperationMapper;
 import com.biyesheji.order.mapper.ProductMapper;
 import com.biyesheji.order.mapper.ProductSkuMapper;
 import com.biyesheji.order.service.OrderService;
@@ -49,6 +52,7 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderMapper orderMapper;
     private final OrderItemMapper orderItemMapper;
+    private final OrderOperationMapper orderOperationMapper;
     private final ProductMapper productMapper;
     private final ProductSkuMapper productSkuMapper;
     private final StockService stockService;
@@ -134,16 +138,33 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public void pay(Long userId, String orderNo) {
+        Order order = orderMapper.selectOne(new LambdaQueryWrapper<Order>()
+                .eq(Order::getOrderNo, orderNo)
+                .eq(Order::getUserId, userId));
+        if (order == null) throw new BizException(ResultCode.ORDER_NOT_FOUND, "订单不存在");
+        confirmPaymentInternal(userId, orderNo, "CUSTOMER_SIMULATED_PAY", "消费者模拟支付");
+    }
+
+    @Override
+    @Transactional
+    public void confirmPayment(Long operatorId, String orderNo) {
+        confirmPaymentInternal(operatorId, orderNo, "MERCHANT_CONFIRM_PAYMENT", "商家确认收款");
+    }
+
+    private void confirmPaymentInternal(Long operatorId, String orderNo, String action, String note) {
         Order update = new Order();
         update.setStatus(OrderStatus.PAID.getCode());
         update.setPayTime(LocalDateTime.now());
-        int rows = orderMapper.update(update, pendingOrder(userId, orderNo));
+        int rows = orderMapper.update(update, new LambdaUpdateWrapper<Order>()
+                .eq(Order::getOrderNo, orderNo)
+                .eq(Order::getStatus, OrderStatus.PENDING.getCode()));
         if (rows == 0) {
             throw new BizException("订单不存在或状态不允许支付");
         }
         for (OrderItem item : orderItems(orderNo)) {
             stockService.confirmDeduct(item.getSkuId(), item.getQuantity());
         }
+        recordOperation(orderNo, operatorId, action, note);
     }
 
     @Override
@@ -156,6 +177,52 @@ public class OrderServiceImpl implements OrderService {
             throw new BizException("订单不存在或仅待支付订单可取消");
         }
         restoreOrderItems(orderNo);
+        recordOperation(orderNo, userId, "CUSTOMER_CANCEL", "消费者取消订单");
+    }
+
+    @Override
+    @Transactional
+    public void complete(Long userId, String orderNo) {
+        Order update = new Order();
+        update.setStatus(OrderStatus.COMPLETED.getCode());
+        int rows = orderMapper.update(update, new LambdaUpdateWrapper<Order>()
+                .eq(Order::getOrderNo, orderNo)
+                .eq(Order::getUserId, userId)
+                .eq(Order::getStatus, OrderStatus.SHIPPED.getCode()));
+        if (rows == 0) throw new BizException("订单不存在或尚未发货");
+        recordOperation(orderNo, userId, "CUSTOMER_COMPLETE", "消费者确认收货");
+    }
+
+    @Override
+    public Page<OrderVO> merchantPage(int pageNum, int pageSize, Integer status) {
+        LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<Order>().orderByDesc(Order::getCreatedAt);
+        if (status != null) wrapper.eq(Order::getStatus, status);
+        Page<Order> orderPage = orderMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        Page<OrderVO> result = new Page<>(orderPage.getCurrent(), orderPage.getSize(), orderPage.getTotal());
+        result.setRecords(orderPage.getRecords().stream().map(order -> OrderVO.from(order, orderItems(order.getOrderNo()))).toList());
+        return result;
+    }
+
+    @Override
+    public OrderVO merchantDetail(String orderNo) {
+        Order order = orderMapper.selectOne(new LambdaQueryWrapper<Order>().eq(Order::getOrderNo, orderNo));
+        if (order == null) throw new BizException(ResultCode.ORDER_NOT_FOUND, "订单不存在");
+        return OrderVO.from(order, orderItems(orderNo));
+    }
+
+    @Override
+    @Transactional
+    public void ship(Long operatorId, String orderNo, MerchantShipmentDTO dto) {
+        Order update = new Order();
+        update.setStatus(OrderStatus.SHIPPED.getCode());
+        update.setShippingCarrier(dto.getCarrier());
+        update.setTrackingNo(dto.getTrackingNo());
+        update.setShippedAt(LocalDateTime.now());
+        int rows = orderMapper.update(update, new LambdaUpdateWrapper<Order>()
+                .eq(Order::getOrderNo, orderNo)
+                .eq(Order::getStatus, OrderStatus.PAID.getCode()));
+        if (rows == 0) throw new BizException("订单不存在或尚未确认收款");
+        recordOperation(orderNo, operatorId, "MERCHANT_SHIP", dto.getNote());
     }
 
     @Override
@@ -273,5 +340,15 @@ public class OrderServiceImpl implements OrderService {
         for (OrderItem item : orderItems(orderNo)) {
             stockService.restore(item.getSkuId(), item.getQuantity());
         }
+    }
+
+    private void recordOperation(String orderNo, Long operatorId, String action, String note) {
+        OrderOperation operation = new OrderOperation();
+        operation.setId(IdUtil.getSnowflake().nextId());
+        operation.setOrderNo(orderNo);
+        operation.setOperatorId(operatorId);
+        operation.setAction(action);
+        operation.setNote(note);
+        orderOperationMapper.insert(operation);
     }
 }

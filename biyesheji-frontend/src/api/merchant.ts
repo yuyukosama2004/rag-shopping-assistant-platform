@@ -81,6 +81,21 @@ export interface MerchantStockLedger {
   createTime?: string
 }
 
+export interface MerchantOrder {
+  id: number
+  orderNo: string
+  totalAmount: number
+  status: number
+  statusDesc: string
+  receiverName: string
+  receiverPhone: string
+  receiverAddress: string
+  shippingCarrier?: string
+  trackingNo?: string
+  createdAt: string
+  items: Array<{ id: number; productName: string; skuCode?: string; skuSpecJson?: string; price: number; quantity: number; subtotal: number }>
+}
+
 export function getPublicStoreSetting() {
   return request.get('/api/store/setting')
 }
@@ -106,3 +121,6 @@ export function createMerchantSku(productId: number, data: MerchantSkuInput) { r
 export function getMerchantSkuStock(skuId: number) { return request.get(`/api/merchant/products/skus/${skuId}/stock`) }
 export function adjustMerchantSkuStock(skuId: number, quantity: number, reason: string) { return request.put(`/api/merchant/products/skus/${skuId}/stock`, { quantity, reason }) }
 export function getMerchantSkuStockLedger(skuId: number) { return request.get(`/api/merchant/products/skus/${skuId}/stock/ledger`) }
+export function getMerchantOrders(pageNum = 1, pageSize = 20, status?: number) { return request.get('/api/merchant/orders', { params: { pageNum, pageSize, status } }) }
+export function confirmMerchantOrderPayment(orderNo: string) { return request.post(`/api/merchant/orders/${orderNo}/confirm-payment`) }
+export function shipMerchantOrder(orderNo: string, data: { carrier: string; trackingNo: string; note?: string }) { return request.post(`/api/merchant/orders/${orderNo}/ship`, data) }

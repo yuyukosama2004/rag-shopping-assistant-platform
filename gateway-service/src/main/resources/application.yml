@@ -36,7 +36,7 @@ spring:
         - id: order-service
           uri: lb://order-service
           predicates:
-            - Path=/api/order/**
+            - Path=/api/order/**,/api/merchant/orders/**
       globalcors:
         cors-configurations:
           '[/**]':

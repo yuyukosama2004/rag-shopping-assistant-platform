@@ -70,4 +70,12 @@ public class OrderController {
         orderService.cancel(getUserId(auth), orderNo);
         return R.ok();
     }
+
+    @Operation(summary = "确认收货")
+    @PostMapping("/{orderNo}/complete")
+    public R<Void> complete(@RequestHeader("Authorization") String auth,
+                            @PathVariable String orderNo) {
+        orderService.complete(getUserId(auth), orderNo);
+        return R.ok();
+    }
 }
