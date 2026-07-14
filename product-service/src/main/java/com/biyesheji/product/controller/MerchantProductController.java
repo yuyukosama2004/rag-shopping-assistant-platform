@@ -15,12 +15,17 @@ import com.biyesheji.entity.Stock;
 import com.biyesheji.entity.StockLedger;
 import com.biyesheji.exception.BizException;
 import com.biyesheji.product.service.ProductService;
+import com.biyesheji.product.service.ProductCsvService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -30,6 +35,7 @@ import java.util.List;
 @Validated
 public class MerchantProductController {
     private final ProductService productService;
+    private final ProductCsvService productCsvService;
 
     @GetMapping
     public R<Page<Product>> page(@RequestHeader("X-User-Role") Integer role, @RequestParam(defaultValue = "1") @Min(1) int pageNum, @RequestParam(defaultValue = "20") @Min(1) @Max(100) int pageSize, @RequestParam(required = false) String keyword) {
@@ -47,6 +53,13 @@ public class MerchantProductController {
     public R<Void> delete(@RequestHeader("X-User-Role") Integer role, @PathVariable Long id) { requireMerchant(role); productService.delete(id); return R.ok(); }
     @PutMapping("/batch-status")
     public R<Void> batchStatus(@RequestHeader("X-User-Role") Integer role, @Valid @RequestBody MerchantProductBatchStatusDTO dto) { requireMerchant(role); productService.updateBatchStatus(dto.getIds(), dto.getStatus()); return R.ok(); }
+    @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public R<java.util.Map<String, Object>> importCsv(@RequestHeader("X-User-Role") Integer role, @RequestHeader("X-User-Id") Long userId, @RequestParam("file") MultipartFile file) { requireMerchant(role); return R.ok(productCsvService.importCsv(userId, file)); }
+    @GetMapping(value = "/export", produces = "text/csv")
+    public ResponseEntity<byte[]> exportCsv(@RequestHeader("X-User-Role") Integer role) {
+        requireMerchant(role);
+        return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=products.csv").contentType(MediaType.parseMediaType("text/csv;charset=UTF-8")).body(productCsvService.exportCsv());
+    }
     @GetMapping("/{id}/skus")
     public R<List<ProductSku>> skus(@RequestHeader("X-User-Role") Integer role, @PathVariable Long id) { requireMerchant(role); return R.ok(productService.listSkus(id)); }
     @PostMapping("/{id}/skus")

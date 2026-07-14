@@ -3,6 +3,7 @@ package com.biyesheji.product.controller;
 import com.biyesheji.constant.UserRole;
 import com.biyesheji.exception.BizException;
 import com.biyesheji.product.service.ProductService;
+import com.biyesheji.product.service.ProductCsvService;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -11,7 +12,7 @@ import static org.mockito.Mockito.mock;
 
 class MerchantProductControllerTest {
 
-    private final MerchantProductController controller = new MerchantProductController(mock(ProductService.class));
+    private final MerchantProductController controller = new MerchantProductController(mock(ProductService.class), mock(ProductCsvService.class));
 
     @Test
     void allowsStaffToAccessProductWorkspace() {

@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { adjustMerchantSkuStock, copyMerchantProduct, createMerchantProduct, createMerchantSku, deleteMerchantProduct, getMerchantProducts, getMerchantSkus, getMerchantSkuStock, getMerchantSkuStockLedger, updateMerchantProduct, updateMerchantProductBatchStatus, updateMerchantProductStatus, updateMerchantSku, uploadMerchantMedia, type MerchantProduct, type MerchantProductInput, type MerchantSku, type MerchantSkuInput, type MerchantSkuStock, type MerchantStockLedger } from '../api/merchant'
+import { adjustMerchantSkuStock, copyMerchantProduct, createMerchantProduct, createMerchantSku, deleteMerchantProduct, exportMerchantProducts, getMerchantProducts, getMerchantSkus, getMerchantSkuStock, getMerchantSkuStockLedger, importMerchantProducts, updateMerchantProduct, updateMerchantProductBatchStatus, updateMerchantProductStatus, updateMerchantSku, uploadMerchantMedia, type MerchantProduct, type MerchantProductInput, type MerchantSku, type MerchantSkuInput, type MerchantSkuStock, type MerchantStockLedger } from '../api/merchant'
 
 const loading = ref(false)
 const saving = ref(false)
 const uploadingImage = ref(false)
+const importing = ref(false)
 const dialogVisible = ref(false)
 const items = ref<MerchantProduct[]>([])
 const total = ref(0)
@@ -62,6 +63,8 @@ const uploadMainImage = async (event: Event) => {
   uploadingImage.value = true
   try { form.mainImage = (await uploadMerchantMedia(file)).data.data.url; ElMessage.success('图片已上传') } finally { uploadingImage.value = false }
 }
+const importCsv = async (event: Event) => { const file = (event.target as HTMLInputElement).files?.[0]; if (!file) return; importing.value = true; try { const result = (await importMerchantProducts(file)).data.data; ElMessage.success(`已导入${result.products}个商品、${result.skus}个SKU`); await load() } finally { importing.value = false } }
+const exportCsv = async () => { const response = await exportMerchantProducts(); const url = URL.createObjectURL(response.data); const link = document.createElement('a'); link.href = url; link.download = 'products.csv'; link.click(); URL.revokeObjectURL(url) }
 const onSelectionChange = (rows: MerchantProduct[]) => { selectedIds.value = rows.map(row => row.id) }
 const openSkus = async (item: MerchantProduct) => {
   skuProductId.value = item.id; editingSkuId.value = null; Object.assign(skuForm, { skuCode: '', specJson: '', price: item.price, originalPrice: item.originalPrice || null, initialStock: 0 })
@@ -107,7 +110,7 @@ onMounted(load)
 
 <template>
   <el-card v-loading="loading">
-    <template #header><div style="display:flex;justify-content:space-between;align-items:center"><strong>商品管理</strong><div><el-input v-model="keyword" placeholder="搜索商品或品牌" style="width:220px;margin-right:8px" @keyup.enter="load" /><el-button @click="load">搜索</el-button><el-button type="primary" @click="openCreate">新建商品</el-button></div></div></template>
+    <template #header><div style="display:flex;justify-content:space-between;align-items:center"><strong>商品管理</strong><div><el-input v-model="keyword" placeholder="搜索商品或品牌" style="width:180px;margin-right:8px" @keyup.enter="load" /><el-button @click="load">搜索</el-button><el-button @click="exportCsv">导出CSV</el-button><label><el-button :loading="importing">导入CSV</el-button><input type="file" accept=".csv,text/csv" style="display:none" @change="importCsv" /></label><el-button type="primary" @click="openCreate">新建商品</el-button></div></div></template>
     <div style="margin-bottom:12px"><el-button size="small" :disabled="!selectedIds.length" @click="updateBatchStatus(1)">批量上架</el-button><el-button size="small" :disabled="!selectedIds.length" @click="updateBatchStatus(0)">批量下架</el-button></div>
     <el-table :data="items" @selection-change="onSelectionChange">
       <el-table-column type="selection" width="42" />
