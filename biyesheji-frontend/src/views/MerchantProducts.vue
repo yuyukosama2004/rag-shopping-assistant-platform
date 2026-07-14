@@ -7,6 +7,7 @@ const loading = ref(false)
 const saving = ref(false)
 const uploadingImage = ref(false)
 const importing = ref(false)
+const importErrors = ref<Array<{ line: number, message: string }>>([])
 const dialogVisible = ref(false)
 const items = ref<MerchantProduct[]>([])
 const total = ref(0)
@@ -91,7 +92,20 @@ const removeImage = (url: string) => {
   const filename = url.startsWith('/api/media/') ? url.substring(url.lastIndexOf('/') + 1) : ''
   if (filename && !removedMedia.value.includes(filename)) removedMedia.value.push(filename)
 }
-const importCsv = async (event: Event) => { const file = (event.target as HTMLInputElement).files?.[0]; if (!file) return; importing.value = true; try { const result = (await importMerchantProducts(file)).data.data; ElMessage.success(`已导入${result.products}个商品、${result.skus}个SKU`); await load() } finally { importing.value = false } }
+const importCsv = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  importing.value = true
+  importErrors.value = []
+  try {
+    const result = (await importMerchantProducts(file)).data.data
+    importErrors.value = result.errors || []
+    if (importErrors.value.length) return ElMessage.warning(`导入未执行：请修复 ${importErrors.value.length} 行错误后重试`)
+    ElMessage.success(`已导入${result.products}个商品、${result.skus}个SKU`)
+    await load()
+  } finally { importing.value = false; input.value = '' }
+}
 const exportCsv = async () => { const response = await exportMerchantProducts(); const url = URL.createObjectURL(response.data); const link = document.createElement('a'); link.href = url; link.download = 'products.csv'; link.click(); URL.revokeObjectURL(url) }
 const onSelectionChange = (rows: MerchantProduct[]) => { selectedIds.value = rows.map(row => row.id) }
 const openSkus = async (item: MerchantProduct) => {
@@ -140,6 +154,7 @@ onMounted(async () => { await Promise.all([load(), loadCatalogs()]) })
   <el-card v-loading="loading">
     <template #header><div style="display:flex;justify-content:space-between;align-items:center"><strong>商品管理</strong><div><el-input v-model="keyword" placeholder="搜索商品或品牌" style="width:180px;margin-right:8px" @keyup.enter="load" /><el-button @click="load">搜索</el-button><el-button @click="exportCsv">导出CSV</el-button><label><el-button :loading="importing">导入CSV</el-button><input type="file" accept=".csv,text/csv" style="display:none" @change="importCsv" /></label><el-button type="primary" @click="openCreate">新建商品</el-button></div></div></template>
     <div style="margin-bottom:12px"><el-button size="small" :disabled="!selectedIds.length" @click="updateBatchStatus(1)">批量上架</el-button><el-button size="small" :disabled="!selectedIds.length" @click="updateBatchStatus(0)">批量下架</el-button></div>
+    <el-alert v-if="importErrors.length" title="CSV 导入未执行，请修复以下行后重新导入" type="warning" :closable="false" style="margin-bottom:12px"><template #default><div v-for="error in importErrors" :key="`${error.line}-${error.message}`">第 {{ error.line }} 行：{{ error.message }}</div></template></el-alert>
     <el-table :data="items" @selection-change="onSelectionChange">
       <el-table-column type="selection" width="42" />
       <el-table-column prop="name" label="商品" min-width="180" />
