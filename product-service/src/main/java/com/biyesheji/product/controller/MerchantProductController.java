@@ -5,9 +5,12 @@ import com.biyesheji.constant.UserRole;
 import com.biyesheji.dto.MerchantProductSaveDTO;
 import com.biyesheji.dto.MerchantProductStatusDTO;
 import com.biyesheji.dto.MerchantSkuSaveDTO;
+import com.biyesheji.dto.StockAdjustDTO;
 import com.biyesheji.dto.R;
 import com.biyesheji.entity.Product;
 import com.biyesheji.entity.ProductSku;
+import com.biyesheji.entity.Stock;
+import com.biyesheji.entity.StockLedger;
 import com.biyesheji.exception.BizException;
 import com.biyesheji.product.service.ProductService;
 import jakarta.validation.Valid;
@@ -40,5 +43,11 @@ public class MerchantProductController {
     public R<List<ProductSku>> skus(@RequestHeader("X-User-Role") Integer role, @PathVariable Long id) { requireOwner(role); return R.ok(productService.listSkus(id)); }
     @PostMapping("/{id}/skus")
     public R<ProductSku> createSku(@RequestHeader("X-User-Role") Integer role, @RequestHeader("X-User-Id") Long userId, @PathVariable Long id, @Valid @RequestBody MerchantSkuSaveDTO dto) { requireOwner(role); return R.ok(productService.createSku(id, userId, dto)); }
+    @GetMapping("/skus/{skuId}/stock")
+    public R<Stock> stock(@RequestHeader("X-User-Role") Integer role, @PathVariable Long skuId) { requireOwner(role); return R.ok(productService.getSkuStock(skuId)); }
+    @PutMapping("/skus/{skuId}/stock")
+    public R<Stock> adjustStock(@RequestHeader("X-User-Role") Integer role, @RequestHeader("X-User-Id") Long userId, @PathVariable Long skuId, @Valid @RequestBody StockAdjustDTO dto) { requireOwner(role); return R.ok(productService.adjustSkuStock(skuId, userId, dto)); }
+    @GetMapping("/skus/{skuId}/stock/ledger")
+    public R<List<StockLedger>> stockLedgers(@RequestHeader("X-User-Role") Integer role, @PathVariable Long skuId) { requireOwner(role); return R.ok(productService.listSkuStockLedgers(skuId)); }
     private void requireOwner(Integer role) { if (!Integer.valueOf(UserRole.OWNER).equals(role)) throw new BizException(403, "仅店主可管理商品"); }
 }

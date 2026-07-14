@@ -2,10 +2,12 @@ package com.biyesheji.product.service.impl;
 
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biyesheji.entity.Product;
 import com.biyesheji.dto.MerchantProductSaveDTO;
 import com.biyesheji.dto.MerchantSkuSaveDTO;
+import com.biyesheji.dto.StockAdjustDTO;
 import com.biyesheji.entity.ProductSku;
 import com.biyesheji.entity.Stock;
 import com.biyesheji.entity.StockLedger;
@@ -244,6 +246,57 @@ public class ProductServiceImpl implements ProductService {
         ledger.setBeforeAvailable(0); ledger.setAfterAvailable(dto.getInitialStock()); ledger.setOperatorId(operatorId);
         stockLedgerMapper.insert(ledger);
         clearCache(productId);
+        return sku;
+    }
+
+    @Override
+    public Stock getSkuStock(Long skuId) {
+        requireSku(skuId);
+        Stock stock = stockMapper.selectOne(new LambdaQueryWrapper<Stock>().eq(Stock::getSkuId, skuId));
+        if (stock == null) throw new BizException(404, "SKU库存不存在");
+        return stock;
+    }
+
+    @Override
+    @Transactional
+    public Stock adjustSkuStock(Long skuId, Long operatorId, StockAdjustDTO dto) {
+        if (dto.getQuantity() == 0) throw new BizException(400, "调整数量不能为0");
+        ProductSku sku = requireSku(skuId);
+        for (int attempt = 0; attempt < 3; attempt++) {
+            Stock stock = getSkuStock(skuId);
+            int nextAvailable = stock.getAvailable() + dto.getQuantity();
+            int nextTotal = stock.getTotal() + dto.getQuantity();
+            if (nextAvailable < 0 || nextTotal < stock.getLocked()) {
+                throw new BizException(400, "调整后可用库存不能为负数");
+            }
+            int rows = stockMapper.update(null, new LambdaUpdateWrapper<Stock>()
+                    .eq(Stock::getId, stock.getId()).eq(Stock::getVersion, stock.getVersion())
+                    .set(Stock::getAvailable, nextAvailable).set(Stock::getTotal, nextTotal)
+                    .set(Stock::getVersion, stock.getVersion() + 1));
+            if (rows == 1) {
+                StockLedger ledger = new StockLedger();
+                ledger.setSkuId(skuId); ledger.setAction("MANUAL_ADJUST"); ledger.setQuantity(dto.getQuantity());
+                ledger.setBeforeAvailable(stock.getAvailable()); ledger.setAfterAvailable(nextAvailable);
+                ledger.setOperatorId(operatorId); ledger.setReferenceNo(dto.getReason());
+                stockLedgerMapper.insert(ledger);
+                clearCache(sku.getProductId());
+                stock.setAvailable(nextAvailable); stock.setTotal(nextTotal); stock.setVersion(stock.getVersion() + 1);
+                return stock;
+            }
+        }
+        throw new BizException(409, "库存并发调整，请重试");
+    }
+
+    @Override
+    public List<StockLedger> listSkuStockLedgers(Long skuId) {
+        requireSku(skuId);
+        return stockLedgerMapper.selectList(new LambdaQueryWrapper<StockLedger>()
+                .eq(StockLedger::getSkuId, skuId).orderByDesc(StockLedger::getCreatedAt));
+    }
+
+    private ProductSku requireSku(Long skuId) {
+        ProductSku sku = productSkuMapper.selectById(skuId);
+        if (sku == null) throw new BizException(404, "SKU不存在");
         return sku;
     }
 }
