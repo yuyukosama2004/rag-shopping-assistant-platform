@@ -127,6 +127,7 @@ export function updateMerchantProductStatus(id: number, status: number) { return
 export function copyMerchantProduct(id: number) { return request.post(`/api/merchant/products/${id}/copy`) }
 export function deleteMerchantProduct(id: number) { return request.delete(`/api/merchant/products/${id}`) }
 export function updateMerchantProductBatchStatus(ids: number[], status: number) { return request.put('/api/merchant/products/batch-status', { ids, status }) }
+export function uploadMerchantMedia(file: File) { const data = new FormData(); data.append('file', file); return request.post('/api/merchant/media', data) }
 export function getMerchantSkus(productId: number) { return request.get(`/api/merchant/products/${productId}/skus`) }
 export function createMerchantSku(productId: number, data: MerchantSkuInput) { return request.post(`/api/merchant/products/${productId}/skus`, data) }
 export function updateMerchantSku(skuId: number, data: MerchantSkuUpdateInput) { return request.put(`/api/merchant/products/skus/${skuId}`, data) }

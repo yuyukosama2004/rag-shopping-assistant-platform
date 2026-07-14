@@ -37,6 +37,9 @@ services:
     env_file: ../.env
     environment:
       SERVER_ADDRESS: 0.0.0.0
+      MEDIA_STORAGE_PATH: /data/media
+    volumes:
+      - product-media:/data/media
     networks: [internal]
     healthcheck:
       test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:8082/actuator/health > /dev/null"]
@@ -94,3 +97,6 @@ networks:
   internal:
     name: biyesheji-internal
     external: true
+
+volumes:
+  product-media:
