@@ -1,11 +1,14 @@
 package com.biyesheji.order.service.impl;
 
 import com.biyesheji.dto.OrderSubmitDTO;
+import com.biyesheji.dto.MerchantShipmentDTO;
 import com.biyesheji.entity.OrderItem;
+import com.biyesheji.entity.OrderOperation;
 import com.biyesheji.entity.Product;
 import com.biyesheji.entity.ProductSku;
 import com.biyesheji.order.mapper.OrderItemMapper;
 import com.biyesheji.order.mapper.OrderMapper;
+import com.biyesheji.order.mapper.OrderOperationMapper;
 import com.biyesheji.order.mapper.ProductMapper;
 import com.biyesheji.order.mapper.ProductSkuMapper;
 import com.biyesheji.order.service.StockService;
@@ -35,6 +38,7 @@ class OrderServiceImplTest {
 
     @Mock private OrderMapper orderMapper;
     @Mock private OrderItemMapper orderItemMapper;
+    @Mock private OrderOperationMapper orderOperationMapper;
     @Mock private ProductMapper productMapper;
     @Mock private ProductSkuMapper productSkuMapper;
     @Mock private StockService stockService;
@@ -68,5 +72,20 @@ class OrderServiceImplTest {
         assertEquals("SKU-11", captor.getValue().getSkuCode());
         assertEquals(new BigDecimal("199.00"), captor.getValue().getPrice());
         assertEquals(new BigDecimal("398.00"), captor.getValue().getSubtotal());
+    }
+
+    @Test
+    void shipRecordsMerchantOperationAfterPaidTransition() {
+        when(orderMapper.update(any(), any())).thenReturn(1);
+        MerchantShipmentDTO dto = new MerchantShipmentDTO();
+        dto.setCarrier("顺丰"); dto.setTrackingNo("SF123"); dto.setNote("已核验包装");
+
+        orderService.ship(9L, "ORDER-1", dto);
+
+        ArgumentCaptor<OrderOperation> captor = ArgumentCaptor.forClass(OrderOperation.class);
+        verify(orderOperationMapper).insert(captor.capture());
+        assertEquals("ORDER-1", captor.getValue().getOrderNo());
+        assertEquals("MERCHANT_SHIP", captor.getValue().getAction());
+        assertEquals(9L, captor.getValue().getOperatorId());
     }
 }

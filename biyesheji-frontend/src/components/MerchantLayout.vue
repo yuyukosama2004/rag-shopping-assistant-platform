@@ -12,9 +12,10 @@ const userStore = useUserStore()
       <div style="padding:24px 20px;font-size:18px;font-weight:700">商家工作台</div>
       <el-menu router background-color="#1f2937" text-color="#cbd5e1" active-text-color="#fff" :default-active="router.currentRoute.value.path">
         <el-menu-item index="/merchant"><el-icon><HomeFilled /></el-icon><span>概览</span></el-menu-item>
-        <el-menu-item index="/merchant/store"><el-icon><Setting /></el-icon><span>店铺设置</span></el-menu-item>
-        <el-menu-item index="/merchant/staff"><el-icon><User /></el-icon><span>店员管理</span></el-menu-item>
+        <el-menu-item v-if="userStore.user?.role === 1" index="/merchant/store"><el-icon><Setting /></el-icon><span>店铺设置</span></el-menu-item>
+        <el-menu-item v-if="userStore.user?.role === 1" index="/merchant/staff"><el-icon><User /></el-icon><span>店员管理</span></el-menu-item>
         <el-menu-item index="/merchant/products"><el-icon><Goods /></el-icon><span>商品管理</span></el-menu-item>
+        <el-menu-item index="/merchant/orders"><el-icon><Tickets /></el-icon><span>订单管理</span></el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>

@@ -28,6 +28,7 @@ const routes = [
       { path: 'store', name: 'MerchantStoreSetting', component: () => import('../views/MerchantStoreSetting.vue') },
       { path: 'staff', name: 'MerchantStaff', component: () => import('../views/MerchantStaff.vue') },
       { path: 'products', name: 'MerchantProducts', component: () => import('../views/MerchantProducts.vue') },
+      { path: 'orders', name: 'MerchantOrders', component: () => import('../views/MerchantOrders.vue') },
     ],
   },
   {
@@ -58,10 +59,10 @@ router.beforeEach((to) => {
   if (to.meta.merchant && !localStorage.getItem('accessToken')) {
     return '/merchant/login'
   }
-  if (to.meta.merchant && user?.role !== 1) {
+  if (to.meta.merchant && user?.role !== 1 && user?.role !== 2) {
     return '/'
   }
-  if (to.meta.merchantGuest && localStorage.getItem('accessToken') && user?.role === 1) {
+  if (to.meta.merchantGuest && localStorage.getItem('accessToken') && (user?.role === 1 || user?.role === 2)) {
     return '/merchant'
   }
   if (to.meta.auth && !localStorage.getItem('accessToken')) {
