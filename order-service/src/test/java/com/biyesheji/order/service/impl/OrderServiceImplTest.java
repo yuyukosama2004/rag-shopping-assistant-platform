@@ -6,6 +6,8 @@ import com.biyesheji.entity.OrderItem;
 import com.biyesheji.entity.OrderOperation;
 import com.biyesheji.entity.Product;
 import com.biyesheji.entity.ProductSku;
+import com.biyesheji.entity.Order;
+import com.biyesheji.constant.OrderStatus;
 import com.biyesheji.order.mapper.OrderItemMapper;
 import com.biyesheji.order.mapper.OrderMapper;
 import com.biyesheji.order.mapper.OrderOperationMapper;
@@ -87,5 +89,19 @@ class OrderServiceImplTest {
         assertEquals("ORDER-1", captor.getValue().getOrderNo());
         assertEquals("MERCHANT_SHIP", captor.getValue().getAction());
         assertEquals(9L, captor.getValue().getOperatorId());
+    }
+
+    @Test
+    void acceptsCodOrderWithoutPretendingItWasPaid() {
+        Order order = new Order();
+        order.setOrderNo("ORDER-COD"); order.setPaymentMethod("COD"); order.setStatus(OrderStatus.PENDING.getCode());
+        when(orderMapper.selectOne(any())).thenReturn(order);
+        when(orderMapper.update(any(), any())).thenReturn(1);
+
+        orderService.accept(9L, "ORDER-COD");
+
+        ArgumentCaptor<OrderOperation> captor = ArgumentCaptor.forClass(OrderOperation.class);
+        verify(orderOperationMapper).insert(captor.capture());
+        assertEquals("MERCHANT_ACCEPT", captor.getValue().getAction());
     }
 }

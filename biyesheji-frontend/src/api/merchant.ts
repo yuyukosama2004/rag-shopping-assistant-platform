@@ -109,6 +109,7 @@ export interface MerchantOrder {
   id: number
   orderNo: string
   totalAmount: number
+  paymentMethod: 'OFFLINE' | 'COD'
   status: number
   statusDesc: string
   receiverName: string
@@ -116,6 +117,7 @@ export interface MerchantOrder {
   receiverAddress: string
   shippingCarrier?: string
   trackingNo?: string
+  payTime?: string
   createdAt: string
   items: Array<{ id: number; productName: string; skuCode?: string; skuSpecJson?: string; price: number; quantity: number; subtotal: number }>
 }
@@ -159,4 +161,5 @@ export function adjustMerchantSkuStock(skuId: number, quantity: number, reason: 
 export function getMerchantSkuStockLedger(skuId: number) { return request.get(`/api/merchant/products/skus/${skuId}/stock/ledger`) }
 export function getMerchantOrders(pageNum = 1, pageSize = 20, status?: number) { return request.get('/api/merchant/orders', { params: { pageNum, pageSize, status } }) }
 export function confirmMerchantOrderPayment(orderNo: string) { return request.post(`/api/merchant/orders/${orderNo}/confirm-payment`) }
+export function acceptMerchantOrder(orderNo: string) { return request.post(`/api/merchant/orders/${orderNo}/accept`) }
 export function shipMerchantOrder(orderNo: string, data: { carrier: string; trackingNo: string; note?: string }) { return request.post(`/api/merchant/orders/${orderNo}/ship`, data) }

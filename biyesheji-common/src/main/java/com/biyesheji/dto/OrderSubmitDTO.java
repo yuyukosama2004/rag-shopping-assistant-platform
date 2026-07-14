@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -25,6 +26,8 @@ public class OrderSubmitDTO implements Serializable {
     @NotBlank(message = "收货地址不能为空")
     @Size(max = 255, message = "收货地址长度不能超过255")
     private String receiverAddress;
+    @Pattern(regexp = "OFFLINE|COD", message = "支付方式仅支持OFFLINE或COD")
+    private String paymentMethod = "OFFLINE";
     private String md5;  // 前端传入的购物项MD5，用于幂等
 
     @Data

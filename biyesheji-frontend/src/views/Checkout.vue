@@ -6,6 +6,7 @@ import { getAddressList } from '../api/user'
 import { ElMessage } from 'element-plus'
 const router = useRouter(); const items = ref<any[]>([]); const addresses = ref<any[]>([])
 const rcv = ref({ name: '', phone: '', address: '' }); const selectedAddr = ref(0)
+const paymentMethod = ref<'OFFLINE' | 'COD'>('OFFLINE')
 
 onMounted(async () => {
   const [cartRes, addrRes] = await Promise.all([getCartList(), getAddressList()])
@@ -19,7 +20,7 @@ const selectAddr = (a: any) => { selectedAddr.value = a.id; rcv.value = { name: 
 const submit = async () => {
   if (!rcv.value.name || !rcv.value.phone || !rcv.value.address) return ElMessage.warning('请填写收货信息')
   try {
-    const r = await submitOrder({ items: items.value.map(i => ({ productId: i.productId, skuId: i.skuId, quantity: i.quantity })), receiverName: rcv.value.name, receiverPhone: rcv.value.phone, receiverAddress: rcv.value.address })
+    const r = await submitOrder({ items: items.value.map(i => ({ productId: i.productId, skuId: i.skuId, quantity: i.quantity })), receiverName: rcv.value.name, receiverPhone: rcv.value.phone, receiverAddress: rcv.value.address, paymentMethod: paymentMethod.value })
     removeCartBatch(items.value.map(i => i.id))
     ElMessage.success('下单成功! 订单号: ' + r.data.data.orderNo)
     setTimeout(() => router.push('/orders'), 3000)
@@ -51,6 +52,7 @@ const submit = async () => {
     </div>
 
     <!-- 商品清单 -->
+    <div style="background:#fff;padding:16px;margin-bottom:14px"><div style="font-weight:600;margin-bottom:8px">付款方式</div><el-radio-group v-model="paymentMethod"><el-radio value="OFFLINE">线下付款（商家确认收款后发货）</el-radio><el-radio value="COD">货到付款（商家接单后发货）</el-radio></el-radio-group></div>
     <div style="background:#fff;padding:16px;margin-bottom:14px"><div style="font-weight:600;margin-bottom:8px">商品清单</div>
       <div v-for="it in items" :key="it.id" style="display:flex;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid #f5f5f5">
         <img :src="it.productImage||''" style="width:50px;height:50px;border-radius:4px;object-fit:cover" />

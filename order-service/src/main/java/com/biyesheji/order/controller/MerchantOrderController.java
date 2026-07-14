@@ -45,6 +45,15 @@ public class MerchantOrderController {
         return R.ok();
     }
 
+    @PostMapping("/{orderNo}/accept")
+    public R<Void> accept(@RequestHeader("X-User-Role") Integer role,
+                          @RequestHeader("X-User-Id") Long operatorId,
+                          @PathVariable String orderNo) {
+        requireMerchant(role);
+        orderService.accept(operatorId, orderNo);
+        return R.ok();
+    }
+
     @PostMapping("/{orderNo}/ship")
     public R<Void> ship(@RequestHeader("X-User-Role") Integer role,
                         @RequestHeader("X-User-Id") Long operatorId,
