@@ -59,6 +59,28 @@ export interface MerchantSkuInput {
   initialStock: number | null
 }
 
+export interface MerchantSkuStock {
+  id: number
+  productId: number
+  skuId: number
+  total: number
+  locked: number
+  available: number
+  version: number
+}
+
+export interface MerchantStockLedger {
+  id: number
+  skuId: number
+  action: string
+  quantity: number
+  beforeAvailable: number
+  afterAvailable: number
+  operatorId?: number
+  referenceNo?: string
+  createTime?: string
+}
+
 export function getPublicStoreSetting() {
   return request.get('/api/store/setting')
 }
@@ -81,3 +103,6 @@ export function updateMerchantProduct(id: number, data: MerchantProductInput) { 
 export function updateMerchantProductStatus(id: number, status: number) { return request.put(`/api/merchant/products/${id}/status`, { status }) }
 export function getMerchantSkus(productId: number) { return request.get(`/api/merchant/products/${productId}/skus`) }
 export function createMerchantSku(productId: number, data: MerchantSkuInput) { return request.post(`/api/merchant/products/${productId}/skus`, data) }
+export function getMerchantSkuStock(skuId: number) { return request.get(`/api/merchant/products/skus/${skuId}/stock`) }
+export function adjustMerchantSkuStock(skuId: number, quantity: number, reason: string) { return request.put(`/api/merchant/products/skus/${skuId}/stock`, { quantity, reason }) }
+export function getMerchantSkuStockLedger(skuId: number) { return request.get(`/api/merchant/products/skus/${skuId}/stock/ledger`) }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { createMerchantProduct, createMerchantSku, getMerchantProducts, getMerchantSkus, updateMerchantProduct, updateMerchantProductStatus, type MerchantProduct, type MerchantProductInput, type MerchantSku, type MerchantSkuInput } from '../api/merchant'
+import { adjustMerchantSkuStock, createMerchantProduct, createMerchantSku, getMerchantProducts, getMerchantSkus, getMerchantSkuStock, getMerchantSkuStockLedger, updateMerchantProduct, updateMerchantProductStatus, type MerchantProduct, type MerchantProductInput, type MerchantSku, type MerchantSkuInput, type MerchantSkuStock, type MerchantStockLedger } from '../api/merchant'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -15,8 +15,15 @@ const skuDialogVisible = ref(false)
 const skuSaving = ref(false)
 const skuProductId = ref<number | null>(null)
 const skus = ref<MerchantSku[]>([])
+const stockDialogVisible = ref(false)
+const stockLoading = ref(false)
+const stockSaving = ref(false)
+const selectedSku = ref<MerchantSku | null>(null)
+const stock = ref<MerchantSkuStock | null>(null)
+const stockLedgers = ref<MerchantStockLedger[]>([])
 const form = reactive<MerchantProductInput>({ name: '', brand: '', category: '', price: null, originalPrice: null, mainImage: '', description: '' })
 const skuForm = reactive<MerchantSkuInput>({ skuCode: '', specJson: '', price: null, originalPrice: null, initialStock: 0 })
+const stockForm = reactive({ quantity: null as number | null, reason: '' })
 
 const load = async () => {
   loading.value = true
@@ -53,6 +60,28 @@ const createSku = async () => {
     Object.assign(skuForm, { skuCode: '', specJson: '', price: null, originalPrice: null, initialStock: 0 })
   } finally { skuSaving.value = false }
 }
+const loadStock = async (skuId: number) => {
+  const [stockResponse, ledgerResponse] = await Promise.all([getMerchantSkuStock(skuId), getMerchantSkuStockLedger(skuId)])
+  stock.value = stockResponse.data.data
+  stockLedgers.value = ledgerResponse.data.data
+}
+const openStock = async (sku: MerchantSku) => {
+  selectedSku.value = sku
+  Object.assign(stockForm, { quantity: null, reason: '' })
+  stockLoading.value = true
+  stockDialogVisible.value = true
+  try { await loadStock(sku.id) } finally { stockLoading.value = false }
+}
+const adjustStock = async () => {
+  if (!selectedSku.value || !stockForm.quantity || !stockForm.reason.trim()) return ElMessage.warning('请输入非零调整数量和调整原因')
+  stockSaving.value = true
+  try {
+    await adjustMerchantSkuStock(selectedSku.value.id, stockForm.quantity, stockForm.reason.trim())
+    ElMessage.success('库存已调整')
+    Object.assign(stockForm, { quantity: null, reason: '' })
+    await loadStock(selectedSku.value.id)
+  } finally { stockSaving.value = false }
+}
 const statusText = (status: number) => status === 1 ? '已上架' : status === 2 ? '草稿' : '已下架'
 const statusType = (status: number) => status === 1 ? 'success' : status === 2 ? 'info' : 'warning'
 onMounted(load)
@@ -82,12 +111,22 @@ onMounted(load)
     </el-form>
   </el-dialog>
   <el-dialog v-model="skuDialogVisible" title="SKU 与初始库存" width="720px">
-    <el-table :data="skus" size="small" style="margin-bottom:18px"><el-table-column prop="skuCode" label="SKU编码" /><el-table-column prop="specJson" label="规格" /><el-table-column label="售价"><template #default="{ row }">¥{{ Number(row.price).toFixed(2) }}</template></el-table-column></el-table>
+    <el-table :data="skus" size="small" style="margin-bottom:18px"><el-table-column prop="skuCode" label="SKU编码" /><el-table-column prop="specJson" label="规格" /><el-table-column label="售价"><template #default="{ row }">¥{{ Number(row.price).toFixed(2) }}</template></el-table-column><el-table-column label="操作" width="90"><template #default="{ row }"><el-button text @click="openStock(row)">库存</el-button></template></el-table-column></el-table>
     <el-form label-width="90px" @submit.prevent="createSku">
       <el-row :gutter="12"><el-col :span="12"><el-form-item label="SKU编码" required><el-input v-model="skuForm.skuCode" /></el-form-item></el-col><el-col :span="12"><el-form-item label="初始库存" required><el-input-number v-model="skuForm.initialStock" :min="0" style="width:100%" /></el-form-item></el-col></el-row>
       <el-row :gutter="12"><el-col :span="12"><el-form-item label="售价" required><el-input-number v-model="skuForm.price" :min="0.01" :precision="2" style="width:100%" /></el-form-item></el-col><el-col :span="12"><el-form-item label="划线价"><el-input-number v-model="skuForm.originalPrice" :min="0.01" :precision="2" style="width:100%" /></el-form-item></el-col></el-row>
       <el-form-item label="规格JSON"><el-input v-model="skuForm.specJson" placeholder='例如 {"颜色":"黑色","容量":"128GB"}' /></el-form-item>
       <el-form-item><el-button type="primary" :loading="skuSaving" @click="createSku">新增SKU</el-button></el-form-item>
     </el-form>
+  </el-dialog>
+  <el-dialog v-model="stockDialogVisible" :title="`库存：${selectedSku?.skuCode || ''}`" width="760px">
+    <div v-loading="stockLoading">
+      <el-descriptions v-if="stock" :column="3" border style="margin-bottom:18px"><el-descriptions-item label="总库存">{{ stock.total }}</el-descriptions-item><el-descriptions-item label="锁定库存">{{ stock.locked }}</el-descriptions-item><el-descriptions-item label="可用库存">{{ stock.available }}</el-descriptions-item></el-descriptions>
+      <el-form label-width="90px" @submit.prevent="adjustStock">
+        <el-row :gutter="12"><el-col :span="10"><el-form-item label="调整数量" required><el-input-number v-model="stockForm.quantity" :min="-999999" :max="999999" style="width:100%" /><div style="font-size:12px;color:#909399">正数入库，负数出库</div></el-form-item></el-col><el-col :span="14"><el-form-item label="调整原因" required><el-input v-model="stockForm.reason" maxlength="64" show-word-limit /></el-form-item></el-col></el-row>
+        <el-form-item><el-button type="primary" :loading="stockSaving" @click="adjustStock">确认调整</el-button></el-form-item>
+      </el-form>
+      <el-table :data="stockLedgers" size="small"><el-table-column prop="createTime" label="时间" min-width="160" /><el-table-column prop="action" label="动作" width="130" /><el-table-column prop="quantity" label="变更" width="90" /><el-table-column prop="beforeAvailable" label="调整前" width="90" /><el-table-column prop="afterAvailable" label="调整后" width="90" /><el-table-column prop="referenceNo" label="原因" min-width="140" /></el-table>
+    </div>
   </el-dialog>
 </template>
