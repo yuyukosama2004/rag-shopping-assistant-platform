@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
+import { refreshAccessToken } from '../api/request'
 interface Msg { role:'user'|'assistant',content:string }
 const msgs = ref<Msg[]>([]); const query = ref(''); const loading = ref(false); const box = ref<HTMLElement>()
 const scroll = () => nextTick(() => { if (box.value) box.value.scrollTop = box.value.scrollHeight })
-const send = () => {
+const send = async () => {
   if (!query.value.trim()) return
   msgs.value.push({ role:'user', content: query.value.trim() }); const t = query.value.trim(); query.value = ''; loading.value = true
   const am: Msg = { role:'assistant', content:'' }; msgs.value.push(am); scroll()
   const base = import.meta.env.VITE_API_BASE_URL || ''
-  fetch(`${base}/api/order/ai/chat?query=${encodeURIComponent(t)}`, {
-    headers: { Authorization: `Bearer ${localStorage.getItem('accessToken') || ''}` },
-  })
+  const openStream = async (retried = false): Promise<Response> => {
+    const response = await fetch(`${base}/api/order/ai/chat?query=${encodeURIComponent(t)}`, { headers: { Authorization: `Bearer ${localStorage.getItem('accessToken') || ''}` } })
+    if (response.status === 401 && !retried && localStorage.getItem('refreshToken')) { await refreshAccessToken(); return openStream(true) }
+    return response
+  }
+  openStream()
     .then(res => { if (!res.ok || !res.body) throw new Error(); const r = res.body.getReader(); const d = new TextDecoder(); let b = ''
       const read = () => { r.read().then(({ done, value }) => { if (done) { loading.value = false; return }; b += d.decode(value, { stream:true }); const ls = b.split('\n'); b = ls.pop()||''
         for (const l of ls) { if (l.startsWith('data:')) { const dt = l.slice(5).trim(); if (dt && dt !== '[DONE]') am.content += dt } }; scroll(); read() }) }; read() })

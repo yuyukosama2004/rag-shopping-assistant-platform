@@ -13,7 +13,7 @@ function clearSession() {
   localStorage.removeItem('userInfo')
 }
 
-async function refreshAccessToken() {
+export async function refreshAccessToken() {
   const refreshToken = localStorage.getItem('refreshToken')
   if (!refreshToken) throw new Error('Missing refresh token')
 
@@ -27,10 +27,12 @@ async function refreshAccessToken() {
   }
   localStorage.setItem('accessToken', data.accessToken)
   localStorage.setItem('refreshToken', data.refreshToken)
+  const currentUser = (() => { try { return JSON.parse(localStorage.getItem('userInfo') || 'null') } catch { return null } })()
   localStorage.setItem('userInfo', JSON.stringify({
     id: data.userId,
     username: data.username,
     nickname: data.nickname,
+    role: currentUser?.role,
   }))
 }
 
