@@ -1,5 +1,13 @@
 import request from './request'
 
+export interface ShippingRule {
+  id: number
+  ruleType: 'DELIVERY' | 'PICKUP'
+  name: string
+  baseFee: number
+  freeShippingThreshold?: number
+}
+
 export function addToCart(productId: number, skuId: number, quantity = 1) {
   return request.post('/api/order/cart', { productId, skuId, quantity })
 }
@@ -38,6 +46,10 @@ export function getCartCount() {
 
 export function submitOrder(data: unknown) {
   return request.post('/api/order/submit', data)
+}
+
+export function getShippingRules() {
+  return request.get('/api/shipping-rules')
 }
 
 export function getOrderPage(params: unknown) {

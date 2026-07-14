@@ -7,6 +7,7 @@ import com.biyesheji.entity.OrderOperation;
 import com.biyesheji.entity.Product;
 import com.biyesheji.entity.ProductSku;
 import com.biyesheji.entity.Order;
+import com.biyesheji.entity.ShippingRule;
 import com.biyesheji.constant.OrderStatus;
 import com.biyesheji.order.mapper.OrderItemMapper;
 import com.biyesheji.order.mapper.OrderMapper;
@@ -14,6 +15,7 @@ import com.biyesheji.order.mapper.OrderOperationMapper;
 import com.biyesheji.order.mapper.ProductMapper;
 import com.biyesheji.order.mapper.ProductSkuMapper;
 import com.biyesheji.order.service.StockService;
+import com.biyesheji.order.service.ShippingRuleService;
 import com.biyesheji.utils.RedisUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,6 +46,7 @@ class OrderServiceImplTest {
     @Mock private ProductMapper productMapper;
     @Mock private ProductSkuMapper productSkuMapper;
     @Mock private StockService stockService;
+    @Mock private ShippingRuleService shippingRuleService;
     @Mock private RedisUtil redisUtil;
     @InjectMocks private OrderServiceImpl orderService;
 
@@ -58,11 +61,15 @@ class OrderServiceImplTest {
         when(productSkuMapper.selectById(11L)).thenReturn(sku);
         when(redisUtil.setIfAbsent(anyString(), eq("processing"), eq(5L), eq(TimeUnit.MINUTES))).thenReturn(true);
         when(stockService.deduct(11L, 2)).thenReturn(true);
+        ShippingRule shippingRule = new ShippingRule();
+        shippingRule.setId(1L); shippingRule.setRuleType("DELIVERY"); shippingRule.setName("Standard delivery"); shippingRule.setBaseFee(new BigDecimal("12.00"));
+        when(shippingRuleService.requireActive(1L)).thenReturn(shippingRule);
+        when(shippingRuleService.calculateFee(shippingRule, new BigDecimal("398.00"))).thenReturn(new BigDecimal("12.00"));
 
         OrderSubmitDTO dto = new OrderSubmitDTO();
         OrderSubmitDTO.OrderItemDTO item = new OrderSubmitDTO.OrderItemDTO();
         item.setProductId(1L); item.setSkuId(11L); item.setQuantity(2);
-        dto.setItems(List.of(item)); dto.setReceiverName("测试用户"); dto.setReceiverPhone("13800000000"); dto.setReceiverAddress("测试地址");
+        dto.setItems(List.of(item)); dto.setReceiverName("测试用户"); dto.setReceiverPhone("13800000000"); dto.setReceiverAddress("测试地址"); dto.setShippingRuleId(1L);
 
         String orderNo = orderService.submit(7L, dto);
 
@@ -74,6 +81,11 @@ class OrderServiceImplTest {
         assertEquals("SKU-11", captor.getValue().getSkuCode());
         assertEquals(new BigDecimal("199.00"), captor.getValue().getPrice());
         assertEquals(new BigDecimal("398.00"), captor.getValue().getSubtotal());
+        ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
+        verify(orderMapper).insert(orderCaptor.capture());
+        assertEquals(new BigDecimal("398.00"), orderCaptor.getValue().getProductAmount());
+        assertEquals(new BigDecimal("12.00"), orderCaptor.getValue().getShippingFee());
+        assertEquals(new BigDecimal("410.00"), orderCaptor.getValue().getTotalAmount());
     }
 
     @Test
