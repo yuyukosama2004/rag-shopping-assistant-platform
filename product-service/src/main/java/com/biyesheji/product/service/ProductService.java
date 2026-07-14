@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biyesheji.entity.Product;
 import com.biyesheji.dto.MerchantProductSaveDTO;
 import com.biyesheji.dto.MerchantSkuSaveDTO;
+import com.biyesheji.dto.MerchantSkuUpdateDTO;
 import com.biyesheji.dto.StockAdjustDTO;
 import com.biyesheji.entity.ProductSku;
 import com.biyesheji.entity.Stock;
@@ -27,6 +28,7 @@ public interface ProductService {
     Product updateStatus(Long id, Integer status);
     List<ProductSku> listSkus(Long productId);
     ProductSku createSku(Long productId, Long operatorId, MerchantSkuSaveDTO dto);
+    ProductSku updateSku(Long skuId, MerchantSkuUpdateDTO dto);
     Stock getSkuStock(Long skuId);
     Stock adjustSkuStock(Long skuId, Long operatorId, StockAdjustDTO dto);
     List<StockLedger> listSkuStockLedgers(Long skuId);

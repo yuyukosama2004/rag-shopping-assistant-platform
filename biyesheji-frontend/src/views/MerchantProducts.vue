@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { adjustMerchantSkuStock, createMerchantProduct, createMerchantSku, getMerchantProducts, getMerchantSkus, getMerchantSkuStock, getMerchantSkuStockLedger, updateMerchantProduct, updateMerchantProductStatus, type MerchantProduct, type MerchantProductInput, type MerchantSku, type MerchantSkuInput, type MerchantSkuStock, type MerchantStockLedger } from '../api/merchant'
+import { adjustMerchantSkuStock, createMerchantProduct, createMerchantSku, getMerchantProducts, getMerchantSkus, getMerchantSkuStock, getMerchantSkuStockLedger, updateMerchantProduct, updateMerchantProductStatus, updateMerchantSku, type MerchantProduct, type MerchantProductInput, type MerchantSku, type MerchantSkuInput, type MerchantSkuStock, type MerchantStockLedger } from '../api/merchant'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -14,6 +14,7 @@ const editingId = ref<number | null>(null)
 const skuDialogVisible = ref(false)
 const skuSaving = ref(false)
 const skuProductId = ref<number | null>(null)
+const editingSkuId = ref<number | null>(null)
 const skus = ref<MerchantSku[]>([])
 const stockDialogVisible = ref(false)
 const stockLoading = ref(false)
@@ -48,18 +49,20 @@ const toggleStatus = async (item: MerchantProduct) => {
   ElMessage.success(target === 1 ? '商品已上架' : '商品已下架'); await load()
 }
 const openSkus = async (item: MerchantProduct) => {
-  skuProductId.value = item.id; Object.assign(skuForm, { skuCode: '', specJson: '', price: item.price, originalPrice: item.originalPrice || null, initialStock: 0 })
+  skuProductId.value = item.id; editingSkuId.value = null; Object.assign(skuForm, { skuCode: '', specJson: '', price: item.price, originalPrice: item.originalPrice || null, initialStock: 0 })
   skus.value = (await getMerchantSkus(item.id)).data.data; skuDialogVisible.value = true
 }
 const createSku = async () => {
   if (!skuProductId.value || !skuForm.skuCode.trim() || !skuForm.price || skuForm.initialStock === null) return ElMessage.warning('请填写SKU编码、售价和初始库存')
   skuSaving.value = true
   try {
-    await createMerchantSku(skuProductId.value, skuForm); ElMessage.success('SKU已创建')
+    if (editingSkuId.value) await updateMerchantSku(editingSkuId.value, { ...skuForm, status: 1 }); else await createMerchantSku(skuProductId.value, skuForm)
+    ElMessage.success(editingSkuId.value ? 'SKU已保存' : 'SKU已创建')
     skus.value = (await getMerchantSkus(skuProductId.value)).data.data
-    Object.assign(skuForm, { skuCode: '', specJson: '', price: null, originalPrice: null, initialStock: 0 })
+    editingSkuId.value = null; Object.assign(skuForm, { skuCode: '', specJson: '', price: null, originalPrice: null, initialStock: 0 })
   } finally { skuSaving.value = false }
 }
+const editSku = (sku: MerchantSku) => { editingSkuId.value = sku.id; Object.assign(skuForm, { ...sku, initialStock: 0 }) }
 const loadStock = async (skuId: number) => {
   const [stockResponse, ledgerResponse] = await Promise.all([getMerchantSkuStock(skuId), getMerchantSkuStockLedger(skuId)])
   stock.value = stockResponse.data.data
@@ -111,12 +114,12 @@ onMounted(load)
     </el-form>
   </el-dialog>
   <el-dialog v-model="skuDialogVisible" title="SKU 与初始库存" width="720px">
-    <el-table :data="skus" size="small" style="margin-bottom:18px"><el-table-column prop="skuCode" label="SKU编码" /><el-table-column prop="specJson" label="规格" /><el-table-column label="售价"><template #default="{ row }">¥{{ Number(row.price).toFixed(2) }}</template></el-table-column><el-table-column label="操作" width="90"><template #default="{ row }"><el-button text @click="openStock(row)">库存</el-button></template></el-table-column></el-table>
+    <el-table :data="skus" size="small" style="margin-bottom:18px"><el-table-column prop="skuCode" label="SKU编码" /><el-table-column prop="specJson" label="规格" /><el-table-column label="售价"><template #default="{ row }">¥{{ Number(row.price).toFixed(2) }}</template></el-table-column><el-table-column label="操作" width="130"><template #default="{ row }"><el-button text @click="editSku(row)">编辑</el-button><el-button text @click="openStock(row)">库存</el-button></template></el-table-column></el-table>
     <el-form label-width="90px" @submit.prevent="createSku">
-      <el-row :gutter="12"><el-col :span="12"><el-form-item label="SKU编码" required><el-input v-model="skuForm.skuCode" /></el-form-item></el-col><el-col :span="12"><el-form-item label="初始库存" required><el-input-number v-model="skuForm.initialStock" :min="0" style="width:100%" /></el-form-item></el-col></el-row>
+      <el-row :gutter="12"><el-col :span="12"><el-form-item label="SKU编码" required><el-input v-model="skuForm.skuCode" /></el-form-item></el-col><el-col :span="12"><el-form-item v-if="!editingSkuId" label="初始库存" required><el-input-number v-model="skuForm.initialStock" :min="0" style="width:100%" /></el-form-item></el-col></el-row>
       <el-row :gutter="12"><el-col :span="12"><el-form-item label="售价" required><el-input-number v-model="skuForm.price" :min="0.01" :precision="2" style="width:100%" /></el-form-item></el-col><el-col :span="12"><el-form-item label="划线价"><el-input-number v-model="skuForm.originalPrice" :min="0.01" :precision="2" style="width:100%" /></el-form-item></el-col></el-row>
       <el-form-item label="规格JSON"><el-input v-model="skuForm.specJson" placeholder='例如 {"颜色":"黑色","容量":"128GB"}' /></el-form-item>
-      <el-form-item><el-button type="primary" :loading="skuSaving" @click="createSku">新增SKU</el-button></el-form-item>
+      <el-form-item><el-button type="primary" :loading="skuSaving" @click="createSku">{{ editingSkuId ? '保存SKU' : '新增SKU' }}</el-button><el-button v-if="editingSkuId" @click="editingSkuId = null; Object.assign(skuForm, { skuCode: '', specJson: '', price: null, originalPrice: null, initialStock: 0 })">取消编辑</el-button></el-form-item>
     </el-form>
   </el-dialog>
   <el-dialog v-model="stockDialogVisible" :title="`库存：${selectedSku?.skuCode || ''}`" width="760px">

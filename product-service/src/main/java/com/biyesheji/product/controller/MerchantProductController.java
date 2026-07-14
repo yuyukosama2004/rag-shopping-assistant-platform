@@ -5,6 +5,7 @@ import com.biyesheji.constant.UserRole;
 import com.biyesheji.dto.MerchantProductSaveDTO;
 import com.biyesheji.dto.MerchantProductStatusDTO;
 import com.biyesheji.dto.MerchantSkuSaveDTO;
+import com.biyesheji.dto.MerchantSkuUpdateDTO;
 import com.biyesheji.dto.StockAdjustDTO;
 import com.biyesheji.dto.R;
 import com.biyesheji.entity.Product;
@@ -43,6 +44,8 @@ public class MerchantProductController {
     public R<List<ProductSku>> skus(@RequestHeader("X-User-Role") Integer role, @PathVariable Long id) { requireMerchant(role); return R.ok(productService.listSkus(id)); }
     @PostMapping("/{id}/skus")
     public R<ProductSku> createSku(@RequestHeader("X-User-Role") Integer role, @RequestHeader("X-User-Id") Long userId, @PathVariable Long id, @Valid @RequestBody MerchantSkuSaveDTO dto) { requireMerchant(role); return R.ok(productService.createSku(id, userId, dto)); }
+    @PutMapping("/skus/{skuId}")
+    public R<ProductSku> updateSku(@RequestHeader("X-User-Role") Integer role, @PathVariable Long skuId, @Valid @RequestBody MerchantSkuUpdateDTO dto) { requireMerchant(role); return R.ok(productService.updateSku(skuId, dto)); }
     @GetMapping("/skus/{skuId}/stock")
     public R<Stock> stock(@RequestHeader("X-User-Role") Integer role, @PathVariable Long skuId) { requireMerchant(role); return R.ok(productService.getSkuStock(skuId)); }
     @PutMapping("/skus/{skuId}/stock")

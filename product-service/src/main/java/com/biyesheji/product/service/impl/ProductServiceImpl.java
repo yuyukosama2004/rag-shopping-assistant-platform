@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biyesheji.entity.Product;
 import com.biyesheji.dto.MerchantProductSaveDTO;
 import com.biyesheji.dto.MerchantSkuSaveDTO;
+import com.biyesheji.dto.MerchantSkuUpdateDTO;
 import com.biyesheji.dto.StockAdjustDTO;
 import com.biyesheji.entity.ProductSku;
 import com.biyesheji.entity.Stock;
@@ -268,6 +269,23 @@ public class ProductServiceImpl implements ProductService {
         ledger.setBeforeAvailable(0); ledger.setAfterAvailable(dto.getInitialStock()); ledger.setOperatorId(operatorId);
         stockLedgerMapper.insert(ledger);
         clearCache(productId);
+        return sku;
+    }
+
+    @Override
+    public ProductSku updateSku(Long skuId, MerchantSkuUpdateDTO dto) {
+        ProductSku sku = requireSku(skuId);
+        if (!sku.getSkuCode().equals(dto.getSkuCode()) && productSkuMapper.selectCount(new LambdaQueryWrapper<ProductSku>()
+                .eq(ProductSku::getSkuCode, dto.getSkuCode())) > 0) {
+            throw new BizException(400, "SKU编码已存在");
+        }
+        sku.setSkuCode(dto.getSkuCode());
+        sku.setSpecJson(dto.getSpecJson());
+        sku.setPrice(dto.getPrice());
+        sku.setOriginalPrice(dto.getOriginalPrice());
+        sku.setStatus(dto.getStatus());
+        productSkuMapper.updateById(sku);
+        clearCache(sku.getProductId());
         return sku;
     }
 
