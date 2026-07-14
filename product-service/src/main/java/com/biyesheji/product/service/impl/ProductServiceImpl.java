@@ -195,6 +195,10 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public Product updateStatus(Long id, Integer status) {
         Product product = requireProduct(id);
+        if (status == 1 && productSkuMapper.selectCount(new LambdaQueryWrapper<ProductSku>()
+                .eq(ProductSku::getProductId, id).eq(ProductSku::getStatus, 1)) == 0) {
+            throw new BizException(400, "上架商品前请至少创建一个可售 SKU");
+        }
         product.setStatus(status);
         productMapper.updateById(product);
         clearCache(id);
