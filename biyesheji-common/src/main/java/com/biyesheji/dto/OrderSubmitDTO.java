@@ -28,6 +28,8 @@ public class OrderSubmitDTO implements Serializable {
     private String receiverAddress;
     @Pattern(regexp = "OFFLINE|COD", message = "支付方式仅支持OFFLINE或COD")
     private String paymentMethod = "OFFLINE";
+    @NotNull(message = "配送方式不能为空")
+    private Long shippingRuleId;
     private String md5;  // 前端传入的购物项MD5，用于幂等
 
     @Data

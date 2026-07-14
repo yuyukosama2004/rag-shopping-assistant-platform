@@ -109,6 +109,10 @@ export interface MerchantOrder {
   id: number
   orderNo: string
   totalAmount: number
+  productAmount: number
+  shippingFee: number
+  shippingRuleName?: string
+  shippingMethod?: 'DELIVERY' | 'PICKUP'
   paymentMethod: 'OFFLINE' | 'COD'
   status: number
   statusDesc: string
@@ -120,6 +124,25 @@ export interface MerchantOrder {
   payTime?: string
   createdAt: string
   items: Array<{ id: number; productName: string; skuCode?: string; skuSpecJson?: string; price: number; quantity: number; subtotal: number }>
+}
+
+export interface MerchantShippingRule {
+  id: number
+  ruleType: 'DELIVERY' | 'PICKUP'
+  name: string
+  baseFee: number
+  freeShippingThreshold?: number
+  status: number
+  sortOrder: number
+}
+
+export interface MerchantShippingRuleInput {
+  ruleType: 'DELIVERY' | 'PICKUP'
+  name: string
+  baseFee: number | null
+  freeShippingThreshold?: number | null
+  status: number
+  sortOrder: number
 }
 
 export function getPublicStoreSetting() {
@@ -160,6 +183,10 @@ export function getMerchantSkuStock(skuId: number) { return request.get(`/api/me
 export function adjustMerchantSkuStock(skuId: number, quantity: number, reason: string) { return request.put(`/api/merchant/products/skus/${skuId}/stock`, { quantity, reason }) }
 export function getMerchantSkuStockLedger(skuId: number) { return request.get(`/api/merchant/products/skus/${skuId}/stock/ledger`) }
 export function getMerchantOrders(pageNum = 1, pageSize = 20, status?: number) { return request.get('/api/merchant/orders', { params: { pageNum, pageSize, status } }) }
+export function getMerchantShippingRules() { return request.get('/api/merchant/shipping-rules') }
+export function createMerchantShippingRule(data: MerchantShippingRuleInput) { return request.post('/api/merchant/shipping-rules', data) }
+export function updateMerchantShippingRule(id: number, data: MerchantShippingRuleInput) { return request.put(`/api/merchant/shipping-rules/${id}`, data) }
+export function deleteMerchantShippingRule(id: number) { return request.delete(`/api/merchant/shipping-rules/${id}`) }
 export function confirmMerchantOrderPayment(orderNo: string) { return request.post(`/api/merchant/orders/${orderNo}/confirm-payment`) }
 export function acceptMerchantOrder(orderNo: string) { return request.post(`/api/merchant/orders/${orderNo}/accept`) }
 export function shipMerchantOrder(orderNo: string, data: { carrier: string; trackingNo: string; note?: string }) { return request.post(`/api/merchant/orders/${orderNo}/ship`, data) }

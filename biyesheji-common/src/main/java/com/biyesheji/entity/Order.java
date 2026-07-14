@@ -20,6 +20,11 @@ public class Order extends BaseEntity {
     private String orderNo;
     private Long userId;
     private BigDecimal totalAmount;
+    private BigDecimal productAmount;
+    private BigDecimal shippingFee;
+    private Long shippingRuleId;
+    private String shippingRuleName;
+    private String shippingMethod;
     private String paymentMethod;
     private Integer status;
     private String receiverName;

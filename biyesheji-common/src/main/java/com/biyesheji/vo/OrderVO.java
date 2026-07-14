@@ -16,6 +16,11 @@ public class OrderVO implements Serializable {
     private String orderNo;
     private Long userId;
     private BigDecimal totalAmount;
+    private BigDecimal productAmount;
+    private BigDecimal shippingFee;
+    private Long shippingRuleId;
+    private String shippingRuleName;
+    private String shippingMethod;
     private String paymentMethod;
     private Integer status;
     private String statusDesc;
@@ -38,6 +43,11 @@ public class OrderVO implements Serializable {
         vo.setOrderNo(order.getOrderNo());
         vo.setUserId(order.getUserId());
         vo.setTotalAmount(order.getTotalAmount());
+        vo.setProductAmount(order.getProductAmount());
+        vo.setShippingFee(order.getShippingFee());
+        vo.setShippingRuleId(order.getShippingRuleId());
+        vo.setShippingRuleName(order.getShippingRuleName());
+        vo.setShippingMethod(order.getShippingMethod());
         vo.setPaymentMethod(order.getPaymentMethod());
         vo.setStatus(order.getStatus());
         vo.setStatusDesc(OrderStatus.descriptionOf(order.getStatus()));

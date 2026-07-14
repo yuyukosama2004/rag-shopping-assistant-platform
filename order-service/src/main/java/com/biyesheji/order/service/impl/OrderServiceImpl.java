@@ -14,6 +14,7 @@ import com.biyesheji.entity.OrderItem;
 import com.biyesheji.entity.OrderOperation;
 import com.biyesheji.entity.Product;
 import com.biyesheji.entity.ProductSku;
+import com.biyesheji.entity.ShippingRule;
 import com.biyesheji.exception.BizException;
 import com.biyesheji.order.mapper.OrderItemMapper;
 import com.biyesheji.order.mapper.OrderMapper;
@@ -22,6 +23,7 @@ import com.biyesheji.order.mapper.ProductMapper;
 import com.biyesheji.order.mapper.ProductSkuMapper;
 import com.biyesheji.order.service.OrderService;
 import com.biyesheji.order.service.StockService;
+import com.biyesheji.order.service.ShippingRuleService;
 import com.biyesheji.utils.RedisUtil;
 import com.biyesheji.vo.OrderVO;
 import lombok.RequiredArgsConstructor;
@@ -56,6 +58,7 @@ public class OrderServiceImpl implements OrderService {
     private final ProductMapper productMapper;
     private final ProductSkuMapper productSkuMapper;
     private final StockService stockService;
+    private final ShippingRuleService shippingRuleService;
     private final RedisUtil redisUtil;
 
     @Override
@@ -64,7 +67,10 @@ public class OrderServiceImpl implements OrderService {
         validateDistinctSkus(dto);
         Map<Long, Product> products = loadProducts(dto);
         Map<Long, ProductSku> skus = loadSkus(dto, products);
-        BigDecimal totalAmount = calculateTotal(dto, skus);
+        BigDecimal productAmount = calculateTotal(dto, skus);
+        ShippingRule shippingRule = shippingRuleService.requireActive(dto.getShippingRuleId());
+        BigDecimal shippingFee = shippingRuleService.calculateFee(shippingRule, productAmount);
+        BigDecimal totalAmount = productAmount.add(shippingFee);
 
         String dedupKey = dedupKey(userId, dto);
         if (!redisUtil.setIfAbsent(dedupKey, "processing", 5, TimeUnit.MINUTES)) {
@@ -83,7 +89,7 @@ public class OrderServiceImpl implements OrderService {
             }
 
             String orderNo = IdUtil.getSnowflake().nextIdStr();
-            Order order = createOrder(orderNo, userId, totalAmount, dto);
+            Order order = createOrder(orderNo, userId, productAmount, shippingFee, shippingRule, dto);
             orderMapper.insert(order);
             for (OrderSubmitDTO.OrderItemDTO item : dto.getItems()) {
                 Product product = products.get(item.getProductId());
@@ -310,12 +316,17 @@ public class OrderServiceImpl implements OrderService {
         return "order:dedup:" + userId + ":" + MD5.create().digestHex(items);
     }
 
-    private Order createOrder(String orderNo, Long userId, BigDecimal totalAmount, OrderSubmitDTO dto) {
+    private Order createOrder(String orderNo, Long userId, BigDecimal productAmount, BigDecimal shippingFee, ShippingRule shippingRule, OrderSubmitDTO dto) {
         Order order = new Order();
         order.setId(IdUtil.getSnowflake().nextId());
         order.setOrderNo(orderNo);
         order.setUserId(userId);
-        order.setTotalAmount(totalAmount);
+        order.setProductAmount(productAmount);
+        order.setShippingFee(shippingFee);
+        order.setShippingRuleId(shippingRule.getId());
+        order.setShippingRuleName(shippingRule.getName());
+        order.setShippingMethod(shippingRule.getRuleType());
+        order.setTotalAmount(productAmount.add(shippingFee));
         order.setPaymentMethod(dto.getPaymentMethod());
         order.setStatus(OrderStatus.PENDING.getCode());
         order.setReceiverName(dto.getReceiverName());

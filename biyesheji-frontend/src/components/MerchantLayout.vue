@@ -16,6 +16,7 @@ const userStore = useUserStore()
         <el-menu-item v-if="userStore.user?.role === 1" index="/merchant/staff"><el-icon><User /></el-icon><span>店员管理</span></el-menu-item>
         <el-menu-item index="/merchant/catalog"><el-icon><Collection /></el-icon><span>品牌与分类</span></el-menu-item>
         <el-menu-item index="/merchant/products"><el-icon><Goods /></el-icon><span>商品管理</span></el-menu-item>
+        <el-menu-item index="/merchant/shipping-rules"><el-icon><Van /></el-icon><span>配送规则</span></el-menu-item>
         <el-menu-item index="/merchant/orders"><el-icon><Tickets /></el-icon><span>订单管理</span></el-menu-item>
       </el-menu>
     </el-aside>
