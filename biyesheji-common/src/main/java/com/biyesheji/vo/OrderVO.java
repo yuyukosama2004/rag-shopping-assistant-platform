@@ -2,6 +2,7 @@ package com.biyesheji.vo;
 
 import com.biyesheji.entity.Order;
 import com.biyesheji.entity.OrderItem;
+import com.biyesheji.constant.OrderStatus;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -15,6 +16,7 @@ public class OrderVO implements Serializable {
     private String orderNo;
     private Long userId;
     private BigDecimal totalAmount;
+    private String paymentMethod;
     private Integer status;
     private String statusDesc;
     private String receiverName;
@@ -23,13 +25,12 @@ public class OrderVO implements Serializable {
     private String shippingCarrier;
     private String trackingNo;
     private LocalDateTime payTime;
+    private LocalDateTime processingAt;
     private LocalDateTime shippedAt;
     private LocalDateTime cancelTime;
     private LocalDateTime timeoutTime;
     private LocalDateTime createdAt;
     private List<OrderItem> items;
-
-    private static final String[] STATUS_DESC = {"待支付", "已支付", "已发货", "已完成", "已取消", "已超时"};
 
     public static OrderVO from(Order order, List<OrderItem> items) {
         OrderVO vo = new OrderVO();
@@ -37,14 +38,16 @@ public class OrderVO implements Serializable {
         vo.setOrderNo(order.getOrderNo());
         vo.setUserId(order.getUserId());
         vo.setTotalAmount(order.getTotalAmount());
+        vo.setPaymentMethod(order.getPaymentMethod());
         vo.setStatus(order.getStatus());
-        vo.setStatusDesc(STATUS_DESC[order.getStatus()]);
+        vo.setStatusDesc(OrderStatus.descriptionOf(order.getStatus()));
         vo.setReceiverName(order.getReceiverName());
         vo.setReceiverPhone(order.getReceiverPhone());
         vo.setReceiverAddress(order.getReceiverAddress());
         vo.setShippingCarrier(order.getShippingCarrier());
         vo.setTrackingNo(order.getTrackingNo());
         vo.setPayTime(order.getPayTime());
+        vo.setProcessingAt(order.getProcessingAt());
         vo.setShippedAt(order.getShippedAt());
         vo.setCancelTime(order.getCancelTime());
         vo.setTimeoutTime(order.getTimeoutTime());

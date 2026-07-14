@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { confirmMerchantOrderPayment, getMerchantOrders, shipMerchantOrder, type MerchantOrder } from '../api/merchant'
+import { acceptMerchantOrder, confirmMerchantOrderPayment, getMerchantOrders, shipMerchantOrder, type MerchantOrder } from '../api/merchant'
 
 const loading = ref(false)
 const shipping = ref(false)
@@ -26,6 +26,7 @@ const confirmPayment = async (order: MerchantOrder) => {
   ElMessage.success('已确认收款')
   await load()
 }
+const accept = async (order: MerchantOrder) => { await acceptMerchantOrder(order.orderNo); ElMessage.success('订单已接单处理'); await load() }
 const openShip = (order: MerchantOrder) => {
   selectedOrder.value = order
   Object.assign(shipment, { carrier: '', trackingNo: '', note: '' })
@@ -47,14 +48,14 @@ onMounted(load)
 
 <template>
   <el-card v-loading="loading">
-    <template #header><div style="display:flex;justify-content:space-between;align-items:center"><strong>订单管理</strong><el-select v-model="status" clearable placeholder="全部状态" style="width:150px" @change="load"><el-option label="待支付" :value="0" /><el-option label="已支付" :value="1" /><el-option label="已发货" :value="2" /><el-option label="已完成" :value="3" /><el-option label="已取消" :value="4" /></el-select></div></template>
+    <template #header><div style="display:flex;justify-content:space-between;align-items:center"><strong>订单管理</strong><el-select v-model="status" clearable placeholder="全部状态" style="width:150px" @change="load"><el-option label="待商家确认" :value="0" /><el-option label="已确认收款" :value="1" /><el-option label="处理中" :value="6" /><el-option label="已发货" :value="2" /><el-option label="已完成" :value="3" /><el-option label="已取消" :value="4" /></el-select></div></template>
     <el-table :data="orders">
       <el-table-column prop="orderNo" label="订单号" min-width="180" />
       <el-table-column label="商品" min-width="180"><template #default="{ row }"><div v-for="item in row.items" :key="item.id">{{ item.productName }} × {{ item.quantity }}<span style="color:#909399;font-size:12px"> {{ item.skuCode }}</span></div></template></el-table-column>
       <el-table-column label="收货信息" min-width="190"><template #default="{ row }"><div>{{ row.receiverName }} {{ row.receiverPhone }}</div><div style="font-size:12px;color:#909399">{{ row.receiverAddress }}</div></template></el-table-column>
       <el-table-column label="金额" width="100"><template #default="{ row }">¥{{ Number(row.totalAmount).toFixed(2) }}</template></el-table-column>
       <el-table-column label="状态" width="100"><template #default="{ row }"><el-tag :type="statusType(row.status)">{{ row.statusDesc }}</el-tag></template></el-table-column>
-      <el-table-column label="操作" width="150"><template #default="{ row }"><el-button v-if="row.status === 0" text type="success" @click="confirmPayment(row)">确认收款</el-button><el-button v-if="row.status === 1" text type="primary" @click="openShip(row)">发货</el-button><span v-if="row.status === 2" style="font-size:12px;color:#909399">{{ row.shippingCarrier }} {{ row.trackingNo }}</span></template></el-table-column>
+      <el-table-column label="操作" width="180"><template #default="{ row }"><el-button v-if="row.status === 0 && row.paymentMethod !== 'COD'" text type="success" @click="confirmPayment(row)">确认收款</el-button><el-button v-if="(row.status === 0 && row.paymentMethod === 'COD') || row.status === 1" text type="primary" @click="accept(row)">接单</el-button><el-button v-if="row.status === 6" text type="primary" @click="openShip(row)">发货</el-button><el-button v-if="row.paymentMethod === 'COD' && (row.status === 2 || row.status === 3) && !row.payTime" text type="success" @click="confirmPayment(row)">确认货款</el-button><span v-if="row.status === 2" style="font-size:12px;color:#909399">{{ row.shippingCarrier }} {{ row.trackingNo }}</span></template></el-table-column>
     </el-table>
     <el-pagination v-model:current-page="page" :page-size="20" :total="total" layout="prev, pager, next" style="margin-top:16px" @current-change="load" />
   </el-card>

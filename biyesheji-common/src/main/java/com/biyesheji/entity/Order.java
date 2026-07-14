@@ -20,6 +20,7 @@ public class Order extends BaseEntity {
     private String orderNo;
     private Long userId;
     private BigDecimal totalAmount;
+    private String paymentMethod;
     private Integer status;
     private String receiverName;
     private String receiverPhone;
@@ -27,6 +28,7 @@ public class Order extends BaseEntity {
     private String shippingCarrier;
     private String trackingNo;
     private LocalDateTime payTime;
+    private LocalDateTime processingAt;
     private LocalDateTime shippedAt;
     private LocalDateTime cancelTime;
     private LocalDateTime timeoutTime;

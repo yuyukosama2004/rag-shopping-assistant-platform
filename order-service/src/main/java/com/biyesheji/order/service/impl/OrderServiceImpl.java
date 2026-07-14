@@ -137,18 +137,35 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public void pay(Long userId, String orderNo) {
-        Order order = orderMapper.selectOne(new LambdaQueryWrapper<Order>()
-                .eq(Order::getOrderNo, orderNo)
-                .eq(Order::getUserId, userId));
-        if (order == null) throw new BizException(ResultCode.ORDER_NOT_FOUND, "订单不存在");
-        confirmPaymentInternal(userId, orderNo, "CUSTOMER_SIMULATED_PAY", "消费者模拟支付");
+    public void confirmPayment(Long operatorId, String orderNo) {
+        Order order = requireOrder(orderNo);
+        if ("COD".equals(order.getPaymentMethod())) {
+            Order update = new Order();
+            update.setPayTime(LocalDateTime.now());
+            int rows = orderMapper.update(update, new LambdaUpdateWrapper<Order>()
+                    .eq(Order::getOrderNo, orderNo)
+                    .in(Order::getStatus, OrderStatus.SHIPPED.getCode(), OrderStatus.COMPLETED.getCode())
+                    .isNull(Order::getPayTime));
+            if (rows == 0) throw new BizException("货到付款订单只能在发货后确认收款");
+            recordOperation(orderNo, operatorId, "MERCHANT_CONFIRM_COD_PAYMENT", "商家确认货到付款");
+            return;
+        }
+        confirmPaymentInternal(operatorId, orderNo, "MERCHANT_CONFIRM_PAYMENT", "商家确认收款");
     }
 
     @Override
     @Transactional
-    public void confirmPayment(Long operatorId, String orderNo) {
-        confirmPaymentInternal(operatorId, orderNo, "MERCHANT_CONFIRM_PAYMENT", "商家确认收款");
+    public void accept(Long operatorId, String orderNo) {
+        Order order = requireOrder(orderNo);
+        int expectedStatus = "COD".equals(order.getPaymentMethod()) ? OrderStatus.PENDING.getCode() : OrderStatus.PAID.getCode();
+        Order update = new Order();
+        update.setStatus(OrderStatus.PROCESSING.getCode());
+        update.setProcessingAt(LocalDateTime.now());
+        int rows = orderMapper.update(update, new LambdaUpdateWrapper<Order>()
+                .eq(Order::getOrderNo, orderNo)
+                .eq(Order::getStatus, expectedStatus));
+        if (rows == 0) throw new BizException("订单不存在或当前状态不允许接单");
+        recordOperation(orderNo, operatorId, "MERCHANT_ACCEPT", "商家已接单处理");
     }
 
     private void confirmPaymentInternal(Long operatorId, String orderNo, String action, String note) {
@@ -220,8 +237,8 @@ public class OrderServiceImpl implements OrderService {
         update.setShippedAt(LocalDateTime.now());
         int rows = orderMapper.update(update, new LambdaUpdateWrapper<Order>()
                 .eq(Order::getOrderNo, orderNo)
-                .eq(Order::getStatus, OrderStatus.PAID.getCode()));
-        if (rows == 0) throw new BizException("订单不存在或尚未确认收款");
+                .eq(Order::getStatus, OrderStatus.PROCESSING.getCode()));
+        if (rows == 0) throw new BizException("订单不存在或尚未接单处理");
         recordOperation(orderNo, operatorId, "MERCHANT_SHIP", dto.getNote());
     }
 
@@ -299,6 +316,7 @@ public class OrderServiceImpl implements OrderService {
         order.setOrderNo(orderNo);
         order.setUserId(userId);
         order.setTotalAmount(totalAmount);
+        order.setPaymentMethod(dto.getPaymentMethod());
         order.setStatus(OrderStatus.PENDING.getCode());
         order.setReceiverName(dto.getReceiverName());
         order.setReceiverPhone(dto.getReceiverPhone());
@@ -329,6 +347,12 @@ public class OrderServiceImpl implements OrderService {
                 .eq(Order::getOrderNo, orderNo)
                 .eq(Order::getUserId, userId)
                 .eq(Order::getStatus, OrderStatus.PENDING.getCode());
+    }
+
+    private Order requireOrder(String orderNo) {
+        Order order = orderMapper.selectOne(new LambdaQueryWrapper<Order>().eq(Order::getOrderNo, orderNo));
+        if (order == null) throw new BizException(ResultCode.ORDER_NOT_FOUND, "订单不存在");
+        return order;
     }
 
     private List<OrderItem> orderItems(String orderNo) {

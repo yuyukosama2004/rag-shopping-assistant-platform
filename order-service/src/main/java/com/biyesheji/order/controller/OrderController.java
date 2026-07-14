@@ -17,7 +17,7 @@ import org.springframework.validation.annotation.Validated;
 
 import java.util.Map;
 
-@Tag(name = "订单接口", description = "下单、查询、支付、取消")
+@Tag(name = "订单接口", description = "下单、查询、取消")
 @RestController
 @RequestMapping("/api/order")
 @RequiredArgsConstructor
@@ -53,14 +53,6 @@ public class OrderController {
                                  @RequestParam(defaultValue = "10") @Min(1) @Max(100) int pageSize,
                                  @RequestParam(required = false) Integer status) {
         return R.ok(orderService.page(getUserId(auth), pageNum, pageSize, status));
-    }
-
-    @Operation(summary = "模拟支付")
-    @PostMapping("/{orderNo}/pay")
-    public R<Void> pay(@RequestHeader("Authorization") String auth,
-                       @PathVariable String orderNo) {
-        orderService.pay(getUserId(auth), orderNo);
-        return R.ok();
     }
 
     @Operation(summary = "取消订单")

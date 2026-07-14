@@ -48,10 +48,6 @@ export function getOrderDetail(orderNo: string) {
   return request.get(`/api/order/${orderNo}`)
 }
 
-export function payOrder(orderNo: string) {
-  return request.post(`/api/order/${orderNo}/pay`)
-}
-
 export function cancelOrder(orderNo: string) {
   return request.post(`/api/order/${orderNo}/cancel`)
 }
