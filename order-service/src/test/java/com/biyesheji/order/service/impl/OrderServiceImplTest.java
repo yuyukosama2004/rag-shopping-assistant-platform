@@ -9,6 +9,7 @@ import com.biyesheji.entity.ProductSku;
 import com.biyesheji.entity.Order;
 import com.biyesheji.entity.ShippingRule;
 import com.biyesheji.constant.OrderStatus;
+import com.biyesheji.vo.MerchantDashboardVO;
 import com.biyesheji.order.mapper.OrderItemMapper;
 import com.biyesheji.order.mapper.OrderMapper;
 import com.biyesheji.order.mapper.OrderOperationMapper;
@@ -26,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -115,5 +117,19 @@ class OrderServiceImplTest {
         ArgumentCaptor<OrderOperation> captor = ArgumentCaptor.forClass(OrderOperation.class);
         verify(orderOperationMapper).insert(captor.capture());
         assertEquals("MERCHANT_ACCEPT", captor.getValue().getAction());
+    }
+
+    @Test
+    void dashboardCountsOnlyConfirmedSales() {
+        Order confirmed = new Order(); confirmed.setTotalAmount(new BigDecimal("120.00")); confirmed.setPayTime(LocalDateTime.now());
+        Order unconfirmed = new Order(); unconfirmed.setTotalAmount(new BigDecimal("80.00"));
+        when(orderMapper.selectList(any())).thenReturn(List.of(confirmed, unconfirmed));
+        when(orderMapper.selectCount(any())).thenReturn(3L);
+
+        MerchantDashboardVO dashboard = orderService.merchantDashboard();
+
+        assertEquals(2, dashboard.getTodayOrderCount());
+        assertEquals(3, dashboard.getPendingOrderCount());
+        assertEquals(new BigDecimal("120.00"), dashboard.getTodayConfirmedSales());
     }
 }

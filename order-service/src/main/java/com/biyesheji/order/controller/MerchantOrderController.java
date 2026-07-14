@@ -7,6 +7,7 @@ import com.biyesheji.dto.R;
 import com.biyesheji.exception.BizException;
 import com.biyesheji.order.service.OrderService;
 import com.biyesheji.vo.OrderVO;
+import com.biyesheji.vo.MerchantDashboardVO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -62,6 +63,12 @@ public class MerchantOrderController {
         requireMerchant(role);
         orderService.ship(operatorId, orderNo, dto);
         return R.ok();
+    }
+
+    @GetMapping("/dashboard")
+    public R<MerchantDashboardVO> dashboard(@RequestHeader("X-User-Role") Integer role) {
+        requireMerchant(role);
+        return R.ok(orderService.merchantDashboard());
     }
 
     private void requireMerchant(Integer role) {

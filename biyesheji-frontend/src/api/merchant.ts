@@ -195,6 +195,7 @@ export function getMerchantSkuStock(skuId: number) { return request.get(`/api/me
 export function adjustMerchantSkuStock(skuId: number, quantity: number, reason: string) { return request.put(`/api/merchant/products/skus/${skuId}/stock`, { quantity, reason }) }
 export function getMerchantSkuStockLedger(skuId: number) { return request.get(`/api/merchant/products/skus/${skuId}/stock/ledger`) }
 export function getMerchantOrders(pageNum = 1, pageSize = 20, status?: number) { return request.get('/api/merchant/orders', { params: { pageNum, pageSize, status } }) }
+export function getMerchantDashboard() { return request.get('/api/merchant/orders/dashboard') }
 export function getMerchantShippingRules() { return request.get('/api/merchant/shipping-rules') }
 export function createMerchantShippingRule(data: MerchantShippingRuleInput) { return request.post('/api/merchant/shipping-rules', data) }
 export function updateMerchantShippingRule(id: number, data: MerchantShippingRuleInput) { return request.put(`/api/merchant/shipping-rules/${id}`, data) }
