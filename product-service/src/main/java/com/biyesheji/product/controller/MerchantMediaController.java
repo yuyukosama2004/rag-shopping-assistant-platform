@@ -2,8 +2,11 @@ package com.biyesheji.product.controller;
 
 import com.biyesheji.constant.UserRole;
 import com.biyesheji.dto.R;
+import com.biyesheji.entity.Product;
 import com.biyesheji.exception.BizException;
+import com.biyesheji.product.mapper.ProductMapper;
 import com.biyesheji.product.service.MediaStorageService;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
@@ -19,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class MerchantMediaController {
     private final MediaStorageService mediaStorageService;
+    private final ProductMapper productMapper;
 
     @PostMapping("/api/merchant/media")
     public R<Map<String, String>> upload(@RequestHeader("X-User-Role") Integer role, @RequestParam("file") MultipartFile file) {
@@ -29,6 +33,12 @@ public class MerchantMediaController {
     @DeleteMapping("/api/merchant/media/{filename:.+}")
     public R<Void> delete(@RequestHeader("X-User-Role") Integer role, @PathVariable String filename) {
         requireMerchant(role);
+        String url = "/api/media/" + filename;
+        if (productMapper.selectCount(new LambdaQueryWrapper<Product>()
+                .eq(Product::getMainImage, url)
+                .or(wrapper -> wrapper.like(Product::getImages, filename))) > 0) {
+            throw new BizException(400, "图片仍被商品使用，无法删除");
+        }
         mediaStorageService.delete(filename);
         return R.ok();
     }

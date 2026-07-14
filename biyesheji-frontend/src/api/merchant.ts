@@ -28,6 +28,7 @@ export interface MerchantProduct {
   price: number
   originalPrice?: number
   mainImage?: string
+  images?: string
   description?: string
   status: number
 }
@@ -39,6 +40,7 @@ export interface MerchantProductInput {
   price: number | null
   originalPrice?: number | null
   mainImage?: string
+  images?: string
   description?: string
 }
 
@@ -146,6 +148,7 @@ export function copyMerchantProduct(id: number) { return request.post(`/api/merc
 export function deleteMerchantProduct(id: number) { return request.delete(`/api/merchant/products/${id}`) }
 export function updateMerchantProductBatchStatus(ids: number[], status: number) { return request.put('/api/merchant/products/batch-status', { ids, status }) }
 export function uploadMerchantMedia(file: File) { const data = new FormData(); data.append('file', file); return request.post('/api/merchant/media', data) }
+export function deleteMerchantMedia(filename: string) { return request.delete(`/api/merchant/media/${filename}`) }
 export function importMerchantProducts(file: File) { const data = new FormData(); data.append('file', file); return request.post('/api/merchant/products/import', data) }
 export function exportMerchantProducts() { return request.get('/api/merchant/products/export', { responseType: 'blob' }) }
 export function getMerchantSkus(productId: number) { return request.get(`/api/merchant/products/${productId}/skus`) }
