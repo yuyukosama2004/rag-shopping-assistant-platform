@@ -26,6 +26,7 @@ import com.biyesheji.order.service.StockService;
 import com.biyesheji.order.service.ShippingRuleService;
 import com.biyesheji.utils.RedisUtil;
 import com.biyesheji.vo.OrderVO;
+import com.biyesheji.vo.MerchantDashboardVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -224,6 +225,17 @@ public class OrderServiceImpl implements OrderService {
         Page<OrderVO> result = new Page<>(orderPage.getCurrent(), orderPage.getSize(), orderPage.getTotal());
         result.setRecords(orderPage.getRecords().stream().map(order -> OrderVO.from(order, orderItems(order.getOrderNo()))).toList());
         return result;
+    }
+
+    @Override
+    public MerchantDashboardVO merchantDashboard() {
+        LocalDateTime start = LocalDateTime.now().toLocalDate().atStartOfDay();
+        List<Order> today = orderMapper.selectList(new LambdaQueryWrapper<Order>().ge(Order::getCreatedAt, start));
+        MerchantDashboardVO dashboard = new MerchantDashboardVO();
+        dashboard.setTodayOrderCount(today.size());
+        dashboard.setPendingOrderCount(orderMapper.selectCount(new LambdaQueryWrapper<Order>().in(Order::getStatus, OrderStatus.PENDING.getCode(), OrderStatus.PAID.getCode(), OrderStatus.PROCESSING.getCode())));
+        dashboard.setTodayConfirmedSales(today.stream().filter(order -> order.getPayTime() != null).map(Order::getTotalAmount).reduce(BigDecimal.ZERO, BigDecimal::add));
+        return dashboard;
     }
 
     @Override
