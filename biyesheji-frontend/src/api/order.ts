@@ -55,3 +55,7 @@ export function payOrder(orderNo: string) {
 export function cancelOrder(orderNo: string) {
   return request.post(`/api/order/${orderNo}/cancel`)
 }
+
+export function completeOrder(orderNo: string) {
+  return request.post(`/api/order/${orderNo}/complete`)
+}

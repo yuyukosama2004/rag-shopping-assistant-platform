@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getOrderPage, cancelOrder, payOrder } from '../api/order'
+import { getOrderPage, cancelOrder, payOrder, completeOrder } from '../api/order'
 import { ElMessage, ElMessageBox } from 'element-plus'
 const router = useRouter(); const orders = ref<any[]>([]); const total = ref(0); const page = ref(1); const st = ref<number>(-1)
 const sm: Record<number,string> = {0:'待支付',1:'已支付',2:'已发货',3:'已完成',4:'已取消',5:'已超时'}
@@ -11,6 +11,7 @@ const fmtDate = (d: any) => { try { const a = Array.isArray(d) ? d : String(d).s
 const goDet = (no: string) => router.push('/order/' + no)
 const pay = async (no: string) => { await payOrder(no); ElMessage.success('支付成功'); load() }
 const cancel = async (no: string) => { await ElMessageBox.confirm('确定取消？'); await cancelOrder(no); ElMessage.success('已取消'); load() }
+const complete = async (no: string) => { await ElMessageBox.confirm('确认已收到商品？'); await completeOrder(no); ElMessage.success('已确认收货'); load() }
 </script>
 <template>
   <div>
@@ -28,6 +29,7 @@ const cancel = async (no: string) => { await ElMessageBox.confirm('确定取消�
           <el-button size="small" @click="goDet(o.orderNo)">详情</el-button>
           <el-button v-if="o.status===0" size="small" type="danger" @click="pay(o.orderNo)">支付</el-button>
           <el-button v-if="o.status===0" size="small" @click="cancel(o.orderNo)">取消</el-button>
+          <el-button v-if="o.status===2" size="small" type="success" @click="complete(o.orderNo)">确认收货</el-button>
         </div>
       </div>
     </div>
