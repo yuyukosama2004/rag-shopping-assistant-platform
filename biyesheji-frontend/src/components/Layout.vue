@@ -96,6 +96,7 @@ const doSearch = () => {
     <!-- footer -->
     <div class="site-footer">
       <p>{{ store.storeName }} &copy; 2026 <span v-if="store.servicePhone">· 客服电话：{{ store.servicePhone }}</span><span v-if="store.serviceEmail">· {{ store.serviceEmail }}</span></p>
+      <p style="font-size:12px;cursor:pointer" @click="router.push('/store-info')">配送、售后与隐私说明</p>
     </div>
   </div>
 </template>
