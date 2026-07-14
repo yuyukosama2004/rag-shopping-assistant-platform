@@ -145,6 +145,18 @@ export interface MerchantShippingRuleInput {
   sortOrder: number
 }
 
+export interface MerchantRefund {
+  id: number
+  orderNo: string
+  userId: number
+  amount: number
+  reason: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  merchantNote?: string
+  processedAt?: string
+  createdAt: string
+}
+
 export function getPublicStoreSetting() {
   return request.get('/api/store/setting')
 }
@@ -187,6 +199,9 @@ export function getMerchantShippingRules() { return request.get('/api/merchant/s
 export function createMerchantShippingRule(data: MerchantShippingRuleInput) { return request.post('/api/merchant/shipping-rules', data) }
 export function updateMerchantShippingRule(id: number, data: MerchantShippingRuleInput) { return request.put(`/api/merchant/shipping-rules/${id}`, data) }
 export function deleteMerchantShippingRule(id: number) { return request.delete(`/api/merchant/shipping-rules/${id}`) }
+export function getMerchantRefunds(pageNum = 1, pageSize = 20, status?: string) { return request.get('/api/merchant/refunds', { params: { pageNum, pageSize, status } }) }
+export function approveMerchantRefund(id: number, merchantNote = '') { return request.post(`/api/merchant/refunds/${id}/approve`, { merchantNote }) }
+export function rejectMerchantRefund(id: number, merchantNote = '') { return request.post(`/api/merchant/refunds/${id}/reject`, { merchantNote }) }
 export function confirmMerchantOrderPayment(orderNo: string) { return request.post(`/api/merchant/orders/${orderNo}/confirm-payment`) }
 export function acceptMerchantOrder(orderNo: string) { return request.post(`/api/merchant/orders/${orderNo}/accept`) }
 export function shipMerchantOrder(orderNo: string, data: { carrier: string; trackingNo: string; note?: string }) { return request.post(`/api/merchant/orders/${orderNo}/ship`, data) }

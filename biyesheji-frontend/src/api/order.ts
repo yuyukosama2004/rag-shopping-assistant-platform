@@ -67,3 +67,11 @@ export function cancelOrder(orderNo: string) {
 export function completeOrder(orderNo: string) {
   return request.post(`/api/order/${orderNo}/complete`)
 }
+
+export function getRefunds(orderNo: string) {
+  return request.get(`/api/order/${orderNo}/refunds`)
+}
+
+export function requestRefund(orderNo: string, data: { amount: number; reason: string }) {
+  return request.post(`/api/order/${orderNo}/refunds`, data)
+}
