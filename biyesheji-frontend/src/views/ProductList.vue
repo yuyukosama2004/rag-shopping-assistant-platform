@@ -2,8 +2,6 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getProductPage, getFilters } from '../api/product'
-import { addToCart } from '../api/order'
-import { ElMessage } from 'element-plus'
 
 const route = useRoute(); const router = useRouter()
 const products = ref<any[]>([]); const total = ref(0); const pageNum = ref(1); const brands = ref<string[]>([])
@@ -25,7 +23,7 @@ watch(() => route.query, (q) => {
   load(true)
 })
 const goD = (id: number) => router.push(`/product/${id}`)
-const add = async (e: Event, id: number) => { e.stopPropagation(); try { await addToCart(id); ElMessage.success('已加入购物车') } catch {} }
+const add = (e: Event, id: number) => { e.stopPropagation(); goD(id) }
 const setSort = (s: string) => { filters.value.sort = s; load(true) }
 const setBrand = (b: string) => { filters.value.brand = b; load(true) }
 </script>
@@ -51,7 +49,7 @@ const setBrand = (b: string) => { filters.value.brand = b; load(true) }
           <div class="info">
             <div class="title">{{ p.name }}</div>
             <div class="price-row"><span class="p"><span style="font-size:12px">¥</span>{{ p.price }}</span><span class="original-price" v-if="p.originalPrice>p.price">¥{{ p.originalPrice }}</span></div>
-            <div class="meta"><span>{{ p.brand }} · 月销{{ p.sales }}</span><button class="add-btn" @click="add($event,p.id)">加购</button></div>
+            <div class="meta"><span>{{ p.brand }} · 月销{{ p.sales }}</span><button class="add-btn" @click="add($event,p.id)">选择规格</button></div>
           </div>
         </div>
       </div>

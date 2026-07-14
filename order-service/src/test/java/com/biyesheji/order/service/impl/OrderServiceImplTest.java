@@ -1,0 +1,72 @@
+package com.biyesheji.order.service.impl;
+
+import com.biyesheji.dto.OrderSubmitDTO;
+import com.biyesheji.entity.OrderItem;
+import com.biyesheji.entity.Product;
+import com.biyesheji.entity.ProductSku;
+import com.biyesheji.order.mapper.OrderItemMapper;
+import com.biyesheji.order.mapper.OrderMapper;
+import com.biyesheji.order.mapper.ProductMapper;
+import com.biyesheji.order.mapper.ProductSkuMapper;
+import com.biyesheji.order.service.StockService;
+import com.biyesheji.utils.RedisUtil;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class OrderServiceImplTest {
+
+    @Mock private OrderMapper orderMapper;
+    @Mock private OrderItemMapper orderItemMapper;
+    @Mock private ProductMapper productMapper;
+    @Mock private ProductSkuMapper productSkuMapper;
+    @Mock private StockService stockService;
+    @Mock private RedisUtil redisUtil;
+    @InjectMocks private OrderServiceImpl orderService;
+
+    @Test
+    void submitUsesSkuPriceAndReservesSkuStock() {
+        Product product = new Product();
+        product.setId(1L); product.setStatus(1); product.setName("测试商品");
+        ProductSku sku = new ProductSku();
+        sku.setId(11L); sku.setProductId(1L); sku.setSkuCode("SKU-11"); sku.setSpecJson("{\"颜色\":\"黑色\"}");
+        sku.setStatus(1); sku.setPrice(new BigDecimal("199.00"));
+        when(productMapper.selectById(1L)).thenReturn(product);
+        when(productSkuMapper.selectById(11L)).thenReturn(sku);
+        when(redisUtil.setIfAbsent(anyString(), eq("processing"), eq(5L), eq(TimeUnit.MINUTES))).thenReturn(true);
+        when(stockService.deduct(11L, 2)).thenReturn(true);
+
+        OrderSubmitDTO dto = new OrderSubmitDTO();
+        OrderSubmitDTO.OrderItemDTO item = new OrderSubmitDTO.OrderItemDTO();
+        item.setProductId(1L); item.setSkuId(11L); item.setQuantity(2);
+        dto.setItems(List.of(item)); dto.setReceiverName("测试用户"); dto.setReceiverPhone("13800000000"); dto.setReceiverAddress("测试地址");
+
+        String orderNo = orderService.submit(7L, dto);
+
+        assertNotNull(orderNo);
+        verify(stockService).deduct(11L, 2);
+        ArgumentCaptor<OrderItem> captor = ArgumentCaptor.forClass(OrderItem.class);
+        verify(orderItemMapper).insert(captor.capture());
+        assertEquals(11L, captor.getValue().getSkuId());
+        assertEquals("SKU-11", captor.getValue().getSkuCode());
+        assertEquals(new BigDecimal("199.00"), captor.getValue().getPrice());
+        assertEquals(new BigDecimal("398.00"), captor.getValue().getSubtotal());
+    }
+}

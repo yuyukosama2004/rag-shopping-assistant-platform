@@ -36,7 +36,7 @@ public class CartController {
     public R<ShoppingCart> add(@RequestHeader("Authorization") String auth,
                                @Valid @RequestBody CartAddDTO body) {
         Long userId = getUserId(auth);
-        ShoppingCart cart = cartService.add(userId, body.getProductId(), body.getQuantity());
+        ShoppingCart cart = cartService.add(userId, body.getProductId(), body.getSkuId(), body.getQuantity());
         if (body.getColor() != null || body.getStorage() != null) {
             cartService.updateOptions(userId, cart.getId(), body.getColor(), body.getStorage());
         }

@@ -19,7 +19,7 @@ const selectAddr = (a: any) => { selectedAddr.value = a.id; rcv.value = { name: 
 const submit = async () => {
   if (!rcv.value.name || !rcv.value.phone || !rcv.value.address) return ElMessage.warning('请填写收货信息')
   try {
-    const r = await submitOrder({ items: items.value.map(i => ({ productId: i.productId, quantity: i.quantity })), receiverName: rcv.value.name, receiverPhone: rcv.value.phone, receiverAddress: rcv.value.address })
+    const r = await submitOrder({ items: items.value.map(i => ({ productId: i.productId, skuId: i.skuId, quantity: i.quantity })), receiverName: rcv.value.name, receiverPhone: rcv.value.phone, receiverAddress: rcv.value.address })
     removeCartBatch(items.value.map(i => i.id))
     ElMessage.success('下单成功! 订单号: ' + r.data.data.orderNo)
     setTimeout(() => router.push('/orders'), 3000)

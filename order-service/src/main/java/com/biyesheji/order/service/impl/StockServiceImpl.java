@@ -29,37 +29,37 @@ public class StockServiceImpl implements StockService {
 
     @Override
     @Transactional
-    public boolean deduct(Long productId, Integer quantity) {
+    public boolean deduct(Long skuId, Integer quantity) {
         validateQuantity(quantity);
-        if (!reserveDatabase(productId, quantity)) {
+        if (!reserveDatabase(skuId, quantity)) {
             return false;
         }
 
-        Long result = execute(StockLua.STOCK_DEDUCT, productId, quantity);
+        Long result = execute(StockLua.STOCK_DEDUCT, skuId, quantity);
         if (result != null && result == 1) {
             return true;
         }
 
-        releaseDatabase(productId, quantity);
+        releaseDatabase(skuId, quantity);
         return false;
     }
 
     @Override
     @Transactional
-    public void restore(Long productId, Integer quantity) {
+    public void restore(Long skuId, Integer quantity) {
         validateQuantity(quantity);
-        releaseDatabase(productId, quantity);
-        if (!isSuccess(execute(StockLua.STOCK_RESTORE, productId, quantity))) {
+        releaseDatabase(skuId, quantity);
+        if (!isSuccess(execute(StockLua.STOCK_RESTORE, skuId, quantity))) {
             throw new BizException("库存缓存恢复失败");
         }
     }
 
     @Override
     @Transactional
-    public void confirmDeduct(Long productId, Integer quantity) {
+    public void confirmDeduct(Long skuId, Integer quantity) {
         validateQuantity(quantity);
-        confirmDatabase(productId, quantity);
-        if (!isSuccess(execute(StockLua.STOCK_CONFIRM, productId, quantity))) {
+        confirmDatabase(skuId, quantity);
+        if (!isSuccess(execute(StockLua.STOCK_CONFIRM, skuId, quantity))) {
             throw new BizException("库存缓存确认失败");
         }
     }
@@ -69,7 +69,10 @@ public class StockServiceImpl implements StockService {
     public void initRedisStock() {
         List<Stock> stocks = stockMapper.selectList(null);
         for (Stock stock : stocks) {
-            String key = stockKey(stock.getProductId());
+            if (stock.getSkuId() == null) {
+                continue;
+            }
+            String key = stockKey(stock.getSkuId());
             redisUtil.delete(key);
             redisUtil.hSet(key, "total", stock.getTotal().toString());
             redisUtil.hSet(key, "locked", stock.getLocked().toString());
@@ -78,9 +81,9 @@ public class StockServiceImpl implements StockService {
         log.info("已从MySQL重建Redis库存，共{}条", stocks.size());
     }
 
-    private boolean reserveDatabase(Long productId, int quantity) {
+    private boolean reserveDatabase(Long skuId, int quantity) {
         for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
-            Stock stock = getStock(productId);
+            Stock stock = getStock(skuId);
             if (stock == null || stock.getAvailable() < quantity) {
                 return false;
             }
@@ -90,7 +93,7 @@ public class StockServiceImpl implements StockService {
             update.setAvailable(stock.getAvailable() - quantity);
             update.setVersion(oldVersion + 1);
             int rows = stockMapper.update(update, new LambdaUpdateWrapper<Stock>()
-                    .eq(Stock::getProductId, productId)
+                    .eq(Stock::getSkuId, skuId)
                     .eq(Stock::getVersion, oldVersion)
                     .ge(Stock::getAvailable, quantity));
             if (rows == 1) {
@@ -100,9 +103,9 @@ public class StockServiceImpl implements StockService {
         return false;
     }
 
-    private void releaseDatabase(Long productId, int quantity) {
+    private void releaseDatabase(Long skuId, int quantity) {
         for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
-            Stock stock = getStock(productId);
+            Stock stock = getStock(skuId);
             if (stock == null || stock.getLocked() < quantity) {
                 throw new BizException("库存预留不存在或已处理");
             }
@@ -112,7 +115,7 @@ public class StockServiceImpl implements StockService {
             update.setAvailable(stock.getAvailable() + quantity);
             update.setVersion(oldVersion + 1);
             int rows = stockMapper.update(update, new LambdaUpdateWrapper<Stock>()
-                    .eq(Stock::getProductId, productId)
+                    .eq(Stock::getSkuId, skuId)
                     .eq(Stock::getVersion, oldVersion)
                     .ge(Stock::getLocked, quantity));
             if (rows == 1) {
@@ -122,9 +125,9 @@ public class StockServiceImpl implements StockService {
         throw new BizException("库存恢复发生并发冲突");
     }
 
-    private void confirmDatabase(Long productId, int quantity) {
+    private void confirmDatabase(Long skuId, int quantity) {
         for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
-            Stock stock = getStock(productId);
+            Stock stock = getStock(skuId);
             if (stock == null || stock.getLocked() < quantity || stock.getTotal() < quantity) {
                 throw new BizException("库存预留不存在或已处理");
             }
@@ -135,7 +138,7 @@ public class StockServiceImpl implements StockService {
             update.setAvailable(stock.getAvailable());
             update.setVersion(oldVersion + 1);
             int rows = stockMapper.update(update, new LambdaUpdateWrapper<Stock>()
-                    .eq(Stock::getProductId, productId)
+                    .eq(Stock::getSkuId, skuId)
                     .eq(Stock::getVersion, oldVersion)
                     .ge(Stock::getTotal, quantity)
                     .ge(Stock::getLocked, quantity));
@@ -146,21 +149,21 @@ public class StockServiceImpl implements StockService {
         throw new BizException("库存确认发生并发冲突");
     }
 
-    private Stock getStock(Long productId) {
+    private Stock getStock(Long skuId) {
         return stockMapper.selectOne(new LambdaQueryWrapper<Stock>()
-                .eq(Stock::getProductId, productId));
+                .eq(Stock::getSkuId, skuId));
     }
 
-    private Long execute(String script, Long productId, int quantity) {
-        return redisUtil.executeLua(script, Collections.singletonList(stockKey(productId)), quantity);
+    private Long execute(String script, Long skuId, int quantity) {
+        return redisUtil.executeLua(script, Collections.singletonList(stockKey(skuId)), quantity);
     }
 
     private boolean isSuccess(Long result) {
         return result != null && result == 1;
     }
 
-    private String stockKey(Long productId) {
-        return "stock:product:" + productId;
+    private String stockKey(Long skuId) {
+        return "stock:sku:" + skuId;
     }
 
     private void validateQuantity(Integer quantity) {

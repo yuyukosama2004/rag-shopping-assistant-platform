@@ -22,7 +22,7 @@ const cancel = async () => { await ElMessageBox.confirm('确定取消？'); awai
     <div style="background:#fff;padding:20px"><div style="font-weight:600;margin-bottom:8px">商品清单</div>
       <div v-for="it in order.items" :key="it.id" style="display:flex;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid #f5f5f5">
         <img :src="it.productImage||''" style="width:50px;height:50px;border-radius:4px;object-fit:cover" />
-        <div style="flex:1;font-size:13px">{{ it.productName }}</div>
+        <div style="flex:1;font-size:13px">{{ it.productName }}<div style="font-size:12px;color:#999;margin-top:4px">{{ it.skuCode }} · {{ it.skuSpecJson }}</div></div>
         <span style="font-size:13px;color:#999">¥{{ it.price }}×{{ it.quantity }}</span>
         <span class="price">¥{{ it.subtotal }}</span>
       </div>

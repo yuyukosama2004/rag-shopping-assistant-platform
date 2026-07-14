@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getProductDetail } from '../api/product'
+import { getProductDetail, getProductSkus } from '../api/product'
 import { addToCart } from '../api/order'
 import { getAddressList } from '../api/user'
 import { ElMessage } from 'element-plus'
 
 const route = useRoute(); const router = useRouter()
 const product = ref<any>(null); const spec = ref<any>(null); const qty = ref(1)
-const selectedColor = ref(''); const selectedStorage = ref('')
-const colors = ref<string[]>([]); const storages = ref<string[]>([])
+const skus = ref<any[]>([]); const selectedSku = ref<any>(null)
 const addresses = ref<any[]>([]); const selectedAddr = ref(0); const manualAddr = ref({ name: '', phone: '', address: '' })
 
 onMounted(async () => {
@@ -18,10 +17,9 @@ onMounted(async () => {
     if (!r.data || !r.data.data) { return }
     product.value = r.data.data
     try { spec.value = JSON.parse(product.value.specJson || '{}') } catch { spec.value = {} }
-    try { colors.value = JSON.parse(product.value.colorOptions || '[]') } catch { colors.value = [] }
-    try { storages.value = JSON.parse(product.value.storageOptions || '[]') } catch { storages.value = [] }
-    if (colors.value.length) selectedColor.value = colors.value[0]
-    if (storages.value.length) selectedStorage.value = storages.value[0]
+    const skuResponse = await getProductSkus(product.value.id)
+    skus.value = skuResponse.data.data || []
+    selectedSku.value = skus.value.find((sku: any) => sku.available > 0) || null
     try { const ar = await getAddressList(); addresses.value = ar.data.data || []
       const def = addresses.value.find((a: any) => a.isDefault === 1)
       if (def) { selectedAddr.value = def.id; manualAddr.value = { name: def.receiverName, phone: def.receiverPhone, address: def.detail } }
@@ -30,10 +28,14 @@ onMounted(async () => {
 })
 const selectAddr = (a: any) => { selectedAddr.value = a.id; manualAddr.value = { name: a.receiverName, phone: a.receiverPhone, address: a.detail } }
 
-const addCart = async () => {
-  try { await addToCart(product.value.id, qty.value, selectedColor.value, selectedStorage.value); ElMessage.success('已加入购物车') } catch {}
+const skuLabel = (sku: any) => {
+  try { return Object.entries(JSON.parse(sku.specJson || '{}')).map(([key, value]) => `${key}: ${String(value)}`).join(' / ') || sku.skuCode } catch { return sku.skuCode }
 }
-const goBuy = () => { addCart(); setTimeout(() => router.push('/checkout'), 500) }
+const addCart = async () => {
+  if (!selectedSku.value) { ElMessage.warning('当前商品暂无可售规格'); return false }
+  try { await addToCart(product.value.id, selectedSku.value.id, qty.value); ElMessage.success('已加入购物车'); return true } catch { return false }
+}
+const goBuy = async () => { if (await addCart()) router.push('/checkout') }
 </script>
 
 <template>
@@ -44,8 +46,8 @@ const goBuy = () => { addCart(); setTimeout(() => router.push('/checkout'), 500)
         <h1 style="font-size:18px;font-weight:600;line-height:1.5;margin-bottom:12px">{{ product.name }}</h1>
 
         <div style="background:#fdf2f2;padding:12px 16px;margin-bottom:12px;border-radius:4px">
-          <span style="color:var(--jd-red);font-size:28px;font-weight:700">¥{{ product.price }}</span>
-          <span v-if="product.originalPrice > product.price" style="color:#999;font-size:14px;text-decoration:line-through;margin-left:8px">¥{{ product.originalPrice }}</span>
+          <span style="color:var(--jd-red);font-size:28px;font-weight:700">¥{{ selectedSku?.price ?? product.price }}</span>
+          <span v-if="(selectedSku?.originalPrice ?? product.originalPrice) > (selectedSku?.price ?? product.price)" style="color:#999;font-size:14px;text-decoration:line-through;margin-left:8px">¥{{ selectedSku?.originalPrice ?? product.originalPrice }}</span>
         </div>
 
         <div style="margin-bottom:12px;font-size:13px">
@@ -53,27 +55,14 @@ const goBuy = () => { addCart(); setTimeout(() => router.push('/checkout'), 500)
           <span style="color:#999;margin-left:16px">月销 {{ product.sales }} 件</span>
         </div>
 
-        <!-- 外观 -->
         <div style="margin-bottom:14px">
-          <div style="font-size:13px;color:#999;margin-bottom:6px">外观</div>
+          <div style="font-size:13px;color:#999;margin-bottom:6px">选择规格</div>
           <div style="display:flex;flex-wrap:wrap;gap:8px">
-            <span v-for="c in colors" :key="c"
-              @click="selectedColor = c"
-              style="padding:6px 14px;border:1px solid #ddd;border-radius:2px;font-size:13px;cursor:pointer;min-width:70px;text-align:center"
-              :style="selectedColor===c ? {borderColor:'var(--jd-red)',color:'var(--jd-red)',background:'#FFF0F0'} : {}"
-            >{{ c }}</span>
-          </div>
-        </div>
-
-        <!-- 规格 -->
-        <div style="margin-bottom:14px">
-          <div style="font-size:13px;color:#999;margin-bottom:6px">规格</div>
-          <div style="display:flex;flex-wrap:wrap;gap:8px">
-            <span v-for="s in storages" :key="s"
-              @click="selectedStorage = s"
+            <span v-for="sku in skus" :key="sku.id"
+              @click="sku.available > 0 && (selectedSku = sku)"
               style="padding:6px 14px;border:1px solid #ddd;border-radius:2px;font-size:13px;cursor:pointer;min-width:80px;text-align:center"
-              :style="selectedStorage===s ? {borderColor:'var(--jd-red)',color:'var(--jd-red)',background:'#FFF0F0'} : {}"
-            >{{ s }}</span>
+              :style="selectedSku?.id===sku.id ? {borderColor:'var(--jd-red)',color:'var(--jd-red)',background:'#FFF0F0'} : sku.available > 0 ? {} : {color:'#bbb',background:'#f5f5f5',cursor:'not-allowed'}"
+            >{{ skuLabel(sku) }}（{{ sku.available > 0 ? `库存 ${sku.available}` : '缺货' }}）</span>
           </div>
         </div>
 

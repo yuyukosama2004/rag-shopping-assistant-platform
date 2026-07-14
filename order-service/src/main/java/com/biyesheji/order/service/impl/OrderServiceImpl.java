@@ -11,10 +11,12 @@ import com.biyesheji.dto.OrderSubmitDTO;
 import com.biyesheji.entity.Order;
 import com.biyesheji.entity.OrderItem;
 import com.biyesheji.entity.Product;
+import com.biyesheji.entity.ProductSku;
 import com.biyesheji.exception.BizException;
 import com.biyesheji.order.mapper.OrderItemMapper;
 import com.biyesheji.order.mapper.OrderMapper;
 import com.biyesheji.order.mapper.ProductMapper;
+import com.biyesheji.order.mapper.ProductSkuMapper;
 import com.biyesheji.order.service.OrderService;
 import com.biyesheji.order.service.StockService;
 import com.biyesheji.utils.RedisUtil;
@@ -48,15 +50,17 @@ public class OrderServiceImpl implements OrderService {
     private final OrderMapper orderMapper;
     private final OrderItemMapper orderItemMapper;
     private final ProductMapper productMapper;
+    private final ProductSkuMapper productSkuMapper;
     private final StockService stockService;
     private final RedisUtil redisUtil;
 
     @Override
     @Transactional
     public String submit(Long userId, OrderSubmitDTO dto) {
-        validateDistinctProducts(dto);
+        validateDistinctSkus(dto);
         Map<Long, Product> products = loadProducts(dto);
-        BigDecimal totalAmount = calculateTotal(dto, products);
+        Map<Long, ProductSku> skus = loadSkus(dto, products);
+        BigDecimal totalAmount = calculateTotal(dto, skus);
 
         String dedupKey = dedupKey(userId, dto);
         if (!redisUtil.setIfAbsent(dedupKey, "processing", 5, TimeUnit.MINUTES)) {
@@ -67,9 +71,9 @@ public class OrderServiceImpl implements OrderService {
         boolean created = false;
         try {
             for (OrderSubmitDTO.OrderItemDTO item : dto.getItems()) {
-                if (!stockService.deduct(item.getProductId(), item.getQuantity())) {
+                if (!stockService.deduct(item.getSkuId(), item.getQuantity())) {
                     throw new BizException(ResultCode.STOCK_INSUFFICIENT,
-                            "商品 [" + item.getProductId() + "] 库存不足");
+                            "SKU [" + item.getSkuId() + "] 库存不足");
                 }
                 reserved.add(item);
             }
@@ -79,7 +83,8 @@ public class OrderServiceImpl implements OrderService {
             orderMapper.insert(order);
             for (OrderSubmitDTO.OrderItemDTO item : dto.getItems()) {
                 Product product = products.get(item.getProductId());
-                orderItemMapper.insert(createOrderItem(order, product, item));
+                ProductSku sku = skus.get(item.getSkuId());
+                orderItemMapper.insert(createOrderItem(order, product, sku, item));
             }
             created = true;
             redisUtil.set(dedupKey, orderNo, 5, TimeUnit.MINUTES);
@@ -87,7 +92,7 @@ public class OrderServiceImpl implements OrderService {
         } catch (RuntimeException exception) {
             for (OrderSubmitDTO.OrderItemDTO item : reserved) {
                 try {
-                    stockService.restore(item.getProductId(), item.getQuantity());
+                    stockService.restore(item.getSkuId(), item.getQuantity());
                 } catch (RuntimeException restoreException) {
                     exception.addSuppressed(restoreException);
                 }
@@ -137,7 +142,7 @@ public class OrderServiceImpl implements OrderService {
             throw new BizException("订单不存在或状态不允许支付");
         }
         for (OrderItem item : orderItems(orderNo)) {
-            stockService.confirmDeduct(item.getProductId(), item.getQuantity());
+            stockService.confirmDeduct(item.getSkuId(), item.getQuantity());
         }
     }
 
@@ -172,11 +177,11 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    private void validateDistinctProducts(OrderSubmitDTO dto) {
+    private void validateDistinctSkus(OrderSubmitDTO dto) {
         Set<Long> ids = new HashSet<>();
         for (OrderSubmitDTO.OrderItemDTO item : dto.getItems()) {
-            if (!ids.add(item.getProductId())) {
-                throw new BizException("同一商品只能提交一次");
+            if (!ids.add(item.getSkuId())) {
+                throw new BizException("同一SKU只能提交一次");
             }
         }
     }
@@ -193,17 +198,30 @@ public class OrderServiceImpl implements OrderService {
         return products;
     }
 
-    private BigDecimal calculateTotal(OrderSubmitDTO dto, Map<Long, Product> products) {
+    private Map<Long, ProductSku> loadSkus(OrderSubmitDTO dto, Map<Long, Product> products) {
+        Map<Long, ProductSku> skus = new HashMap<>();
+        for (OrderSubmitDTO.OrderItemDTO item : dto.getItems()) {
+            ProductSku sku = productSkuMapper.selectById(item.getSkuId());
+            Product product = products.get(item.getProductId());
+            if (sku == null || sku.getStatus() != 1 || !item.getProductId().equals(sku.getProductId()) || product == null) {
+                throw new BizException("SKU [" + item.getSkuId() + "] 不存在、已停用或不属于商品");
+            }
+            skus.put(sku.getId(), sku);
+        }
+        return skus;
+    }
+
+    private BigDecimal calculateTotal(OrderSubmitDTO dto, Map<Long, ProductSku> skus) {
         return dto.getItems().stream()
-                .map(item -> products.get(item.getProductId()).getPrice()
+                .map(item -> skus.get(item.getSkuId()).getPrice()
                         .multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private String dedupKey(Long userId, OrderSubmitDTO dto) {
         String items = dto.getItems().stream()
-                .sorted(Comparator.comparing(OrderSubmitDTO.OrderItemDTO::getProductId))
-                .map(item -> item.getProductId() + ":" + item.getQuantity())
+                .sorted(Comparator.comparing(OrderSubmitDTO.OrderItemDTO::getSkuId))
+                .map(item -> item.getSkuId() + ":" + item.getQuantity())
                 .collect(Collectors.joining(","));
         return "order:dedup:" + userId + ":" + MD5.create().digestHex(items);
     }
@@ -222,17 +240,20 @@ public class OrderServiceImpl implements OrderService {
         return order;
     }
 
-    private OrderItem createOrderItem(Order order, Product product, OrderSubmitDTO.OrderItemDTO item) {
+    private OrderItem createOrderItem(Order order, Product product, ProductSku sku, OrderSubmitDTO.OrderItemDTO item) {
         OrderItem orderItem = new OrderItem();
         orderItem.setId(IdUtil.getSnowflake().nextId());
         orderItem.setOrderId(order.getId());
         orderItem.setOrderNo(order.getOrderNo());
         orderItem.setProductId(product.getId());
+        orderItem.setSkuId(sku.getId());
+        orderItem.setSkuCode(sku.getSkuCode());
+        orderItem.setSkuSpecJson(sku.getSpecJson());
         orderItem.setProductName(product.getName());
         orderItem.setProductImage(product.getMainImage());
-        orderItem.setPrice(product.getPrice());
+        orderItem.setPrice(sku.getPrice());
         orderItem.setQuantity(item.getQuantity());
-        orderItem.setSubtotal(product.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
+        orderItem.setSubtotal(sku.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
         return orderItem;
     }
 
@@ -250,7 +271,7 @@ public class OrderServiceImpl implements OrderService {
 
     private void restoreOrderItems(String orderNo) {
         for (OrderItem item : orderItems(orderNo)) {
-            stockService.restore(item.getProductId(), item.getQuantity());
+            stockService.restore(item.getSkuId(), item.getQuantity());
         }
     }
 }

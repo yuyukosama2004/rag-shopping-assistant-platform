@@ -2,8 +2,6 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getProductPage, getHotProducts, getFilters } from '../api/product'
-import { addToCart } from '../api/order'
-import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const products = ref<any[]>([])
@@ -24,7 +22,7 @@ onMounted(async () => {
 const search = () => { if (keyword.value.trim()) router.push({ path: '/products', query: { keyword: keyword.value.trim() } }) }
 const goD = (id: number) => router.push(`/product/${id}`)
 const goP = (f: any) => router.push({ path: '/products', query: f })
-const add = async (e: Event, id: number) => { e.stopPropagation(); try { await addToCart(id); ElMessage.success('已加入购物车') } catch {} }
+const add = (e: Event, id: number) => { e.stopPropagation(); goD(id) }
 </script>
 
 <template>
@@ -51,7 +49,7 @@ const add = async (e: Event, id: number) => { e.stopPropagation(); try { await a
         <div class="info">
           <div class="title">{{ p.name }}</div>
           <div class="price-row"><span class="p"><span style="font-size:12px">¥</span>{{ p.price }}</span><span class="original-price" v-if="p.originalPrice>p.price">¥{{ p.originalPrice }}</span></div>
-          <div class="meta"><span>{{ p.brand }} · 月销{{ p.sales }}</span><button class="add-btn" @click="add($event,p.id)">加入购物车</button></div>
+          <div class="meta"><span>{{ p.brand }} · 月销{{ p.sales }}</span><button class="add-btn" @click="add($event,p.id)">选择规格</button></div>
         </div>
       </div>
     </div>
@@ -64,7 +62,7 @@ const add = async (e: Event, id: number) => { e.stopPropagation(); try { await a
         <div class="info">
           <div class="title">{{ p.name }}</div>
           <div class="price-row"><span class="p"><span style="font-size:12px">¥</span>{{ p.price }}</span><span class="original-price" v-if="p.originalPrice>p.price">¥{{ p.originalPrice }}</span></div>
-          <div class="meta"><span>{{ p.brand }} · 月销{{ p.sales }}</span><button class="add-btn" @click="add($event,p.id)">加入购物车</button></div>
+          <div class="meta"><span>{{ p.brand }} · 月销{{ p.sales }}</span><button class="add-btn" @click="add($event,p.id)">选择规格</button></div>
         </div>
       </div>
     </div>
