@@ -3,6 +3,7 @@ package com.biyesheji.product.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biyesheji.constant.UserRole;
 import com.biyesheji.dto.MerchantProductSaveDTO;
+import com.biyesheji.dto.MerchantProductBatchStatusDTO;
 import com.biyesheji.dto.MerchantProductStatusDTO;
 import com.biyesheji.dto.MerchantSkuSaveDTO;
 import com.biyesheji.dto.MerchantSkuUpdateDTO;
@@ -40,6 +41,12 @@ public class MerchantProductController {
     public R<Product> update(@RequestHeader("X-User-Role") Integer role, @PathVariable Long id, @Valid @RequestBody MerchantProductSaveDTO dto) { requireMerchant(role); return R.ok(productService.update(id, dto)); }
     @PutMapping("/{id}/status")
     public R<Product> status(@RequestHeader("X-User-Role") Integer role, @PathVariable Long id, @Valid @RequestBody MerchantProductStatusDTO dto) { requireMerchant(role); return R.ok(productService.updateStatus(id, dto.getStatus())); }
+    @PostMapping("/{id}/copy")
+    public R<Product> copy(@RequestHeader("X-User-Role") Integer role, @PathVariable Long id) { requireMerchant(role); return R.ok(productService.copy(id)); }
+    @DeleteMapping("/{id}")
+    public R<Void> delete(@RequestHeader("X-User-Role") Integer role, @PathVariable Long id) { requireMerchant(role); productService.delete(id); return R.ok(); }
+    @PutMapping("/batch-status")
+    public R<Void> batchStatus(@RequestHeader("X-User-Role") Integer role, @Valid @RequestBody MerchantProductBatchStatusDTO dto) { requireMerchant(role); productService.updateBatchStatus(dto.getIds(), dto.getStatus()); return R.ok(); }
     @GetMapping("/{id}/skus")
     public R<List<ProductSku>> skus(@RequestHeader("X-User-Role") Integer role, @PathVariable Long id) { requireMerchant(role); return R.ok(productService.listSkus(id)); }
     @PostMapping("/{id}/skus")

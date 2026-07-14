@@ -26,6 +26,9 @@ public interface ProductService {
     Product create(MerchantProductSaveDTO dto);
     Product update(Long id, MerchantProductSaveDTO dto);
     Product updateStatus(Long id, Integer status);
+    Product copy(Long id);
+    void delete(Long id);
+    void updateBatchStatus(List<Long> ids, Integer status);
     List<ProductSku> listSkus(Long productId);
     ProductSku createSku(Long productId, Long operatorId, MerchantSkuSaveDTO dto);
     ProductSku updateSku(Long skuId, MerchantSkuUpdateDTO dto);

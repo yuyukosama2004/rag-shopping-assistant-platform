@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ProductServiceImplTest {
@@ -28,7 +29,9 @@ class ProductServiceImplTest {
 
     @Test
     void rejectsPublishingProductWithoutActiveSku() {
-        when(productMapper.selectById(1L)).thenReturn(new Product());
+        Product product = new Product();
+        product.setStatus(2);
+        when(productMapper.selectById(1L)).thenReturn(product);
         when(productSkuMapper.selectCount(any(Wrapper.class))).thenReturn(0L);
 
         assertThrows(BizException.class, () -> service.updateStatus(1L, 1));
@@ -36,7 +39,9 @@ class ProductServiceImplTest {
 
     @Test
     void allowsPublishingProductWithActiveSku() {
-        when(productMapper.selectById(1L)).thenReturn(new Product());
+        Product product = new Product();
+        product.setStatus(2);
+        when(productMapper.selectById(1L)).thenReturn(product);
         when(productSkuMapper.selectCount(any(Wrapper.class))).thenReturn(1L);
 
         assertDoesNotThrow(() -> service.updateStatus(1L, 1));
@@ -59,5 +64,17 @@ class ProductServiceImplTest {
 
         assertEquals(0, updated.getStatus());
         assertEquals(new java.math.BigDecimal("99.90"), updated.getPrice());
+    }
+
+    @Test
+    void softDeletesProductInsteadOfRemovingIt() {
+        Product product = new Product();
+        product.setStatus(1);
+        when(productMapper.selectById(1L)).thenReturn(product);
+
+        service.delete(1L);
+
+        assertEquals(3, product.getStatus());
+        verify(productMapper).updateById(product);
     }
 }
