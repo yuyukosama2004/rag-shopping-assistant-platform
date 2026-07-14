@@ -42,6 +42,20 @@ export interface MerchantProductInput {
   description?: string
 }
 
+export interface ProductCatalog {
+  id: number
+  catalogType: 'BRAND' | 'CATEGORY'
+  name: string
+  sortOrder: number
+  status: number
+}
+
+export interface ProductCatalogInput {
+  name: string
+  sortOrder: number
+  status: number
+}
+
 export interface MerchantSku {
   id: number
   skuCode: string
@@ -121,6 +135,10 @@ export function createStaff(data: Omit<Staff, 'id' | 'status'> & { password: str
 export function updateStaffStatus(id: number, status: number) { return request.put(`/api/merchant/staff/${id}/status`, { status }) }
 export function resetStaffPassword(id: number, newPassword: string) { return request.put(`/api/merchant/staff/${id}/password`, { newPassword }) }
 export function getMerchantProducts(pageNum = 1, pageSize = 20, keyword = '') { return request.get('/api/merchant/products', { params: { pageNum, pageSize, keyword: keyword || undefined } }) }
+export function getMerchantCatalog(type: ProductCatalog['catalogType']) { return request.get(`/api/merchant/catalog/${type}`) }
+export function createMerchantCatalog(type: ProductCatalog['catalogType'], data: ProductCatalogInput) { return request.post(`/api/merchant/catalog/${type}`, data) }
+export function updateMerchantCatalog(type: ProductCatalog['catalogType'], id: number, data: ProductCatalogInput) { return request.put(`/api/merchant/catalog/${type}/${id}`, data) }
+export function deleteMerchantCatalog(type: ProductCatalog['catalogType'], id: number) { return request.delete(`/api/merchant/catalog/${type}/${id}`) }
 export function createMerchantProduct(data: MerchantProductInput) { return request.post('/api/merchant/products', data) }
 export function updateMerchantProduct(id: number, data: MerchantProductInput) { return request.put(`/api/merchant/products/${id}`, data) }
 export function updateMerchantProductStatus(id: number, status: number) { return request.put(`/api/merchant/products/${id}/status`, { status }) }

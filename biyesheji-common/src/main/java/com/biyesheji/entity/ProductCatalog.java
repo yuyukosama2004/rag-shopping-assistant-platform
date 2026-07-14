@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @Data
 @TableName("t_product_catalog")
 public class ProductCatalog {
-    @TableId(type = IdType.ASSIGN_ID) private Long id;
+    @TableId(type = IdType.AUTO) private Long id;
     private String catalogType;
     private String name;
     private Integer sortOrder;
