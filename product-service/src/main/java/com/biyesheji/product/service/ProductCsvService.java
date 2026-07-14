@@ -29,7 +29,8 @@ public class ProductCsvService {
     public Map<String, Object> importCsv(Long operatorId, MultipartFile file) {
         if (file == null || file.isEmpty() || file.getSize() > 2 * 1024 * 1024) throw new BizException(400, "CSV不能为空且不能超过2MiB");
         List<Row> rows = parse(file);
-        validate(rows);
+        List<Map<String, Object>> errors = validate(rows);
+        if (!errors.isEmpty()) return Map.of("products", 0, "skus", 0, "errors", errors);
         Map<String, List<Row>> groups = new LinkedHashMap<>();
         for (Row row : rows) groups.computeIfAbsent(row.productKey, k -> new ArrayList<>()).add(row);
         for (List<Row> group : groups.values()) {
@@ -71,13 +72,22 @@ public class ProductCsvService {
         } catch (java.io.IOException e) { throw new BizException(400, "CSV读取失败"); }
     }
 
-    private void validate(List<Row> rows) {
+    private List<Map<String, Object>> validate(List<Row> rows) {
+        List<Map<String, Object>> errors = new ArrayList<>();
         Set<String> codes = new HashSet<>();
         for (Row row : rows) {
-            if (row.productKey.isBlank() || row.name.isBlank() || row.brand.isBlank() || row.category.isBlank() || row.skuCode.isBlank() || row.price == null || row.skuPrice == null || row.initialStock == null || row.initialStock < 0 || row.price.signum() <= 0 || row.skuPrice.signum() <= 0) throw new BizException(400, "第" + row.line + "行字段无效");
-            if (!codes.add(row.skuCode) || productSkuMapper.selectCount(new LambdaQueryWrapper<ProductSku>().eq(ProductSku::getSkuCode, row.skuCode)) > 0) throw new BizException(400, "第" + row.line + "行SKU编码重复: " + row.skuCode);
+            if (row.error != null) { errors.add(error(row.line, row.error)); continue; }
+            if (row.productKey.isBlank() || row.name.isBlank() || row.brand.isBlank() || row.category.isBlank() || row.skuCode.isBlank() || row.price == null || row.skuPrice == null || row.initialStock == null || row.initialStock < 0 || row.price.signum() <= 0 || row.skuPrice.signum() <= 0) {
+                errors.add(error(row.line, "字段无效")); continue;
+            }
+            if (!codes.add(row.skuCode) || productSkuMapper.selectCount(new LambdaQueryWrapper<ProductSku>().eq(ProductSku::getSkuCode, row.skuCode)) > 0) {
+                errors.add(error(row.line, "SKU编码重复: " + row.skuCode));
+            }
         }
+        return errors;
     }
+
+    private static Map<String, Object> error(int line, String message) { return Map.of("line", line, "message", message); }
 
     private static List<String> columns(String line) {
         List<String> values = new ArrayList<>(); StringBuilder value = new StringBuilder(); boolean quoted = false;
@@ -88,17 +98,19 @@ public class ProductCsvService {
             else if (c == ',' && !quoted) { values.add(value.toString()); value.setLength(0); }
             else value.append(c);
         }
-        if (quoted) throw new BizException(400, "CSV存在未闭合引号");
+        if (quoted) return null;
         values.add(value.toString()); return values;
     }
     private static String value(BigDecimal value) { return value == null ? "" : value.toPlainString(); }
     private static String escape(String value) { return value == null ? "" : "\"" + value.replace("\"", "\"\"") + "\""; }
-    private record Row(int line, String productKey, String name, String brand, String category, BigDecimal price, BigDecimal originalPrice, String description, String mainImage, String skuCode, String specJson, BigDecimal skuPrice, BigDecimal skuOriginalPrice, Integer initialStock) {
+    private record Row(int line, String productKey, String name, String brand, String category, BigDecimal price, BigDecimal originalPrice, String description, String mainImage, String skuCode, String specJson, BigDecimal skuPrice, BigDecimal skuOriginalPrice, Integer initialStock, String error) {
         static Row of(int line, List<String> c) {
-            if (c.size() != 13) throw new BizException(400, "第" + line + "行列数错误");
-            try { return new Row(line, c.get(0).trim(), c.get(1).trim(), c.get(2).trim(), c.get(3).trim(), decimal(c.get(4)), decimal(c.get(5)), c.get(6), c.get(7), c.get(8).trim(), c.get(9), decimal(c.get(10)), decimal(c.get(11)), Integer.valueOf(c.get(12).trim())); }
-            catch (RuntimeException e) { throw new BizException(400, "第" + line + "行数值格式错误"); }
+            if (c == null) return invalid(line, "CSV存在未闭合引号");
+            if (c.size() != 13) return invalid(line, "列数错误");
+            try { return new Row(line, c.get(0).trim(), c.get(1).trim(), c.get(2).trim(), c.get(3).trim(), decimal(c.get(4)), decimal(c.get(5)), c.get(6), c.get(7), c.get(8).trim(), c.get(9), decimal(c.get(10)), decimal(c.get(11)), Integer.valueOf(c.get(12).trim()), null); }
+            catch (RuntimeException e) { return invalid(line, "数值格式错误"); }
         }
+        static Row invalid(int line, String error) { return new Row(line, "", "", "", "", null, null, "", "", "", "", null, null, null, error); }
         static BigDecimal decimal(String value) { return value == null || value.isBlank() ? null : new BigDecimal(value.trim()); }
     }
 }
