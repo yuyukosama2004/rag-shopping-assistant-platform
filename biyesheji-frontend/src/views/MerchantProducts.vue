@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { adjustMerchantSkuStock, copyMerchantProduct, createMerchantProduct, createMerchantSku, deleteMerchantProduct, exportMerchantProducts, getMerchantCatalog, getMerchantProducts, getMerchantSkus, getMerchantSkuStock, getMerchantSkuStockLedger, importMerchantProducts, updateMerchantProduct, updateMerchantProductBatchStatus, updateMerchantProductStatus, updateMerchantSku, uploadMerchantMedia, type MerchantProduct, type MerchantProductInput, type MerchantSku, type MerchantSkuInput, type MerchantSkuStock, type MerchantStockLedger, type ProductCatalog } from '../api/merchant'
+import { adjustMerchantSkuStock, copyMerchantProduct, createMerchantProduct, createMerchantSku, deleteMerchantMedia, deleteMerchantProduct, exportMerchantProducts, getMerchantCatalog, getMerchantProducts, getMerchantSkus, getMerchantSkuStock, getMerchantSkuStockLedger, importMerchantProducts, updateMerchantProduct, updateMerchantProductBatchStatus, updateMerchantProductStatus, updateMerchantSku, uploadMerchantMedia, type MerchantProduct, type MerchantProductInput, type MerchantSku, type MerchantSkuInput, type MerchantSkuStock, type MerchantStockLedger, type ProductCatalog } from '../api/merchant'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -27,7 +27,9 @@ const stock = ref<MerchantSkuStock | null>(null)
 const stockLedgers = ref<MerchantStockLedger[]>([])
 const brands = ref<ProductCatalog[]>([])
 const categories = ref<ProductCatalog[]>([])
-const form = reactive<MerchantProductInput>({ name: '', brand: '', category: '', price: null, originalPrice: null, mainImage: '', description: '' })
+const imageUrls = ref<string[]>([])
+const removedMedia = ref<string[]>([])
+const form = reactive<MerchantProductInput>({ name: '', brand: '', category: '', price: null, originalPrice: null, mainImage: '', images: '[]', description: '' })
 const skuForm = reactive<MerchantSkuInput>({ skuCode: '', specJson: '', price: null, originalPrice: null, initialStock: 0 })
 const stockForm = reactive({ quantity: null as number | null, reason: '' })
 
@@ -43,13 +45,20 @@ const loadCatalogs = async () => {
   brands.value = brandResponse.data.data.filter((item: ProductCatalog) => item.status === 1)
   categories.value = categoryResponse.data.data.filter((item: ProductCatalog) => item.status === 1)
 }
-const openCreate = () => { editingId.value = null; Object.assign(form, { name: '', brand: '', category: '', price: null, originalPrice: null, mainImage: '', description: '' }); dialogVisible.value = true }
-const openEdit = (item: MerchantProduct) => { editingId.value = item.id; Object.assign(form, item); dialogVisible.value = true }
+const parseImages = (value?: string) => {
+  try { const parsed = JSON.parse(value || '[]'); return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [] } catch { return [] }
+}
+const resetImages = (value?: string) => { imageUrls.value = parseImages(value); removedMedia.value = [] }
+const openCreate = () => { editingId.value = null; Object.assign(form, { name: '', brand: '', category: '', price: null, originalPrice: null, mainImage: '', images: '[]', description: '' }); resetImages(); dialogVisible.value = true }
+const openEdit = (item: MerchantProduct) => { editingId.value = item.id; Object.assign(form, item); resetImages(item.images); if (form.mainImage && !imageUrls.value.includes(form.mainImage)) imageUrls.value.unshift(form.mainImage); dialogVisible.value = true }
 const save = async () => {
   if (!form.name.trim() || !form.brand.trim() || !form.category.trim() || !form.price) return ElMessage.warning('请填写名称、品牌、分类和售价')
   saving.value = true
   try {
-    if (editingId.value) await updateMerchantProduct(editingId.value, form); else await createMerchantProduct(form)
+    const payload = { ...form, images: JSON.stringify(imageUrls.value) }
+    if (editingId.value) await updateMerchantProduct(editingId.value, payload); else await createMerchantProduct(payload)
+    const deletionResults = await Promise.allSettled(removedMedia.value.map(filename => deleteMerchantMedia(filename)))
+    if (deletionResults.some(result => result.status === 'rejected')) ElMessage.warning('图片已从商品移除，但仍被其他商品引用，文件会继续保留')
     ElMessage.success(editingId.value ? '商品已保存' : '草稿已创建'); dialogVisible.value = false; await load()
   } finally { saving.value = false }
 }
@@ -68,7 +77,19 @@ const uploadMainImage = async (event: Event) => {
   const file = (event.target as HTMLInputElement).files?.[0]
   if (!file) return
   uploadingImage.value = true
-  try { form.mainImage = (await uploadMerchantMedia(file)).data.data.url; ElMessage.success('图片已上传') } finally { uploadingImage.value = false }
+  try {
+    const url = (await uploadMerchantMedia(file)).data.data.url
+    imageUrls.value.push(url)
+    if (!form.mainImage) form.mainImage = url
+    ElMessage.success('图片已上传')
+  } finally { uploadingImage.value = false }
+}
+const selectMainImage = (url: string) => { form.mainImage = url }
+const removeImage = (url: string) => {
+  imageUrls.value = imageUrls.value.filter(item => item !== url)
+  if (form.mainImage === url) form.mainImage = imageUrls.value[0] || ''
+  const filename = url.startsWith('/api/media/') ? url.substring(url.lastIndexOf('/') + 1) : ''
+  if (filename && !removedMedia.value.includes(filename)) removedMedia.value.push(filename)
 }
 const importCsv = async (event: Event) => { const file = (event.target as HTMLInputElement).files?.[0]; if (!file) return; importing.value = true; try { const result = (await importMerchantProducts(file)).data.data; ElMessage.success(`已导入${result.products}个商品、${result.skus}个SKU`); await load() } finally { importing.value = false } }
 const exportCsv = async () => { const response = await exportMerchantProducts(); const url = URL.createObjectURL(response.data); const link = document.createElement('a'); link.href = url; link.download = 'products.csv'; link.click(); URL.revokeObjectURL(url) }
@@ -135,7 +156,7 @@ onMounted(async () => { await Promise.all([load(), loadCatalogs()]) })
       <el-form-item label="商品名称" required><el-input v-model="form.name" /></el-form-item>
       <el-row :gutter="12"><el-col :span="12"><el-form-item label="品牌" required><el-select v-model="form.brand" filterable style="width:100%"><el-option v-for="item in brands" :key="item.id" :label="item.name" :value="item.name" /></el-select></el-form-item></el-col><el-col :span="12"><el-form-item label="分类" required><el-select v-model="form.category" filterable style="width:100%"><el-option v-for="item in categories" :key="item.id" :label="item.name" :value="item.name" /></el-select></el-form-item></el-col></el-row>
       <el-row :gutter="12"><el-col :span="12"><el-form-item label="售价" required><el-input-number v-model="form.price" :min="0.01" :precision="2" style="width:100%" /></el-form-item></el-col><el-col :span="12"><el-form-item label="划线价"><el-input-number v-model="form.originalPrice" :min="0.01" :precision="2" style="width:100%" /></el-form-item></el-col></el-row>
-      <el-form-item label="主图"><el-input v-model="form.mainImage" placeholder="图片地址或上传图片" /><input type="file" accept="image/png,image/jpeg" :disabled="uploadingImage" style="margin-top:8px" @change="uploadMainImage" /><img v-if="form.mainImage" :src="form.mainImage" style="display:block;width:80px;height:80px;object-fit:cover;margin-top:8px" /></el-form-item>
+      <el-form-item label="商品图片"><input type="file" accept="image/png,image/jpeg" :disabled="uploadingImage" @change="uploadMainImage" /><div v-if="imageUrls.length" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><div v-for="url in imageUrls" :key="url" style="position:relative"><img :src="url" :style="{ width: '88px', height: '88px', objectFit: 'cover', cursor: 'pointer', border: form.mainImage === url ? '2px solid #f56c6c' : '1px solid #dcdfe6' }" @click="selectMainImage(url)" /><el-button size="small" text type="danger" style="display:block;margin:auto" @click="removeImage(url)">移除</el-button></div></div><div style="font-size:12px;color:#909399;margin-top:6px">点击图片设为主图；图片按当前顺序展示。</div></el-form-item>
       <el-form-item label="商品描述"><el-input v-model="form.description" type="textarea" :rows="4" /></el-form-item>
       <el-form-item><el-button type="primary" :loading="saving" @click="save">保存草稿</el-button></el-form-item>
     </el-form>
