@@ -1,0 +1,96 @@
+# Application services. Build the backend first with ./start.sh build.
+# This compose file intentionally reuses the private network created by the
+# infrastructure compose file, so the database and service registry stay private.
+name: biyesheji-app
+
+services:
+  user-service:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.runtime
+      args:
+        JAR_FILE: user-service/target/user-service-1.0.0.jar
+    image: biyesheji-user-service:${APP_IMAGE_TAG:-local}
+    container_name: biyesheji-user-service
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      SERVER_ADDRESS: 0.0.0.0
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:8081/actuator/health > /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
+    mem_limit: 512M
+
+  product-service:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.runtime
+      args:
+        JAR_FILE: product-service/target/product-service-1.0.0.jar
+    image: biyesheji-product-service:${APP_IMAGE_TAG:-local}
+    container_name: biyesheji-product-service
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      SERVER_ADDRESS: 0.0.0.0
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:8082/actuator/health > /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
+    mem_limit: 512M
+
+  order-service:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.runtime
+      args:
+        JAR_FILE: order-service/target/order-service-1.0.0.jar
+    image: biyesheji-order-service:${APP_IMAGE_TAG:-local}
+    container_name: biyesheji-order-service
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      SERVER_ADDRESS: 0.0.0.0
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:8083/actuator/health > /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
+    mem_limit: 512M
+
+  gateway-service:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.runtime
+      args:
+        JAR_FILE: gateway-service/target/gateway-service-1.0.0.jar
+    image: biyesheji-gateway-service:${APP_IMAGE_TAG:-local}
+    container_name: biyesheji-gateway-service
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      SERVER_ADDRESS: 0.0.0.0
+    ports:
+      - "127.0.0.1:${GATEWAY_HOST_PORT:-8080}:8080"
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:8080/actuator/health > /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    mem_limit: 384M
+
+networks:
+  internal:
+    name: biyesheji-internal
+    external: true

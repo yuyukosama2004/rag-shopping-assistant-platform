@@ -1,25 +1,29 @@
 package com.biyesheji.utils;
 
-import cn.hutool.core.date.DateUtil;
+import com.biyesheji.exception.BizException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
-/**
- * JWT 工具类
- */
 @Component
 public class JwtUtil {
 
-    @Value("${jwt.secret:biyesheji-default-secret-key-2026-platform}")
+    public static final String ACCESS_TOKEN = "access";
+    public static final String REFRESH_TOKEN = "refresh";
+    private static final String TOKEN_TYPE_CLAIM = "tokenType";
+
+    @Value("${jwt.secret:}")
     private String secret;
 
     @Value("${jwt.access-token-expire:7200}")
@@ -28,44 +32,55 @@ public class JwtUtil {
     @Value("${jwt.refresh-token-expire:604800}")
     private Long refreshTokenExpire;
 
+    @PostConstruct
+    void validateSecret() {
+        if (!StringUtils.hasText(secret) || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException("JWT_SECRET must contain at least 32 bytes");
+        }
+    }
+
     private SecretKey getKey() {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    /**
-     * 生成 Access Token
-     */
     public String generateAccessToken(Long userId, String username) {
-        return generateToken(userId, username, accessTokenExpire);
+        return generateToken(userId, username, accessTokenExpire, ACCESS_TOKEN);
     }
 
-    /**
-     * 生成 Refresh Token
-     */
+    public String generateAccessToken(Long userId, String username, Integer role) {
+        return generateToken(userId, username, accessTokenExpire, ACCESS_TOKEN, role);
+    }
+
     public String generateRefreshToken(Long userId, String username) {
-        return generateToken(userId, username, refreshTokenExpire);
+        return generateToken(userId, username, refreshTokenExpire, REFRESH_TOKEN);
     }
 
-    private String generateToken(Long userId, String username, Long expireSeconds) {
+    public String generateRefreshToken(Long userId, String username, Integer role) {
+        return generateToken(userId, username, refreshTokenExpire, REFRESH_TOKEN, role);
+    }
+
+    private String generateToken(Long userId, String username, Long expireSeconds, String tokenType) {
+        return generateToken(userId, username, expireSeconds, tokenType, null);
+    }
+
+    private String generateToken(Long userId, String username, Long expireSeconds, String tokenType, Integer role) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
-        claims.put("username", username);
+        claims.put(TOKEN_TYPE_CLAIM, tokenType);
+        if (role != null) claims.put("role", role);
 
         Date now = new Date();
         Date expiration = new Date(now.getTime() + expireSeconds * 1000);
-
         return Jwts.builder()
                 .claims(claims)
                 .subject(username)
+                .id(UUID.randomUUID().toString())
                 .issuedAt(now)
                 .expiration(expiration)
                 .signWith(getKey())
                 .compact();
     }
 
-    /**
-     * 解析 Token
-     */
     public Claims parseToken(String token) {
         return Jwts.parser()
                 .verifyWith(getKey())
@@ -74,38 +89,42 @@ public class JwtUtil {
                 .getPayload();
     }
 
-    /**
-     * 从 Token 获取用户ID
-     */
     public Long getUserId(String token) {
-        Claims claims = parseToken(token);
-        return claims.get("userId", Long.class);
+        return parseToken(token).get("userId", Long.class);
     }
 
-    /**
-     * 从 Token 获取用户名
-     */
+    public Long getAccessUserId(String token) {
+        if (!ACCESS_TOKEN.equals(getTokenType(token))) {
+            throw new BizException(401, "仅允许使用访问令牌");
+        }
+        return getUserId(token);
+    }
+
     public String getUsername(String token) {
-        Claims claims = parseToken(token);
-        return claims.getSubject();
+        return parseToken(token).getSubject();
     }
 
-    /**
-     * 验证 Token 是否过期
-     */
+    public String getTokenType(String token) {
+        return parseToken(token).get(TOKEN_TYPE_CLAIM, String.class);
+    }
+
+    public String getTokenId(String token) {
+        return parseToken(token).getId();
+    }
+
     public boolean isExpired(String token) {
         try {
-            Claims claims = parseToken(token);
-            return claims.getExpiration().before(new Date());
+            return parseToken(token).getExpiration().before(new Date());
         } catch (Exception e) {
             return true;
         }
     }
 
-    /**
-     * 获取 Access Token 过期时间（秒）
-     */
     public Long getAccessTokenExpire() {
         return accessTokenExpire;
+    }
+
+    public Long getRefreshTokenExpire() {
+        return refreshTokenExpire;
     }
 }

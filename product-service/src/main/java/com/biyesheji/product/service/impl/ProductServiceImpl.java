@@ -2,15 +2,26 @@ package com.biyesheji.product.service.impl;
 
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biyesheji.entity.Product;
+import com.biyesheji.dto.MerchantProductSaveDTO;
+import com.biyesheji.dto.MerchantSkuSaveDTO;
+import com.biyesheji.dto.StockAdjustDTO;
+import com.biyesheji.entity.ProductSku;
+import com.biyesheji.entity.Stock;
+import com.biyesheji.entity.StockLedger;
 import com.biyesheji.exception.BizException;
 import com.biyesheji.product.mapper.ProductMapper;
+import com.biyesheji.product.mapper.ProductSkuMapper;
+import com.biyesheji.product.mapper.StockMapper;
+import com.biyesheji.product.mapper.StockLedgerMapper;
 import com.biyesheji.product.service.ProductService;
 import com.biyesheji.utils.RedisUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -24,6 +35,9 @@ public class ProductServiceImpl implements ProductService {
 
     private final ProductMapper productMapper;
     private final RedisUtil redisUtil;
+    private final ProductSkuMapper productSkuMapper;
+    private final StockMapper stockMapper;
+    private final StockLedgerMapper stockLedgerMapper;
 
     private static final String CACHE_PRODUCT = "product:detail:";
     private static final String CACHE_HOT = "product:hot";
@@ -149,5 +163,140 @@ public class ProductServiceImpl implements ProductService {
         // 缓存 30 分钟
         redisUtil.set(CACHE_FILTERS, filters, 30, TimeUnit.MINUTES);
         return filters;
+    }
+
+    @Override
+    public Page<Product> merchantPage(int pageNum, int pageSize, String keyword) {
+        LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
+        if (keyword != null && !keyword.isBlank()) wrapper.and(w -> w.like(Product::getName, keyword).or().like(Product::getBrand, keyword));
+        return productMapper.selectPage(new Page<>(pageNum, pageSize), wrapper.orderByDesc(Product::getUpdatedAt));
+    }
+
+    @Override
+    public Product create(MerchantProductSaveDTO dto) {
+        Product product = new Product();
+        copy(dto, product);
+        product.setSales(0);
+        product.setStatus(2);
+        productMapper.insert(product);
+        clearCache(product.getId());
+        return product;
+    }
+
+    @Override
+    public Product update(Long id, MerchantProductSaveDTO dto) {
+        Product product = requireProduct(id);
+        copy(dto, product);
+        productMapper.updateById(product);
+        clearCache(id);
+        return product;
+    }
+
+    @Override
+    public Product updateStatus(Long id, Integer status) {
+        Product product = requireProduct(id);
+        product.setStatus(status);
+        productMapper.updateById(product);
+        clearCache(id);
+        return product;
+    }
+
+    private Product requireProduct(Long id) {
+        Product product = productMapper.selectById(id);
+        if (product == null) throw new BizException(404, "商品不存在");
+        return product;
+    }
+
+    private void copy(MerchantProductSaveDTO dto, Product product) {
+        product.setName(dto.getName()); product.setBrand(dto.getBrand()); product.setCategory(dto.getCategory());
+        product.setPrice(dto.getPrice()); product.setOriginalPrice(dto.getOriginalPrice()); product.setSpecJson(dto.getSpecJson());
+        product.setMainImage(dto.getMainImage()); product.setImages(dto.getImages()); product.setDescription(dto.getDescription());
+        product.setColorOptions(dto.getColorOptions()); product.setStorageOptions(dto.getStorageOptions());
+    }
+
+    private void clearCache(Long productId) {
+        redisUtil.delete(CACHE_PRODUCT + productId); redisUtil.delete(CACHE_PRODUCT + productId + ":null");
+        redisUtil.deleteByPattern(CACHE_HOT + ":*"); redisUtil.delete(CACHE_FILTERS);
+    }
+
+    @Override
+    public List<ProductSku> listSkus(Long productId) {
+        requireProduct(productId);
+        return productSkuMapper.selectList(new LambdaQueryWrapper<ProductSku>()
+                .eq(ProductSku::getProductId, productId).orderByDesc(ProductSku::getCreatedAt));
+    }
+
+    @Override
+    @Transactional
+    public ProductSku createSku(Long productId, Long operatorId, MerchantSkuSaveDTO dto) {
+        requireProduct(productId);
+        if (productSkuMapper.selectCount(new LambdaQueryWrapper<ProductSku>().eq(ProductSku::getSkuCode, dto.getSkuCode())) > 0) {
+            throw new BizException(400, "SKU编码已存在");
+        }
+        ProductSku sku = new ProductSku();
+        sku.setProductId(productId); sku.setSkuCode(dto.getSkuCode()); sku.setSpecJson(dto.getSpecJson());
+        sku.setPrice(dto.getPrice()); sku.setOriginalPrice(dto.getOriginalPrice()); sku.setStatus(1);
+        productSkuMapper.insert(sku);
+        Stock stock = new Stock();
+        stock.setProductId(productId); stock.setSkuId(sku.getId()); stock.setTotal(dto.getInitialStock());
+        stock.setLocked(0); stock.setAvailable(dto.getInitialStock()); stock.setVersion(0);
+        stockMapper.insert(stock);
+        StockLedger ledger = new StockLedger();
+        ledger.setSkuId(sku.getId()); ledger.setAction("INITIAL_STOCK"); ledger.setQuantity(dto.getInitialStock());
+        ledger.setBeforeAvailable(0); ledger.setAfterAvailable(dto.getInitialStock()); ledger.setOperatorId(operatorId);
+        stockLedgerMapper.insert(ledger);
+        clearCache(productId);
+        return sku;
+    }
+
+    @Override
+    public Stock getSkuStock(Long skuId) {
+        requireSku(skuId);
+        Stock stock = stockMapper.selectOne(new LambdaQueryWrapper<Stock>().eq(Stock::getSkuId, skuId));
+        if (stock == null) throw new BizException(404, "SKU库存不存在");
+        return stock;
+    }
+
+    @Override
+    @Transactional
+    public Stock adjustSkuStock(Long skuId, Long operatorId, StockAdjustDTO dto) {
+        if (dto.getQuantity() == 0) throw new BizException(400, "调整数量不能为0");
+        ProductSku sku = requireSku(skuId);
+        for (int attempt = 0; attempt < 3; attempt++) {
+            Stock stock = getSkuStock(skuId);
+            int nextAvailable = stock.getAvailable() + dto.getQuantity();
+            int nextTotal = stock.getTotal() + dto.getQuantity();
+            if (nextAvailable < 0 || nextTotal < stock.getLocked()) {
+                throw new BizException(400, "调整后可用库存不能为负数");
+            }
+            int rows = stockMapper.update(null, new LambdaUpdateWrapper<Stock>()
+                    .eq(Stock::getId, stock.getId()).eq(Stock::getVersion, stock.getVersion())
+                    .set(Stock::getAvailable, nextAvailable).set(Stock::getTotal, nextTotal)
+                    .set(Stock::getVersion, stock.getVersion() + 1));
+            if (rows == 1) {
+                StockLedger ledger = new StockLedger();
+                ledger.setSkuId(skuId); ledger.setAction("MANUAL_ADJUST"); ledger.setQuantity(dto.getQuantity());
+                ledger.setBeforeAvailable(stock.getAvailable()); ledger.setAfterAvailable(nextAvailable);
+                ledger.setOperatorId(operatorId); ledger.setReferenceNo(dto.getReason());
+                stockLedgerMapper.insert(ledger);
+                clearCache(sku.getProductId());
+                stock.setAvailable(nextAvailable); stock.setTotal(nextTotal); stock.setVersion(stock.getVersion() + 1);
+                return stock;
+            }
+        }
+        throw new BizException(409, "库存并发调整，请重试");
+    }
+
+    @Override
+    public List<StockLedger> listSkuStockLedgers(Long skuId) {
+        requireSku(skuId);
+        return stockLedgerMapper.selectList(new LambdaQueryWrapper<StockLedger>()
+                .eq(StockLedger::getSkuId, skuId).orderByDesc(StockLedger::getCreatedAt));
+    }
+
+    private ProductSku requireSku(Long skuId) {
+        ProductSku sku = productSkuMapper.selectById(skuId);
+        if (sku == null) throw new BizException(404, "SKU不存在");
+        return sku;
     }
 }

@@ -1,159 +1,137 @@
-#!/bin/bash
-# 手机电商平台 启动脚本（低配优化版）
-# 适配: AMD A8 4500M + 12GB DDR3 + Ubuntu Server + SSD
+#!/usr/bin/env bash
+set -euo pipefail
 
-set -e
-PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="$PROJECT_DIR/.env"
+COMPOSE_FILE="${COMPOSE_FILE:-$PROJECT_DIR/docker/docker-compose.infrastructure.yml}"
+APP_COMPOSE_FILE="${APP_COMPOSE_FILE:-$PROJECT_DIR/docker/docker-compose.app.yml}"
 
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
-log()   { echo -e "${GREEN}[INFO]${NC} $1"; }
-warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
-err()   { echo -e "${RED}[ERROR]${NC} $1"; }
+die() { echo "ERROR: $*" >&2; exit 1; }
+info() { echo "INFO: $*"; }
 
-# JVM 低配参数（所有微服务通用）
-# SerialGC: 单线程 GC，4 核 CPU 上避免和其他进程争抢
-JVM_OPTS="-Xms64m -Xmx256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m -Xss320k -XX:+TieredCompilation -Djava.awt.headless=true"
-# Docker 运行微服务用的 JDK 镜像（宿主机只有 JDK11，服务需要 JDK17+）
-JAVA_IMAGE="eclipse-temurin:17-jre-alpine"
-
-wait_http() {
-    local url=$1 desc=$2 max=${3:-60}
-    log "等待 $desc ($url)..."
-    for i in $(seq 1 $max); do
-        if curl -sf "$url" >/dev/null 2>&1; then
-            log "$desc 就绪 (${i}s)"
-            return 0
-        fi
-        sleep 1
-    done
-    warn "$desc 超时"
-    return 1
+load_env() {
+  [ -f "$ENV_FILE" ] || die "Missing $ENV_FILE. Copy .env.example to .env and set every required secret."
+  set -a
+  # shellcheck disable=SC1090
+  . "$ENV_FILE"
+  set +a
+  for key in MYSQL_ROOT_PASSWORD REDIS_PASSWORD JWT_SECRET; do
+    [ -n "${!key:-}" ] || die "$key must be set in .env"
+  done
+  [ "${#JWT_SECRET}" -ge 32 ] || die "JWT_SECRET must contain at least 32 bytes"
+  GATEWAY_HOST_PORT="${GATEWAY_HOST_PORT:-8080}"
+  [[ "$GATEWAY_HOST_PORT" =~ ^[0-9]+$ ]] && [ "$GATEWAY_HOST_PORT" -ge 1 ] && [ "$GATEWAY_HOST_PORT" -le 65535 ] \
+    || die "GATEWAY_HOST_PORT must be a valid TCP port"
 }
 
-# ========== infra ==========
+compose() {
+  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
+}
+
+app_compose() {
+  docker compose --env-file "$ENV_FILE" -f "$APP_COMPOSE_FILE" "$@"
+}
+
+wait_http() {
+  local url="$1" name="$2" attempts="${3:-60}"
+  for _ in $(seq 1 "$attempts"); do
+    curl --fail --silent --show-error "$url" >/dev/null && { info "$name is ready"; return 0; }
+    sleep 1
+  done
+  die "$name did not become ready: $url"
+}
+
 start_infra() {
-    log "启动中间件..."
-    cd "$PROJECT_DIR"
-    docker compose -f docker/docker-compose.infrastructure.yml up -d
-
-    for i in $(seq 1 40); do
-        docker exec biyesheji-mysql mysqladmin ping -uroot -proot123 --silent 2>/dev/null && break
-        sleep 1
-    done
-    docker exec biyesheji-mysql mysqladmin ping -uroot -proot123 --silent 2>/dev/null \
-        && log "MySQL 就绪" || warn "MySQL 可能未就绪"
-
-    wait_http "http://localhost:15672" "RabbitMQ"   40
-    wait_http "http://localhost:8848/nacos" "Nacos" 60
-
-    docker ps --format "table {{.Names}}\t{{.Status}}" --filter "name=biyesheji-"
-    log "中间件全部就绪"
+  load_env
+  info "Starting MySQL, Redis and Nacos"
+  compose up -d
+  wait_healthy biyesheji-mysql 60
+  wait_healthy biyesheji-redis 30
+  wait_healthy biyesheji-nacos 90
 }
 
 stop_infra() {
-    log "停止中间件..."
-    cd "$PROJECT_DIR" && docker compose -f docker/docker-compose.infrastructure.yml down
-    log "中间件已停止"
+  load_env
+  for service in user-service product-service order-service gateway-service; do
+    [ "$(docker inspect --format '{{.State.Running}}' "biyesheji-$service" 2>/dev/null || true)" != "true" ] \
+      || die "Stop application services before stopping infrastructure"
+  done
+  compose down
 }
 
-# ========== build ==========
 build() {
-    log "Maven 构建项目..."
-    docker run --rm -v "$PROJECT_DIR:/app" -v maven-repo:/root/.m2 -w /app \
-        maven:3.9.9-eclipse-temurin-21 mvn clean package -DskipTests
-    # 修复 Docker 构建产生的 root 属主问题
-    sudo chown -R jill:jill "$PROJECT_DIR"/*/target/*.jar 2>/dev/null
-    log "构建完成"
+  info "Building backend with Java 17 and running tests"
+  docker run --rm -v "$PROJECT_DIR:/workspace" -v maven-repo:/root/.m2 -w /workspace \
+    "${MAVEN_IMAGE:-maven:3.9-eclipse-temurin-17}" mvn -B clean verify
 }
 
-# ========== 启动微服务 ==========
+build_frontend() {
+  info "Building frontend with Node 22"
+  docker run --rm -v "$PROJECT_DIR/biyesheji-frontend:/workspace" -w /workspace \
+    "${NODE_IMAGE:-node:22-bookworm-slim}" sh -c 'npm ci && npm run build'
+}
+
+wait_healthy() {
+  local container="$1" attempts="${2:-90}" status
+  for _ in $(seq 1 "$attempts"); do
+    status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container" 2>/dev/null || true)"
+    [ "$status" = "healthy" ] && { info "$container is healthy"; return 0; }
+    [ "$status" = "exited" ] || [ "$status" = "dead" ] && break
+    sleep 1
+  done
+  docker logs --tail 100 "$container" >&2 || true
+  die "$container did not become healthy"
+}
+
 start_services() {
-    log "启动微服务（Docker 容器方式，JDK 17，低配 JVM 参数）..."
-    cd "$PROJECT_DIR"
-
-    for svc in user-service product-service order-service gateway-service; do
-        local port=$(grep -oP 'port:\s*\K\d+' $svc/src/main/resources/application.yml | head -1)
-        local jar="$svc/target/$svc-1.0.0.jar"
-        if [ ! -f "$jar" ]; then
-            err "$jar 不存在，请先执行 ./start.sh build"
-            exit 1
-        fi
-        docker rm -f biyesheji-$svc 2>/dev/null
-        docker run --rm -d --name biyesheji-$svc --network host \
-            -v "$PROJECT_DIR/$jar:/app.jar" \
-            $JAVA_IMAGE \
-            java $JVM_OPTS -jar /app.jar
-        log "启动 $svc (:${port})..."
-        sleep 8
-    done
-
-    log "等待服务就绪..."
-    wait_http "http://localhost:8081/doc.html" "user-service" 90
-    wait_http "http://localhost:8082/doc.html" "product-service" 60
-    wait_http "http://localhost:8083/doc.html" "order-service" 90
-    # Gateway 没有 doc.html，用路由测试代替
-    wait_http "http://localhost:8080/api/product/page?pageSize=1" "gateway-service" 90
-
-    log "全部微服务启动完成"
-    docker ps --format "table {{.Names}}\t{{.Status}}" --filter "name=biyesheji-" | head -10
+  load_env
+  start_infra
+  for service in user-service product-service order-service gateway-service; do
+    [ -f "$PROJECT_DIR/$service/target/$service-1.0.0.jar" ] \
+      || die "Missing $service build artifact; run ./start.sh build first"
+  done
+  info "Building application runtime images"
+  app_compose build
+  for service in user-service product-service order-service gateway-service; do
+    docker rm -f "biyesheji-$service" >/dev/null 2>&1 || true
+  done
+  info "Starting application services through Docker Compose"
+  app_compose up -d
+  for service in user-service product-service order-service gateway-service; do
+    wait_healthy "biyesheji-$service"
+  done
+  wait_http "http://127.0.0.1:$GATEWAY_HOST_PORT/api/product/page?pageNum=1&pageSize=1" "Gateway" 30
 }
 
 stop_services() {
-    log "停止微服务..."
-    docker rm -f biyesheji-user-service biyesheji-product-service biyesheji-order-service biyesheji-gateway-service 2>/dev/null
-    log "微服务已停止"
+  [ -f "$ENV_FILE" ] || die "Missing $ENV_FILE"
+  app_compose down
 }
 
-# ========== 前端 ==========
-start_frontend() {
-    log "启动前端开发服务器..."
-    cd "$PROJECT_DIR/biyesheji-frontend"
-    npm run dev -- --host 0.0.0.0 &
-    log "前端启动中 (http://localhost:5173)"
-}
-
-# ========== 状态 ==========
 status() {
-    echo "===== Docker 容器 ====="
-    docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" --filter "name=biyesheji-"
-    echo ""
-    echo "===== Java 进程 ====="
-    jps -lv 2>/dev/null | grep -v jps || echo "无 Java 进程"
+  load_env
+  app_compose ps
+  curl --fail --silent "http://127.0.0.1:$GATEWAY_HOST_PORT/api/product/page?pageNum=1&pageSize=1" >/dev/null \
+    && info "Gateway request succeeded" || die "Gateway request failed"
 }
-
-# ========== 入口 ==========
-mkdir -p "$PROJECT_DIR/logs"
 
 case "${1:-help}" in
-    infra-start)  start_infra ;;
-    infra-stop)   stop_infra ;;
-    build)        build ;;
-    start)        start_services ;;
-    stop)         stop_services ;;
-    frontend)     start_frontend ;;
-    restart)      stop_services; start_services ;;
-    status)       status ;;
-    all)
-        start_infra
-        start_services
-        start_frontend
-        ;;
-    help|*)
-        echo "手机电商平台 管理脚本"
-        echo ""
-        echo "用法: ./start.sh <command>"
-        echo ""
-        echo "命令:"
-        echo "  infra-start   启动中间件 (MySQL, Redis, RabbitMQ, Nacos)"
-        echo "  infra-stop    停止中间件"
-        echo "  build         Maven 构建全部微服务"
-        echo "  start         按顺序启动 4 个微服务（低配 JVM 参数）"
-        echo "  stop          停止所有微服务"
-        echo "  restart       重启微服务"
-        echo "  frontend      启动 Vue 前端开发服务器"
-        echo "  status        查看容器和进程状态"
-        echo "  all           一键启动全部（中间件 + 微服务 + 前端）"
-        echo ""
-        echo "演示流程:  ./start.sh infra-start && ./start.sh start && ./start.sh frontend"
-        ;;
+  infra-start) start_infra ;;
+  infra-stop) stop_infra ;;
+  build) build ;;
+  frontend-build) build_frontend ;;
+  start) start_services ;;
+  stop) stop_services ;;
+  restart) stop_services; start_services ;;
+  status) status ;;
+  all) start_infra; build; build_frontend; start_services ;;
+  *)
+    cat <<'EOF'
+Usage: ./start.sh {infra-start|infra-stop|build|frontend-build|start|stop|restart|status|all}
+
+All commands require a populated .env file. Services are attached to the private
+Docker network; only the gateway is bound to its configured loopback port for Nginx.
+The frontend is built in the Node 22 container, so no host Node.js installation is required.
+EOF
+    ;;
 esac

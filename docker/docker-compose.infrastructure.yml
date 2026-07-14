@@ -7,9 +7,9 @@ services:
     container_name: biyesheji-mysql
     restart: unless-stopped
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
       MYSQL_DATABASE: biyesheji
       TZ: Asia/Shanghai
     command:
@@ -25,40 +25,42 @@ services:
       - ../sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql
       - ../sql/mock_data.sql:/docker-entrypoint-initdb.d/02-mock.sql
       - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysqladmin ping -h 127.0.0.1 -uroot --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     mem_limit: 512M
+    networks: [internal]
 
   redis:
     image: redis:7-alpine
     container_name: biyesheji-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
-    command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru --save ""
+      - "127.0.0.1:6379:6379"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --maxmemory 64mb --maxmemory-policy allkeys-lru --save \"\""]
     volumes:
       - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -qx PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
     mem_limit: 128M
-
-  rabbitmq:
-    image: rabbitmq:3.13-management
-    container_name: biyesheji-rabbitmq
-    restart: unless-stopped
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: admin123
-    volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
-    mem_limit: 384M
+    networks: [internal]
 
   nacos:
     image: nacos/nacos-server:v2.3.2
     container_name: biyesheji-nacos
     restart: unless-stopped
     ports:
-      - "8848:8848"
-      - "9848:9848"
+      - "127.0.0.1:8848:8848"
+      - "127.0.0.1:9848:9848"
     environment:
       MODE: standalone
       PREFER_HOST_MODE: hostname
@@ -67,10 +69,20 @@ services:
       JVM_XMN: 64m
     volumes:
       - nacos-data:/home/nacos/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:8848/nacos/ > /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 45s
     mem_limit: 640M
+    networks: [internal]
 
 volumes:
   mysql-data:
   redis-data:
-  rabbitmq-data:
   nacos-data:
+
+networks:
+  internal:
+    name: biyesheji-internal

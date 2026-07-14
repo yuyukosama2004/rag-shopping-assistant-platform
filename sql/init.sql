@@ -27,6 +27,27 @@ CREATE TABLE t_user (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
 -- =====================================================
+-- 1.1 单店店铺配置
+-- =====================================================
+DROP TABLE IF EXISTS t_store_setting;
+CREATE TABLE t_store_setting (
+    id BIGINT NOT NULL COMMENT '固定为1，单实例店铺配置',
+    store_name VARCHAR(100) NOT NULL COMMENT '店铺名称',
+    logo VARCHAR(255) DEFAULT NULL COMMENT 'Logo地址',
+    service_phone VARCHAR(20) DEFAULT NULL COMMENT '客服联系电话',
+    service_email VARCHAR(100) DEFAULT NULL COMMENT '客服邮箱',
+    address VARCHAR(255) DEFAULT NULL COMMENT '店铺地址',
+    business_status TINYINT NOT NULL DEFAULT 1 COMMENT '营业状态: 0-休息 1-营业',
+    shipping_notice VARCHAR(2000) DEFAULT NULL COMMENT '配送说明',
+    after_sales_notice VARCHAR(2000) DEFAULT NULL COMMENT '售后说明',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT ck_store_setting_singleton CHECK (id = 1)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='单店店铺配置';
+
+-- =====================================================
 -- 2. 商品表
 -- =====================================================
 DROP TABLE IF EXISTS t_product;
@@ -41,6 +62,8 @@ CREATE TABLE t_product (
     main_image VARCHAR(255) DEFAULT NULL COMMENT '主图URL',
     images TEXT COMMENT '多图JSON数组',
     description TEXT COMMENT '商品描述',
+    color_options JSON DEFAULT NULL COMMENT '可选颜色JSON数组',
+    storage_options JSON DEFAULT NULL COMMENT '可选存储JSON数组',
     sales INT NOT NULL DEFAULT 0 COMMENT '销量',
     status TINYINT NOT NULL DEFAULT 1 COMMENT '状态: 0-下架 1-上架',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -125,6 +148,8 @@ CREATE TABLE t_shopping_cart (
     product_id BIGINT NOT NULL COMMENT '商品ID',
     quantity INT NOT NULL DEFAULT 1 COMMENT '数量',
     checked TINYINT NOT NULL DEFAULT 1 COMMENT '是否选中: 0-未选 1-选中',
+    selected_color VARCHAR(50) DEFAULT NULL COMMENT '已选颜色',
+    selected_storage VARCHAR(50) DEFAULT NULL COMMENT '已选存储规格',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (id),

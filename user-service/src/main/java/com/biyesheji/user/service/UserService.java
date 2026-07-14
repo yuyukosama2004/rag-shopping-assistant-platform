@@ -10,4 +10,5 @@ public interface UserService {
     User getById(Long userId);
     User updateInfo(Long userId, User user);
     LoginVO refreshToken(String refreshToken);
+    void logout(Long userId);
 }

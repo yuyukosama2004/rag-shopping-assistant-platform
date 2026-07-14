@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { login as loginApi } from '../api/user'
+import { getUserInfo, login as loginApi, logout as logoutApi } from '../api/user'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem('accessToken') || '')
@@ -18,19 +18,26 @@ function parseLocalUser() {
     token.value = data.accessToken
     localStorage.setItem('accessToken', data.accessToken)
     localStorage.setItem('refreshToken', data.refreshToken)
-    localStorage.setItem('userInfo', JSON.stringify({ id: data.userId, username: data.username, nickname: data.nickname }))
-    user.value = { id: data.userId, username: data.username, nickname: data.nickname }
+    const info = (await getUserInfo()).data.data
+    const userInfo = { id: data.userId, username: data.username, nickname: data.nickname, role: info.role }
+    localStorage.setItem('userInfo', JSON.stringify(userInfo))
+    user.value = userInfo
     return data
   }
 
   function logout() {
+    logoutApi().catch(() => undefined)
+    clearSession()
+    window.location.href = '/login'
+  }
+
+  function clearSession() {
     token.value = ''
     user.value = null
     localStorage.removeItem('accessToken')
     localStorage.removeItem('refreshToken')
     localStorage.removeItem('userInfo')
-    window.location.href = '/login'
   }
 
-  return { token, user, isLoggedIn, login, logout }
+  return { token, user, isLoggedIn, login, logout, clearSession }
 })

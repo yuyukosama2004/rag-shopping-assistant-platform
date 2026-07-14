@@ -43,6 +43,14 @@ public class RedisUtil {
         return redissonClient.getBucket(key).delete();
     }
 
+    public boolean expire(String key, long timeout, TimeUnit unit) {
+        return redissonClient.getBucket(key).expire(Duration.ofMillis(unit.toMillis(timeout)));
+    }
+
+    public long deleteByPattern(String pattern) {
+        return redissonClient.getKeys().deleteByPattern(pattern);
+    }
+
     /**
      * SETNX - 仅当 key 不存在时设置（用于幂等/防重）
      */

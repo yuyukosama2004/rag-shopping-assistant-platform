@@ -16,6 +16,7 @@ public class Stock implements Serializable {
     private Long id;
 
     private Long productId;
+    private Long skuId;
     private Integer total;
     private Integer locked;
     private Integer available;

@@ -3,6 +3,7 @@ package com.biyesheji.gateway.filter;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -10,11 +11,13 @@ import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
@@ -26,57 +29,70 @@ import java.util.List;
 @Component
 public class JwtAuthFilter implements GlobalFilter, Ordered {
 
-    @Value("${jwt.secret:biyesheji-default-secret-key-2026-platform}")
+    private static final String ACCESS_TOKEN = "access";
+
+    @Value("${jwt.secret:}")
     private String secret;
 
     private static final List<String> WHITE_LIST = List.of(
             "/api/user/login",
             "/api/user/register",
+            "/api/user/refresh",
             "/api/product",
-            "/api/order/ai/chat"
+            "/api/store"
     );
+
+    @PostConstruct
+    void validateSecret() {
+        if (!StringUtils.hasText(secret) || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException("JWT_SECRET must contain at least 32 bytes");
+        }
+    }
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        String path = exchange.getRequest().getURI().getPath();
-
-        // 白名单直接放行
-        for (String whitePath : WHITE_LIST) {
-            if (path.startsWith(whitePath)) {
-                return chain.filter(exchange);
-            }
+        if (exchange.getRequest().getMethod() == HttpMethod.OPTIONS) {
+            return chain.filter(exchange);
         }
 
-        // 从 Header 取 Token
+        String path = exchange.getRequest().getURI().getPath();
+        if ("/api/merchant/initialize".equals(path) || WHITE_LIST.stream().anyMatch(path::startsWith)) {
+            return chain.filter(exchange);
+        }
+
         String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return unauthorized(exchange, "未登录");
         }
 
-        String token = authHeader.substring(7);
         try {
-            SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
             Claims claims = Jwts.parser()
-                    .verifyWith(key)
+                    .verifyWith(getKey())
                     .build()
-                    .parseSignedClaims(token)
+                    .parseSignedClaims(authHeader.substring(7))
                     .getPayload();
+            if (!ACCESS_TOKEN.equals(claims.get("tokenType", String.class))) {
+                return unauthorized(exchange, "Token类型无效");
+            }
 
             Long userId = claims.get("userId", Long.class);
-            String username = claims.getSubject();
-
-            // 将用户信息添加到请求头，传递到下游微服务
+            if (userId == null) {
+                return unauthorized(exchange, "Token缺少用户信息");
+            }
             ServerHttpRequest request = exchange.getRequest().mutate()
                     .header("X-User-Id", userId.toString())
-                    .header("X-Username", username)
+                    .header("X-Username", claims.getSubject())
+                    .header("X-User-Role", String.valueOf(claims.get("role", Integer.class)))
                     .build();
-            ServerWebExchange mutatedExchange = exchange.mutate().request(request).build();
-
-            return chain.filter(mutatedExchange);
+            return chain.filter(exchange.mutate().request(request).build());
         } catch (Exception e) {
             log.warn("Token校验失败: {}", e.getMessage());
             return unauthorized(exchange, "Token无效或已过期");
         }
+    }
+
+    private SecretKey getKey() {
+        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
     private Mono<Void> unauthorized(ServerWebExchange exchange, String message) {
@@ -90,6 +106,6 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
     @Override
     public int getOrder() {
-        return -100;  // 高优先级，先于 Sentinel
+        return -100;
     }
 }
