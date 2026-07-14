@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { createStaff, getStaffList, updateStaffStatus, type Staff } from '../api/merchant'
+import { createStaff, getStaffList, resetStaffPassword, updateStaffStatus, type Staff } from '../api/merchant'
 
 const loading = ref(false)
 const creating = ref(false)
 const dialogVisible = ref(false)
+const passwordDialogVisible = ref(false)
+const resetting = ref(false)
+const resetStaffId = ref<number | null>(null)
+const resetPassword = ref('')
 const staff = ref<Staff[]>([])
 const form = reactive({ username: '', password: '', nickname: '', phone: '', email: '' })
 
@@ -32,6 +36,13 @@ const toggleStatus = async (item: Staff) => {
   await load()
 }
 
+const openPasswordReset = (item: Staff) => { resetStaffId.value = item.id; resetPassword.value = ''; passwordDialogVisible.value = true }
+const submitPasswordReset = async () => {
+  if (!resetStaffId.value || resetPassword.value.length < 8) return ElMessage.warning('新密码至少需要8个字符')
+  resetting.value = true
+  try { await resetStaffPassword(resetStaffId.value, resetPassword.value); ElMessage.success('店员密码已重置'); passwordDialogVisible.value = false } finally { resetting.value = false }
+}
+
 onMounted(load)
 </script>
 
@@ -43,7 +54,7 @@ onMounted(load)
       <el-table-column prop="nickname" label="昵称" />
       <el-table-column prop="phone" label="手机号" />
       <el-table-column label="状态"><template #default="{ row }"><el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? '启用' : '禁用' }}</el-tag></template></el-table-column>
-      <el-table-column label="操作" width="120"><template #default="{ row }"><el-button text :type="row.status === 1 ? 'danger' : 'success'" @click="toggleStatus(row)">{{ row.status === 1 ? '禁用' : '启用' }}</el-button></template></el-table-column>
+      <el-table-column label="操作" width="180"><template #default="{ row }"><el-button text @click="openPasswordReset(row)">重置密码</el-button><el-button text :type="row.status === 1 ? 'danger' : 'success'" @click="toggleStatus(row)">{{ row.status === 1 ? '禁用' : '启用' }}</el-button></template></el-table-column>
     </el-table>
   </el-card>
   <el-dialog v-model="dialogVisible" title="新增店员" width="480px">
@@ -55,5 +66,8 @@ onMounted(load)
       <el-form-item label="邮箱"><el-input v-model="form.email" /></el-form-item>
       <el-form-item><el-button type="primary" :loading="creating" @click="create">创建</el-button></el-form-item>
     </el-form>
+  </el-dialog>
+  <el-dialog v-model="passwordDialogVisible" title="重置店员密码" width="420px">
+    <el-form @submit.prevent="submitPasswordReset"><el-form-item><el-input v-model="resetPassword" type="password" show-password placeholder="至少8个字符的新密码" /></el-form-item><el-button type="primary" :loading="resetting" @click="submitPasswordReset">确认重置</el-button></el-form>
   </el-dialog>
 </template>

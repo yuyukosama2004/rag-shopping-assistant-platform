@@ -9,7 +9,7 @@ const router = useRouter()
 const userStore = useUserStore()
 const cartCount = ref(0)
 const keyword = ref('')
-const storeName = ref('PhoneMall')
+const store = ref({ storeName: 'PhoneMall', logo: '', servicePhone: '', serviceEmail: '', businessStatus: 1 })
 
 const loadCartCount = async () => {
   if (!userStore.isLoggedIn()) return
@@ -20,7 +20,7 @@ onMounted(async () => {
   loadCartCount()
   try {
     const setting = (await getPublicStoreSetting()).data.data
-    if (setting?.storeName) storeName.value = setting.storeName
+    if (setting) Object.assign(store.value, setting)
   } catch {}
 })
 
@@ -53,7 +53,7 @@ const doSearch = () => {
     <!-- Row 2: header-bar -->
     <div class="header-bar">
       <div class="container">
-        <div class="logo" @click="router.push('/')">{{ storeName }}</div>
+        <div class="logo" @click="router.push('/')"><img v-if="store.logo" :src="store.logo" alt="店铺Logo" style="height:34px;max-width:120px;object-fit:contain;vertical-align:middle;margin-right:8px" />{{ store.storeName }}</div>
         <div class="search-wrap">
           <input v-model="keyword" placeholder="搜索手机品牌、型号..." @keyup.enter="doSearch" />
           <button class="search-btn" @click="doSearch">🔍</button>
@@ -67,6 +67,7 @@ const doSearch = () => {
     </div>
 
     <!-- Row 3: cat-nav -->
+    <div v-if="store.businessStatus === 0" style="background:#fff7e6;color:#d46b08;text-align:center;padding:8px">店铺当前休息中，暂不接受新订单。</div>
     <div class="cat-nav">
       <div class="container">
         <span class="cat-link" @click="router.push('/')">首页</span>
@@ -94,7 +95,7 @@ const doSearch = () => {
 
     <!-- footer -->
     <div class="site-footer">
-      <p>{{ storeName }} &copy; 2026</p>
+      <p>{{ store.storeName }} &copy; 2026 <span v-if="store.servicePhone">· 客服电话：{{ store.servicePhone }}</span><span v-if="store.serviceEmail">· {{ store.serviceEmail }}</span></p>
     </div>
   </div>
 </template>

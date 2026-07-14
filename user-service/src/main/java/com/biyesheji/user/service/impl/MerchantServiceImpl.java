@@ -8,6 +8,7 @@ import com.biyesheji.dto.OwnerInitializeDTO;
 import com.biyesheji.dto.StoreSettingUpdateDTO;
 import com.biyesheji.dto.StaffCreateDTO;
 import com.biyesheji.dto.StaffStatusUpdateDTO;
+import com.biyesheji.dto.StaffPasswordResetDTO;
 import com.biyesheji.entity.StoreSetting;
 import com.biyesheji.entity.MerchantAuditLog;
 import com.biyesheji.entity.User;
@@ -147,6 +148,26 @@ public class MerchantServiceImpl implements MerchantService {
         userMapper.updateById(staff);
         recordAudit(userId, "UPDATE_STAFF_STATUS", "USER", staffId);
         staff.setPassword(null);
+        return staff;
+    }
+
+    @Override
+    @Transactional
+    public User resetStaffPassword(Long userId, Long staffId, StaffPasswordResetDTO dto) {
+        requireOwner(userId);
+        User staff = requireStaff(staffId);
+        staff.setPassword(BCrypt.hashpw(dto.getNewPassword()));
+        userMapper.updateById(staff);
+        recordAudit(userId, "RESET_STAFF_PASSWORD", "USER", staffId);
+        staff.setPassword(null);
+        return staff;
+    }
+
+    private User requireStaff(Long staffId) {
+        User staff = userMapper.selectById(staffId);
+        if (staff == null || !Integer.valueOf(UserRole.STAFF).equals(staff.getRole())) {
+            throw new BizException(ResultCode.USER_NOT_FOUND, "店员不存在");
+        }
         return staff;
     }
 

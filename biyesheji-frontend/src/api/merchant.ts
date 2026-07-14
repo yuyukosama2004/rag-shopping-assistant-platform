@@ -74,6 +74,7 @@ export function updateMerchantStoreSetting(data: StoreSetting) {
 export function getStaffList() { return request.get('/api/merchant/staff') }
 export function createStaff(data: Omit<Staff, 'id' | 'status'> & { password: string }) { return request.post('/api/merchant/staff', data) }
 export function updateStaffStatus(id: number, status: number) { return request.put(`/api/merchant/staff/${id}/status`, { status }) }
+export function resetStaffPassword(id: number, newPassword: string) { return request.put(`/api/merchant/staff/${id}/password`, { newPassword }) }
 export function getMerchantProducts(pageNum = 1, pageSize = 20, keyword = '') { return request.get('/api/merchant/products', { params: { pageNum, pageSize, keyword: keyword || undefined } }) }
 export function createMerchantProduct(data: MerchantProductInput) { return request.post('/api/merchant/products', data) }
 export function updateMerchantProduct(id: number, data: MerchantProductInput) { return request.put(`/api/merchant/products/${id}`, data) }

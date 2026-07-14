@@ -25,6 +25,9 @@ import java.util.concurrent.TimeUnit;
 public class UserServiceImpl implements UserService {
 
     private static final String REFRESH_TOKEN_KEY_PREFIX = "auth:refresh:";
+    private static final String LOGIN_FAILURE_KEY_PREFIX = "auth:login:fail:";
+    private static final String LOGIN_LOCK_KEY_PREFIX = "auth:login:lock:";
+    private static final int MAX_LOGIN_FAILURES = 5;
 
     private final UserMapper userMapper;
     private final JwtUtil jwtUtil;
@@ -32,12 +35,17 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public LoginVO login(String username, String password) {
+        if (redisUtil.exists(loginLockKey(username))) {
+            throw new BizException(ResultCode.FORBIDDEN, "登录尝试过于频繁，请15分钟后重试");
+        }
         User user = userMapper.selectOne(new LambdaQueryWrapper<User>()
                 .eq(User::getUsername, username));
         if (user == null || !BCrypt.checkpw(password, user.getPassword())) {
+            recordLoginFailure(username);
             throw new BizException(ResultCode.PASSWORD_ERROR, "用户名或密码错误");
         }
         ensureEnabled(user);
+        redisUtil.delete(loginFailureKey(username));
         return issueTokens(user);
     }
 
@@ -128,5 +136,23 @@ public class UserServiceImpl implements UserService {
 
     private String refreshTokenKey(Long userId) {
         return REFRESH_TOKEN_KEY_PREFIX + userId;
+    }
+
+    private void recordLoginFailure(String username) {
+        String failureKey = loginFailureKey(username);
+        long failures = redisUtil.increment(failureKey);
+        if (failures == 1) redisUtil.expire(failureKey, 15, TimeUnit.MINUTES);
+        if (failures >= MAX_LOGIN_FAILURES) {
+            redisUtil.set(loginLockKey(username), "locked", 15, TimeUnit.MINUTES);
+            redisUtil.delete(failureKey);
+        }
+    }
+
+    private String loginFailureKey(String username) {
+        return LOGIN_FAILURE_KEY_PREFIX + username;
+    }
+
+    private String loginLockKey(String username) {
+        return LOGIN_LOCK_KEY_PREFIX + username;
     }
 }

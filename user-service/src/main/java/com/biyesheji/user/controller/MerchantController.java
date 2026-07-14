@@ -5,6 +5,7 @@ import com.biyesheji.dto.R;
 import com.biyesheji.dto.StoreSettingUpdateDTO;
 import com.biyesheji.dto.StaffCreateDTO;
 import com.biyesheji.dto.StaffStatusUpdateDTO;
+import com.biyesheji.dto.StaffPasswordResetDTO;
 import com.biyesheji.entity.StoreSetting;
 import com.biyesheji.entity.User;
 import com.biyesheji.user.service.MerchantService;
@@ -75,6 +76,14 @@ public class MerchantController {
                                      @PathVariable Long staffId,
                                      @Valid @RequestBody StaffStatusUpdateDTO dto) {
         return R.ok(merchantService.updateStaffStatus(accessUserId(authHeader), staffId, dto));
+    }
+
+    @Operation(summary = "重置店员密码")
+    @PutMapping("/staff/{staffId}/password")
+    public R<User> resetStaffPassword(@RequestHeader("Authorization") String authHeader,
+                                      @PathVariable Long staffId,
+                                      @Valid @RequestBody StaffPasswordResetDTO dto) {
+        return R.ok(merchantService.resetStaffPassword(accessUserId(authHeader), staffId, dto));
     }
 
     private Long accessUserId(String authHeader) {
