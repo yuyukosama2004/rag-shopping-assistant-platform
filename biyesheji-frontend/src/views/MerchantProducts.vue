@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { adjustMerchantSkuStock, copyMerchantProduct, createMerchantProduct, createMerchantSku, deleteMerchantProduct, getMerchantProducts, getMerchantSkus, getMerchantSkuStock, getMerchantSkuStockLedger, updateMerchantProduct, updateMerchantProductBatchStatus, updateMerchantProductStatus, updateMerchantSku, type MerchantProduct, type MerchantProductInput, type MerchantSku, type MerchantSkuInput, type MerchantSkuStock, type MerchantStockLedger } from '../api/merchant'
+import { adjustMerchantSkuStock, copyMerchantProduct, createMerchantProduct, createMerchantSku, deleteMerchantProduct, getMerchantProducts, getMerchantSkus, getMerchantSkuStock, getMerchantSkuStockLedger, updateMerchantProduct, updateMerchantProductBatchStatus, updateMerchantProductStatus, updateMerchantSku, uploadMerchantMedia, type MerchantProduct, type MerchantProductInput, type MerchantSku, type MerchantSkuInput, type MerchantSkuStock, type MerchantStockLedger } from '../api/merchant'
 
 const loading = ref(false)
 const saving = ref(false)
+const uploadingImage = ref(false)
 const dialogVisible = ref(false)
 const items = ref<MerchantProduct[]>([])
 const total = ref(0)
@@ -54,6 +55,12 @@ const deleteProduct = async (item: MerchantProduct) => { await ElMessageBox.conf
 const updateBatchStatus = async (status: number) => {
   if (!selectedIds.value.length) return ElMessage.warning('请先选择商品')
   await updateMerchantProductBatchStatus(selectedIds.value, status); ElMessage.success('批量状态已更新'); selectedIds.value = []; await load()
+}
+const uploadMainImage = async (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  uploadingImage.value = true
+  try { form.mainImage = (await uploadMerchantMedia(file)).data.data.url; ElMessage.success('图片已上传') } finally { uploadingImage.value = false }
 }
 const onSelectionChange = (rows: MerchantProduct[]) => { selectedIds.value = rows.map(row => row.id) }
 const openSkus = async (item: MerchantProduct) => {
@@ -118,7 +125,7 @@ onMounted(load)
       <el-form-item label="商品名称" required><el-input v-model="form.name" /></el-form-item>
       <el-row :gutter="12"><el-col :span="12"><el-form-item label="品牌" required><el-input v-model="form.brand" /></el-form-item></el-col><el-col :span="12"><el-form-item label="分类" required><el-input v-model="form.category" /></el-form-item></el-col></el-row>
       <el-row :gutter="12"><el-col :span="12"><el-form-item label="售价" required><el-input-number v-model="form.price" :min="0.01" :precision="2" style="width:100%" /></el-form-item></el-col><el-col :span="12"><el-form-item label="划线价"><el-input-number v-model="form.originalPrice" :min="0.01" :precision="2" style="width:100%" /></el-form-item></el-col></el-row>
-      <el-form-item label="主图地址"><el-input v-model="form.mainImage" /></el-form-item>
+      <el-form-item label="主图"><el-input v-model="form.mainImage" placeholder="图片地址或上传图片" /><input type="file" accept="image/png,image/jpeg" :disabled="uploadingImage" style="margin-top:8px" @change="uploadMainImage" /><img v-if="form.mainImage" :src="form.mainImage" style="display:block;width:80px;height:80px;object-fit:cover;margin-top:8px" /></el-form-item>
       <el-form-item label="商品描述"><el-input v-model="form.description" type="textarea" :rows="4" /></el-form-item>
       <el-form-item><el-button type="primary" :loading="saving" @click="save">保存草稿</el-button></el-form-item>
     </el-form>
