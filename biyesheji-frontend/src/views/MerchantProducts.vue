@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
-import { adjustMerchantSkuStock, createMerchantProduct, createMerchantSku, getMerchantProducts, getMerchantSkus, getMerchantSkuStock, getMerchantSkuStockLedger, updateMerchantProduct, updateMerchantProductStatus, updateMerchantSku, type MerchantProduct, type MerchantProductInput, type MerchantSku, type MerchantSkuInput, type MerchantSkuStock, type MerchantStockLedger } from '../api/merchant'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { adjustMerchantSkuStock, copyMerchantProduct, createMerchantProduct, createMerchantSku, deleteMerchantProduct, getMerchantProducts, getMerchantSkus, getMerchantSkuStock, getMerchantSkuStockLedger, updateMerchantProduct, updateMerchantProductBatchStatus, updateMerchantProductStatus, updateMerchantSku, type MerchantProduct, type MerchantProductInput, type MerchantSku, type MerchantSkuInput, type MerchantSkuStock, type MerchantStockLedger } from '../api/merchant'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -10,6 +10,7 @@ const items = ref<MerchantProduct[]>([])
 const total = ref(0)
 const page = ref(1)
 const keyword = ref('')
+const selectedIds = ref<number[]>([])
 const editingId = ref<number | null>(null)
 const skuDialogVisible = ref(false)
 const skuSaving = ref(false)
@@ -48,6 +49,13 @@ const toggleStatus = async (item: MerchantProduct) => {
   await updateMerchantProductStatus(item.id, target)
   ElMessage.success(target === 1 ? '商品已上架' : '商品已下架'); await load()
 }
+const copyProduct = async (item: MerchantProduct) => { await copyMerchantProduct(item.id); ElMessage.success('商品副本已创建，请补充 SKU 后上架'); await load() }
+const deleteProduct = async (item: MerchantProduct) => { await ElMessageBox.confirm(`确定删除“${item.name}”吗？`); await deleteMerchantProduct(item.id); ElMessage.success('商品已删除'); await load() }
+const updateBatchStatus = async (status: number) => {
+  if (!selectedIds.value.length) return ElMessage.warning('请先选择商品')
+  await updateMerchantProductBatchStatus(selectedIds.value, status); ElMessage.success('批量状态已更新'); selectedIds.value = []; await load()
+}
+const onSelectionChange = (rows: MerchantProduct[]) => { selectedIds.value = rows.map(row => row.id) }
 const openSkus = async (item: MerchantProduct) => {
   skuProductId.value = item.id; editingSkuId.value = null; Object.assign(skuForm, { skuCode: '', specJson: '', price: item.price, originalPrice: item.originalPrice || null, initialStock: 0 })
   skus.value = (await getMerchantSkus(item.id)).data.data; skuDialogVisible.value = true
@@ -93,13 +101,15 @@ onMounted(load)
 <template>
   <el-card v-loading="loading">
     <template #header><div style="display:flex;justify-content:space-between;align-items:center"><strong>商品管理</strong><div><el-input v-model="keyword" placeholder="搜索商品或品牌" style="width:220px;margin-right:8px" @keyup.enter="load" /><el-button @click="load">搜索</el-button><el-button type="primary" @click="openCreate">新建商品</el-button></div></div></template>
-    <el-table :data="items">
+    <div style="margin-bottom:12px"><el-button size="small" :disabled="!selectedIds.length" @click="updateBatchStatus(1)">批量上架</el-button><el-button size="small" :disabled="!selectedIds.length" @click="updateBatchStatus(0)">批量下架</el-button></div>
+    <el-table :data="items" @selection-change="onSelectionChange">
+      <el-table-column type="selection" width="42" />
       <el-table-column prop="name" label="商品" min-width="180" />
       <el-table-column prop="brand" label="品牌" width="110" />
       <el-table-column prop="category" label="分类" width="110" />
       <el-table-column label="售价" width="110"><template #default="{ row }">¥{{ Number(row.price).toFixed(2) }}</template></el-table-column>
       <el-table-column label="状态" width="100"><template #default="{ row }"><el-tag :type="statusType(row.status)">{{ statusText(row.status) }}</el-tag></template></el-table-column>
-      <el-table-column label="操作" width="230"><template #default="{ row }"><el-button text @click="openEdit(row)">编辑</el-button><el-button text @click="openSkus(row)">SKU</el-button><el-button text :type="row.status === 1 ? 'danger' : 'success'" @click="toggleStatus(row)">{{ row.status === 1 ? '下架' : '上架' }}</el-button></template></el-table-column>
+      <el-table-column label="操作" width="290"><template #default="{ row }"><el-button text @click="openEdit(row)">编辑</el-button><el-button text @click="openSkus(row)">SKU</el-button><el-button text @click="copyProduct(row)">复制</el-button><el-button text :type="row.status === 1 ? 'danger' : 'success'" @click="toggleStatus(row)">{{ row.status === 1 ? '下架' : '上架' }}</el-button><el-button text type="danger" @click="deleteProduct(row)">删除</el-button></template></el-table-column>
     </el-table>
     <el-pagination v-model:current-page="page" :page-size="20" :total="total" layout="prev, pager, next" style="margin-top:16px" @current-change="load" />
   </el-card>

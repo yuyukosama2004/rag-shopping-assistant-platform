@@ -169,6 +169,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public Page<Product> merchantPage(int pageNum, int pageSize, String keyword) {
         LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
+        wrapper.ne(Product::getStatus, 3);
         if (keyword != null && !keyword.isBlank()) wrapper.and(w -> w.like(Product::getName, keyword).or().like(Product::getBrand, keyword));
         return productMapper.selectPage(new Page<>(pageNum, pageSize), wrapper.orderByDesc(Product::getUpdatedAt));
     }
@@ -206,9 +207,39 @@ public class ProductServiceImpl implements ProductService {
         return product;
     }
 
+    @Override
+    @Transactional
+    public Product copy(Long id) {
+        Product source = requireProduct(id);
+        Product copy = new Product();
+        copy.setName(source.getName() + "（副本）");
+        copy.setBrand(source.getBrand()); copy.setCategory(source.getCategory()); copy.setPrice(source.getPrice());
+        copy.setOriginalPrice(source.getOriginalPrice()); copy.setSpecJson(source.getSpecJson());
+        copy.setMainImage(source.getMainImage()); copy.setImages(source.getImages()); copy.setDescription(source.getDescription());
+        copy.setColorOptions(source.getColorOptions()); copy.setStorageOptions(source.getStorageOptions());
+        copy.setSales(0); copy.setStatus(2);
+        productMapper.insert(copy);
+        clearCache(copy.getId());
+        return copy;
+    }
+
+    @Override
+    public void delete(Long id) {
+        Product product = requireProduct(id);
+        product.setStatus(3);
+        productMapper.updateById(product);
+        clearCache(id);
+    }
+
+    @Override
+    @Transactional
+    public void updateBatchStatus(List<Long> ids, Integer status) {
+        for (Long id : ids) updateStatus(id, status);
+    }
+
     private Product requireProduct(Long id) {
         Product product = productMapper.selectById(id);
-        if (product == null) throw new BizException(404, "商品不存在");
+        if (product == null || product.getStatus() == 3) throw new BizException(404, "商品不存在");
         return product;
     }
 
