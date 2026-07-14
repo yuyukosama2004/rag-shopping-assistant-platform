@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { adjustMerchantSkuStock, copyMerchantProduct, createMerchantProduct, createMerchantSku, deleteMerchantProduct, exportMerchantProducts, getMerchantProducts, getMerchantSkus, getMerchantSkuStock, getMerchantSkuStockLedger, importMerchantProducts, updateMerchantProduct, updateMerchantProductBatchStatus, updateMerchantProductStatus, updateMerchantSku, uploadMerchantMedia, type MerchantProduct, type MerchantProductInput, type MerchantSku, type MerchantSkuInput, type MerchantSkuStock, type MerchantStockLedger } from '../api/merchant'
+import { adjustMerchantSkuStock, copyMerchantProduct, createMerchantProduct, createMerchantSku, deleteMerchantProduct, exportMerchantProducts, getMerchantCatalog, getMerchantProducts, getMerchantSkus, getMerchantSkuStock, getMerchantSkuStockLedger, importMerchantProducts, updateMerchantProduct, updateMerchantProductBatchStatus, updateMerchantProductStatus, updateMerchantSku, uploadMerchantMedia, type MerchantProduct, type MerchantProductInput, type MerchantSku, type MerchantSkuInput, type MerchantSkuStock, type MerchantStockLedger, type ProductCatalog } from '../api/merchant'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -25,6 +25,8 @@ const stockSaving = ref(false)
 const selectedSku = ref<MerchantSku | null>(null)
 const stock = ref<MerchantSkuStock | null>(null)
 const stockLedgers = ref<MerchantStockLedger[]>([])
+const brands = ref<ProductCatalog[]>([])
+const categories = ref<ProductCatalog[]>([])
 const form = reactive<MerchantProductInput>({ name: '', brand: '', category: '', price: null, originalPrice: null, mainImage: '', description: '' })
 const skuForm = reactive<MerchantSkuInput>({ skuCode: '', specJson: '', price: null, originalPrice: null, initialStock: 0 })
 const stockForm = reactive({ quantity: null as number | null, reason: '' })
@@ -35,6 +37,11 @@ const load = async () => {
     const data = (await getMerchantProducts(page.value, 20, keyword.value)).data.data
     items.value = data.records; total.value = data.total
   } finally { loading.value = false }
+}
+const loadCatalogs = async () => {
+  const [brandResponse, categoryResponse] = await Promise.all([getMerchantCatalog('BRAND'), getMerchantCatalog('CATEGORY')])
+  brands.value = brandResponse.data.data.filter((item: ProductCatalog) => item.status === 1)
+  categories.value = categoryResponse.data.data.filter((item: ProductCatalog) => item.status === 1)
 }
 const openCreate = () => { editingId.value = null; Object.assign(form, { name: '', brand: '', category: '', price: null, originalPrice: null, mainImage: '', description: '' }); dialogVisible.value = true }
 const openEdit = (item: MerchantProduct) => { editingId.value = item.id; Object.assign(form, item); dialogVisible.value = true }
@@ -105,7 +112,7 @@ const adjustStock = async () => {
 }
 const statusText = (status: number) => status === 1 ? '已上架' : status === 2 ? '草稿' : '已下架'
 const statusType = (status: number) => status === 1 ? 'success' : status === 2 ? 'info' : 'warning'
-onMounted(load)
+onMounted(async () => { await Promise.all([load(), loadCatalogs()]) })
 </script>
 
 <template>
@@ -126,7 +133,7 @@ onMounted(load)
   <el-dialog v-model="dialogVisible" :title="editingId ? '编辑商品' : '新建商品草稿'" width="620px">
     <el-form label-width="90px" @submit.prevent="save">
       <el-form-item label="商品名称" required><el-input v-model="form.name" /></el-form-item>
-      <el-row :gutter="12"><el-col :span="12"><el-form-item label="品牌" required><el-input v-model="form.brand" /></el-form-item></el-col><el-col :span="12"><el-form-item label="分类" required><el-input v-model="form.category" /></el-form-item></el-col></el-row>
+      <el-row :gutter="12"><el-col :span="12"><el-form-item label="品牌" required><el-select v-model="form.brand" filterable style="width:100%"><el-option v-for="item in brands" :key="item.id" :label="item.name" :value="item.name" /></el-select></el-form-item></el-col><el-col :span="12"><el-form-item label="分类" required><el-select v-model="form.category" filterable style="width:100%"><el-option v-for="item in categories" :key="item.id" :label="item.name" :value="item.name" /></el-select></el-form-item></el-col></el-row>
       <el-row :gutter="12"><el-col :span="12"><el-form-item label="售价" required><el-input-number v-model="form.price" :min="0.01" :precision="2" style="width:100%" /></el-form-item></el-col><el-col :span="12"><el-form-item label="划线价"><el-input-number v-model="form.originalPrice" :min="0.01" :precision="2" style="width:100%" /></el-form-item></el-col></el-row>
       <el-form-item label="主图"><el-input v-model="form.mainImage" placeholder="图片地址或上传图片" /><input type="file" accept="image/png,image/jpeg" :disabled="uploadingImage" style="margin-top:8px" @change="uploadMainImage" /><img v-if="form.mainImage" :src="form.mainImage" style="display:block;width:80px;height:80px;object-fit:cover;margin-top:8px" /></el-form-item>
       <el-form-item label="商品描述"><el-input v-model="form.description" type="textarea" :rows="4" /></el-form-item>
