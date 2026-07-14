@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adjustMerchantSkuStock, copyMerchantProduct, createMerchantProduct, createMerchantSku, deleteMerchantMedia, deleteMerchantProduct, exportMerchantProducts, getMerchantCatalog, getMerchantProducts, getMerchantSkus, getMerchantSkuStock, getMerchantSkuStockLedger, importMerchantProducts, updateMerchantProduct, updateMerchantProductBatchStatus, updateMerchantProductStatus, updateMerchantSku, uploadMerchantMedia, type MerchantProduct, type MerchantProductInput, type MerchantSku, type MerchantSkuInput, type MerchantSkuStock, type MerchantStockLedger, type ProductCatalog } from '../api/merchant'
 
@@ -30,6 +31,7 @@ const brands = ref<ProductCatalog[]>([])
 const categories = ref<ProductCatalog[]>([])
 const imageUrls = ref<string[]>([])
 const removedMedia = ref<string[]>([])
+const initialDraft = ref('')
 const form = reactive<MerchantProductInput>({ name: '', brand: '', category: '', price: null, originalPrice: null, mainImage: '', images: '[]', description: '' })
 const skuForm = reactive<MerchantSkuInput>({ skuCode: '', specJson: '', price: null, originalPrice: null, initialStock: 0 })
 const stockForm = reactive({ quantity: null as number | null, reason: '' })
@@ -49,9 +51,12 @@ const loadCatalogs = async () => {
 const parseImages = (value?: string) => {
   try { const parsed = JSON.parse(value || '[]'); return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [] } catch { return [] }
 }
+const draft = () => JSON.stringify({ ...form, images: imageUrls.value })
+const rememberDraft = () => { initialDraft.value = draft() }
+const isDirty = () => draft() !== initialDraft.value
 const resetImages = (value?: string) => { imageUrls.value = parseImages(value); removedMedia.value = [] }
-const openCreate = () => { editingId.value = null; Object.assign(form, { name: '', brand: '', category: '', price: null, originalPrice: null, mainImage: '', images: '[]', description: '' }); resetImages(); dialogVisible.value = true }
-const openEdit = (item: MerchantProduct) => { editingId.value = item.id; Object.assign(form, item); resetImages(item.images); if (form.mainImage && !imageUrls.value.includes(form.mainImage)) imageUrls.value.unshift(form.mainImage); dialogVisible.value = true }
+const openCreate = () => { editingId.value = null; Object.assign(form, { name: '', brand: '', category: '', price: null, originalPrice: null, mainImage: '', images: '[]', description: '' }); resetImages(); rememberDraft(); dialogVisible.value = true }
+const openEdit = (item: MerchantProduct) => { editingId.value = item.id; Object.assign(form, item); resetImages(item.images); if (form.mainImage && !imageUrls.value.includes(form.mainImage)) imageUrls.value.unshift(form.mainImage); rememberDraft(); dialogVisible.value = true }
 const save = async () => {
   if (!form.name.trim() || !form.brand.trim() || !form.category.trim() || !form.price) return ElMessage.warning('请填写名称、品牌、分类和售价')
   saving.value = true
@@ -60,7 +65,7 @@ const save = async () => {
     if (editingId.value) await updateMerchantProduct(editingId.value, payload); else await createMerchantProduct(payload)
     const deletionResults = await Promise.allSettled(removedMedia.value.map(filename => deleteMerchantMedia(filename)))
     if (deletionResults.some(result => result.status === 'rejected')) ElMessage.warning('图片已从商品移除，但仍被其他商品引用，文件会继续保留')
-    ElMessage.success(editingId.value ? '商品已保存' : '草稿已创建'); dialogVisible.value = false; await load()
+    rememberDraft(); ElMessage.success(editingId.value ? '商品已保存' : '草稿已创建'); dialogVisible.value = false; await load()
   } finally { saving.value = false }
 }
 const toggleStatus = async (item: MerchantProduct) => {
@@ -86,6 +91,14 @@ const uploadMainImage = async (event: Event) => {
   } finally { uploadingImage.value = false }
 }
 const selectMainImage = (url: string) => { form.mainImage = url }
+const moveImage = (url: string, offset: number) => {
+  const index = imageUrls.value.indexOf(url)
+  const target = index + offset
+  if (index < 0 || target < 0 || target >= imageUrls.value.length) return
+  const next = [...imageUrls.value]
+  ;[next[index], next[target]] = [next[target], next[index]]
+  imageUrls.value = next
+}
 const removeImage = (url: string) => {
   imageUrls.value = imageUrls.value.filter(item => item !== url)
   if (form.mainImage === url) form.mainImage = imageUrls.value[0] || ''
@@ -147,6 +160,14 @@ const adjustStock = async () => {
 }
 const statusText = (status: number) => status === 1 ? '已上架' : status === 2 ? '草稿' : '已下架'
 const statusType = (status: number) => status === 1 ? 'success' : status === 2 ? 'info' : 'warning'
+const closeProductDialog = async (done: () => void) => {
+  if (!isDirty()) return done()
+  try { await ElMessageBox.confirm('尚未保存商品修改，确定放弃吗？', '放弃修改'); done() } catch { /* keep editing */ }
+}
+onBeforeRouteLeave(async () => {
+  if (!dialogVisible.value || !isDirty()) return true
+  try { await ElMessageBox.confirm('尚未保存商品修改，确定离开吗？', '放弃修改'); return true } catch { return false }
+})
 onMounted(async () => { await Promise.all([load(), loadCatalogs()]) })
 </script>
 
@@ -166,12 +187,12 @@ onMounted(async () => { await Promise.all([load(), loadCatalogs()]) })
     </el-table>
     <el-pagination v-model:current-page="page" :page-size="20" :total="total" layout="prev, pager, next" style="margin-top:16px" @current-change="load" />
   </el-card>
-  <el-dialog v-model="dialogVisible" :title="editingId ? '编辑商品' : '新建商品草稿'" width="620px">
+  <el-dialog v-model="dialogVisible" :title="editingId ? '编辑商品' : '新建商品草稿'" width="620px" :before-close="closeProductDialog">
     <el-form label-width="90px" @submit.prevent="save">
       <el-form-item label="商品名称" required><el-input v-model="form.name" /></el-form-item>
       <el-row :gutter="12"><el-col :span="12"><el-form-item label="品牌" required><el-select v-model="form.brand" filterable style="width:100%"><el-option v-for="item in brands" :key="item.id" :label="item.name" :value="item.name" /></el-select></el-form-item></el-col><el-col :span="12"><el-form-item label="分类" required><el-select v-model="form.category" filterable style="width:100%"><el-option v-for="item in categories" :key="item.id" :label="item.name" :value="item.name" /></el-select></el-form-item></el-col></el-row>
       <el-row :gutter="12"><el-col :span="12"><el-form-item label="售价" required><el-input-number v-model="form.price" :min="0.01" :precision="2" style="width:100%" /></el-form-item></el-col><el-col :span="12"><el-form-item label="划线价"><el-input-number v-model="form.originalPrice" :min="0.01" :precision="2" style="width:100%" /></el-form-item></el-col></el-row>
-      <el-form-item label="商品图片"><input type="file" accept="image/png,image/jpeg" :disabled="uploadingImage" @change="uploadMainImage" /><div v-if="imageUrls.length" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><div v-for="url in imageUrls" :key="url" style="position:relative"><img :src="url" :style="{ width: '88px', height: '88px', objectFit: 'cover', cursor: 'pointer', border: form.mainImage === url ? '2px solid #f56c6c' : '1px solid #dcdfe6' }" @click="selectMainImage(url)" /><el-button size="small" text type="danger" style="display:block;margin:auto" @click="removeImage(url)">移除</el-button></div></div><div style="font-size:12px;color:#909399;margin-top:6px">点击图片设为主图；图片按当前顺序展示。</div></el-form-item>
+      <el-form-item label="商品图片"><input type="file" accept="image/png,image/jpeg" :disabled="uploadingImage" @change="uploadMainImage" /><div v-if="imageUrls.length" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><div v-for="(url, index) in imageUrls" :key="url" style="position:relative"><img :src="url" :style="{ width: '88px', height: '88px', objectFit: 'cover', cursor: 'pointer', border: form.mainImage === url ? '2px solid #f56c6c' : '1px solid #dcdfe6' }" @click="selectMainImage(url)" /><div style="display:flex;justify-content:center"><el-button size="small" text :disabled="index === 0" @click="moveImage(url, -1)">←</el-button><el-button size="small" text :disabled="index === imageUrls.length - 1" @click="moveImage(url, 1)">→</el-button><el-button size="small" text type="danger" @click="removeImage(url)">移除</el-button></div></div></div><div style="font-size:12px;color:#909399;margin-top:6px">点击图片设为主图；使用箭头调整展示顺序。</div></el-form-item>
       <el-form-item label="商品描述"><el-input v-model="form.description" type="textarea" :rows="4" /></el-form-item>
       <el-form-item><el-button type="primary" :loading="saving" @click="save">保存草稿</el-button></el-form-item>
     </el-form>
