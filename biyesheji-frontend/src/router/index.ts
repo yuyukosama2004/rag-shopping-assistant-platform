@@ -47,6 +47,7 @@ const routes = [
       { path: 'orders', name: 'OrderList', component: () => import('../views/OrderList.vue'), meta: { auth: true } },
       { path: 'order/:orderNo', name: 'OrderDetail', component: () => import('../views/OrderDetail.vue'), meta: { auth: true } },
       { path: 'ai-assistant', name: 'AiAssistant', component: () => import('../views/AiAssistant.vue'), meta: { auth: true } },
+      { path: 'store-info', name: 'StoreInfo', component: () => import('../views/StoreInfo.vue') },
     ],
   },
 ]
