@@ -85,6 +85,7 @@ install_release() (
   build_release "$tag"
   activate_release "$tag" || die "Release failed health checks: $tag"
   printf '%s\n' "$tag" > "$releases/current"
+  start_observability
   info "Installed release: $tag"
 )
 
@@ -105,6 +106,7 @@ upgrade_release() (
   if activate_release "$tag"; then
     printf '%s\n' "$previous" > "$releases/previous"
     printf '%s\n' "$tag" > "$releases/current"
+    start_observability
     info "Upgraded release: $previous -> $tag"
     return
   fi

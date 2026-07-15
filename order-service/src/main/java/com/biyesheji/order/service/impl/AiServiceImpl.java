@@ -266,7 +266,7 @@ public class AiServiceImpl implements AiService {
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) {
-                log.error("DeepSeek 返回 {}: {}", response.statusCode(), response.body());
+                log.error("DeepSeek 返回非成功状态: status={}", response.statusCode());
                 return null;
             }
             return JSONUtil.parseObj(response.body())
@@ -300,7 +300,7 @@ public class AiServiceImpl implements AiService {
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() != 200) {
-            throw new RuntimeException("Embedding API 返回 " + response.statusCode() + ": " + response.body());
+            throw new RuntimeException("Embedding API 返回非成功状态: " + response.statusCode());
         }
 
         JSONObject resp = JSONUtil.parseObj(response.body());
@@ -448,8 +448,8 @@ public class AiServiceImpl implements AiService {
                 HttpResponse<java.io.InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
 
                 if (response.statusCode() != 200) {
-                    String errBody = new String(response.body().readAllBytes(), StandardCharsets.UTF_8);
-                    log.error("AI API 返回非200: status={}, body={}", response.statusCode(), errBody);
+                    response.body().close();
+                    log.error("AI API 返回非成功状态: status={}", response.statusCode());
                     emitter.send(SseEmitter.event().data("抱歉，AI助手暂时无法响应（" + response.statusCode() + "）。"));
                     emitter.complete();
                     aiUsageService.recordFailure(setting, inputChars, System.currentTimeMillis() - startedAt,

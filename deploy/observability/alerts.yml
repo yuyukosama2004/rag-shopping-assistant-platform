@@ -1,0 +1,97 @@
+groups:
+  - name: biyesheji-availability
+    rules:
+      - alert: BiyeshejiServiceUnhealthy
+        expr: probe_success{job="biyesheji-health"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "商城服务健康检查失败"
+          description: "{{ $labels.instance }} 已连续 1 分钟未返回 UP。"
+
+      - alert: BiyeshejiMetricsTargetDown
+        expr: up{job=~"biyesheji-app|node-exporter|cadvisor|alertmanager"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "监控采集目标不可用"
+          description: "{{ $labels.job }} / {{ $labels.instance }} 已连续 2 分钟无法采集。"
+
+      - alert: BiyeshejiHighServerErrorRate
+        expr: |
+          (
+            sum by (instance) (rate(http_server_requests_seconds_count{job="biyesheji-app",status=~"5.."}[5m]))
+            /
+            clamp_min(sum by (instance) (rate(http_server_requests_seconds_count{job="biyesheji-app"}[5m])), 0.001)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "商城接口 5xx 比例过高"
+          description: "{{ $labels.instance }} 最近 5 分钟 5xx 比例持续超过 5%。"
+
+  - name: biyesheji-capacity
+    rules:
+      - alert: BiyeshejiHostCpuHigh
+        expr: 1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) > 0.90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "宿主机 CPU 使用率过高"
+          description: "{{ $labels.instance }} CPU 使用率连续 10 分钟超过 90%。"
+
+      - alert: BiyeshejiHostDiskLow
+        expr: |
+          node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay"}
+          /
+          node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay"} < 0.15
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "宿主机磁盘空间不足"
+          description: "{{ $labels.instance }} 根分区可用空间低于 15%。"
+
+      - alert: BiyeshejiContainerMemoryHigh
+        expr: |
+          container_memory_working_set_bytes{name=~"/?biyesheji-.*"}
+          /
+          (container_spec_memory_limit_bytes{name=~"/?biyesheji-.*"} > 0) > 0.90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "商城容器内存接近上限"
+          description: "{{ $labels.name }} 内存使用率连续 10 分钟超过限制的 90%。"
+
+  - name: biyesheji-ai
+    rules:
+      - alert: BiyeshejiAiBudgetNearLimit
+        expr: |
+          biyesheji_ai_daily_budget > 0
+          and
+          biyesheji_ai_daily_estimated_cost / biyesheji_ai_daily_budget > 0.80
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "AI 日预算接近上限"
+          description: "今日 AI 估算费用已达到商家日预算的 80%。"
+
+      - alert: BiyeshejiAiFailureRateHigh
+        expr: |
+          sum(increase(biyesheji_ai_requests_total{outcome="failed"}[10m])) >= 5
+          and
+          sum(rate(biyesheji_ai_requests_total{outcome="failed"}[10m]))
+          /
+          clamp_min(sum(rate(biyesheji_ai_requests_total[10m])), 0.001) > 0.20
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "AI 请求失败率过高"
+          description: "最近 10 分钟至少 5 次 AI 请求失败，且失败率超过 20%。"
