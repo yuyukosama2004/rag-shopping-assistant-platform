@@ -8,5 +8,6 @@ import java.util.Map;
 public interface AiService {
     SseEmitter chat(Long userId, String query);
     AiConversation saveMessage(Long userId, String role, String content, String recommendations);
+    void refreshProductIndex(Long productId, String operation);
     Map<String, Object> enrichProducts();
 }

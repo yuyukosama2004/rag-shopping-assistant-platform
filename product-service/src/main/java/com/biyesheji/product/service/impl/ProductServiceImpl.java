@@ -18,6 +18,7 @@ import com.biyesheji.product.mapper.ProductSkuMapper;
 import com.biyesheji.product.mapper.StockMapper;
 import com.biyesheji.product.mapper.StockLedgerMapper;
 import com.biyesheji.product.service.ProductService;
+import com.biyesheji.product.service.AiIndexTaskPublisher;
 import com.biyesheji.utils.RedisUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +40,7 @@ public class ProductServiceImpl implements ProductService {
     private final ProductSkuMapper productSkuMapper;
     private final StockMapper stockMapper;
     private final StockLedgerMapper stockLedgerMapper;
+    private final AiIndexTaskPublisher aiIndexTaskPublisher;
 
     private static final String CACHE_PRODUCT = "product:detail:";
     private static final String CACHE_HOT = "product:hot";
@@ -175,6 +177,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Transactional
     public Product create(MerchantProductSaveDTO dto) {
         Product product = new Product();
         copy(dto, product);
@@ -182,19 +185,23 @@ public class ProductServiceImpl implements ProductService {
         product.setStatus(2);
         productMapper.insert(product);
         clearCache(product.getId());
+        aiIndexTaskPublisher.publish(product.getId());
         return product;
     }
 
     @Override
+    @Transactional
     public Product update(Long id, MerchantProductSaveDTO dto) {
         Product product = requireProduct(id);
         copy(dto, product);
         productMapper.updateById(product);
         clearCache(id);
+        aiIndexTaskPublisher.publish(id);
         return product;
     }
 
     @Override
+    @Transactional
     public Product updateStatus(Long id, Integer status) {
         Product product = requireProduct(id);
         if (status == 1 && productSkuMapper.selectCount(new LambdaQueryWrapper<ProductSku>()
@@ -204,6 +211,7 @@ public class ProductServiceImpl implements ProductService {
         product.setStatus(status);
         productMapper.updateById(product);
         clearCache(id);
+        aiIndexTaskPublisher.publish(id);
         return product;
     }
 
@@ -220,15 +228,18 @@ public class ProductServiceImpl implements ProductService {
         copy.setSales(0); copy.setStatus(2);
         productMapper.insert(copy);
         clearCache(copy.getId());
+        aiIndexTaskPublisher.publish(copy.getId());
         return copy;
     }
 
     @Override
+    @Transactional
     public void delete(Long id) {
         Product product = requireProduct(id);
         product.setStatus(3);
         productMapper.updateById(product);
         clearCache(id);
+        aiIndexTaskPublisher.publish(id);
     }
 
     @Override
