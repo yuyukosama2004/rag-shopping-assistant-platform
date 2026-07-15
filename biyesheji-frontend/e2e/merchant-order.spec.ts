@@ -165,7 +165,8 @@ test('merchant publishes a product, customer orders it, and merchant ships it', 
     const failedLogin = await request.post(`${apiBaseUrl}/api/user/login`, {
       data: { username: lockedUsername, password: 'Definitely-Wrong-Password!' },
     })
-    expect(failedLogin.status()).toBe(409)
+    expect(failedLogin.status()).toBe(400)
+    expect((await failedLogin.json() as ApiEnvelope<unknown>).code).toBe(1003)
   }
   const lockedLogin = await request.post(`${apiBaseUrl}/api/user/login`, {
     data: { username: lockedUsername, password },
