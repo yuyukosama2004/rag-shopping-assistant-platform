@@ -13,7 +13,7 @@ const addresses = ref<any[]>([]); const selectedAddr = ref(0); const manualAddr 
 
 onMounted(async () => {
   try {
-    const r = await getProductDetail(Number(route.params.id))
+    const r = await getProductDetail(String(route.params.id))
     if (!r.data || !r.data.data) { return }
     product.value = r.data.data
     try { spec.value = JSON.parse(product.value.specJson || '{}') } catch { spec.value = {} }

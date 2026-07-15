@@ -4,11 +4,11 @@ export function getProductPage(params: any) {
   return request.get('/api/product/page', { params })
 }
 
-export function getProductDetail(id: number) {
+export function getProductDetail(id: string | number) {
   return request.get(`/api/product/${id}`)
 }
 
-export function getProductSkus(id: number) {
+export function getProductSkus(id: string | number) {
   return request.get(`/api/product/${id}/skus`)
 }
 
