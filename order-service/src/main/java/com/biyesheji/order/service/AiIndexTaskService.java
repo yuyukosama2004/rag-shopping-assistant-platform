@@ -1,7 +1,6 @@
 package com.biyesheji.order.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.biyesheji.entity.AiIndexTask;
 import com.biyesheji.entity.Product;
 import com.biyesheji.exception.BizException;
@@ -50,11 +49,7 @@ public class AiIndexTaskService {
 
     void process(AiIndexTask task) {
         int attempts = task.getAttempts() + 1;
-        int claimed = mapper.update(null, new LambdaUpdateWrapper<AiIndexTask>()
-                .eq(AiIndexTask::getId, task.getId())
-                .eq(AiIndexTask::getStatus, "PENDING")
-                .set(AiIndexTask::getStatus, "RUNNING")
-                .set(AiIndexTask::getAttempts, attempts));
+        int claimed = mapper.claim(task.getId(), attempts);
         if (claimed != 1) return;
         task.setStatus("RUNNING");
         task.setAttempts(attempts);

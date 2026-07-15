@@ -12,7 +12,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.mockito.ArgumentMatchers.any;
 
 class AiIndexTaskServiceTest {
     @Test
@@ -26,7 +25,7 @@ class AiIndexTaskServiceTest {
         task.setProductUpdatedAt(taskVersion); task.setStatus("PENDING"); task.setAttempts(0);
         Product current = new Product(); current.setId(2L); current.setUpdatedAt(taskVersion.plusSeconds(1));
         when(products.selectById(2L)).thenReturn(current);
-        when(tasks.update(any(), any())).thenReturn(1);
+        when(tasks.claim(1L, 1)).thenReturn(1);
 
         new AiIndexTaskService(tasks, products, aiService).process(task);
 
