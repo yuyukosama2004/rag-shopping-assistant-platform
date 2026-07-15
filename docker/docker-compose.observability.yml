@@ -1,0 +1,68 @@
+name: biyesheji-observability
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.13.1
+    container_name: biyesheji-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}
+    volumes:
+      - ../deploy/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../deploy/observability/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:${PROMETHEUS_HOST_PORT:-19090}:9090"
+    networks: [internal]
+
+  alertmanager:
+    image: prom/alertmanager:v0.33.1
+    container_name: biyesheji-alertmanager
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - ../deploy/observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    ports:
+      - "127.0.0.1:${ALERTMANAGER_HOST_PORT:-19093}:9093"
+    networks: [internal]
+
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    container_name: biyesheji-node-exporter
+    restart: unless-stopped
+    pid: host
+    command:
+      - --path.rootfs=/host
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/containers/storage/.+)($|/)
+    volumes:
+      - /:/host:ro,rslave
+    networks: [internal]
+
+  cadvisor:
+    image: ghcr.io/google/cadvisor:v0.60.5
+    container_name: biyesheji-cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    networks: [internal]
+
+networks:
+  internal:
+    name: biyesheji-internal
+    external: true
+
+volumes:
+  prometheus-data:
+  alertmanager-data:

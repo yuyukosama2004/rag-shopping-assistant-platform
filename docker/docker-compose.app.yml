@@ -24,6 +24,9 @@ services:
       retries: 12
       start_period: 45s
     mem_limit: 512M
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "5"}
 
   product-service:
     build:
@@ -48,6 +51,9 @@ services:
       retries: 12
       start_period: 45s
     mem_limit: 512M
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "5"}
 
   order-service:
     build:
@@ -69,6 +75,9 @@ services:
       retries: 12
       start_period: 45s
     mem_limit: 512M
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "5"}
 
   gateway-service:
     build:
@@ -92,6 +101,9 @@ services:
       retries: 12
       start_period: 60s
     mem_limit: 384M
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "5"}
 
 networks:
   internal:

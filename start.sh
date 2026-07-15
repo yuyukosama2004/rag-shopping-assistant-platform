@@ -5,6 +5,7 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="$PROJECT_DIR/.env"
 COMPOSE_FILE="${COMPOSE_FILE:-$PROJECT_DIR/docker/docker-compose.infrastructure.yml}"
 APP_COMPOSE_FILE="${APP_COMPOSE_FILE:-$PROJECT_DIR/docker/docker-compose.app.yml}"
+OBSERVABILITY_COMPOSE_FILE="${OBSERVABILITY_COMPOSE_FILE:-$PROJECT_DIR/docker/docker-compose.observability.yml}"
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 info() { echo "INFO: $*"; }
@@ -30,6 +31,10 @@ compose() {
 
 app_compose() {
   docker compose --env-file "$ENV_FILE" -f "$APP_COMPOSE_FILE" "$@"
+}
+
+observability_compose() {
+  docker compose --env-file "$ENV_FILE" -f "$OBSERVABILITY_COMPOSE_FILE" "$@"
 }
 
 wait_http() {
@@ -101,6 +106,7 @@ start_services() {
     wait_healthy "biyesheji-$service"
   done
   wait_http "http://127.0.0.1:$GATEWAY_HOST_PORT/api/product/page?pageNum=1&pageSize=1" "Gateway" 30
+  start_observability
 }
 
 stop_services() {
@@ -113,6 +119,28 @@ status() {
   app_compose ps
   curl --fail --silent "http://127.0.0.1:$GATEWAY_HOST_PORT/api/product/page?pageNum=1&pageSize=1" >/dev/null \
     && info "Gateway request succeeded" || die "Gateway request failed"
+}
+
+start_observability() {
+  load_env
+  info "Starting Prometheus, Alertmanager and host/container exporters"
+  observability_compose up -d
+  wait_http "http://127.0.0.1:${PROMETHEUS_HOST_PORT:-19090}/-/ready" "Prometheus" 60
+  wait_http "http://127.0.0.1:${ALERTMANAGER_HOST_PORT:-19093}/-/ready" "Alertmanager" 60
+}
+
+stop_observability() {
+  [ -f "$ENV_FILE" ] || die "Missing $ENV_FILE"
+  observability_compose down
+}
+
+observability_status() {
+  load_env
+  observability_compose ps
+  curl --fail --silent "http://127.0.0.1:${PROMETHEUS_HOST_PORT:-19090}/-/ready" >/dev/null \
+    && info "Prometheus is ready" || die "Prometheus is not ready"
+  curl --fail --silent "http://127.0.0.1:${ALERTMANAGER_HOST_PORT:-19093}/-/ready" >/dev/null \
+    && info "Alertmanager is ready" || die "Alertmanager is not ready"
 }
 
 # shellcheck source=scripts/data-maintenance.sh
@@ -134,10 +162,13 @@ case "${1:-help}" in
   install) install_release "${2:-}" ;;
   upgrade) upgrade_release "${2:-}" ;;
   rollback) rollback_release "${2:-}" ;;
+  observability-start) start_observability ;;
+  observability-stop) stop_observability ;;
+  observability-status) observability_status ;;
   all) start_infra; build; build_frontend; start_services ;;
   *)
     cat <<'EOF'
-Usage: ./start.sh {infra-start|infra-stop|build|frontend-build|start|stop|restart|status|backup|restore|install|upgrade|rollback|all}
+Usage: ./start.sh {infra-start|infra-stop|build|frontend-build|start|stop|restart|status|backup|restore|install|upgrade|rollback|observability-start|observability-stop|observability-status|all}
 
 All commands require a populated .env file. Services are attached to the private
 Docker network; only the gateway is bound to its configured loopback port for Nginx.

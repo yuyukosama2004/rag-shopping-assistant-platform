@@ -350,6 +350,9 @@ http://localhost:8080
 | `install [tag]` | 构建前后端、生成版本化镜像并安装指定版本 |
 | `upgrade <tag>` | 先加密备份，再构建和切换版本；健康失败自动回滚 |
 | `rollback [tag]` | 切换到上一版本或指定的已保留镜像和前端产物 |
+| `observability-start` | 启动 Prometheus、Alertmanager 与主机/容器指标采集 |
+| `observability-stop` | 停止监控组件，保留指标和告警数据卷 |
+| `observability-status` | 检查监控容器及 Prometheus/Alertmanager 就绪状态 |
 | `all` | 启动基础设施、构建后端并启动微服务 |
 
 首次运行建议依次执行：
@@ -430,6 +433,23 @@ sudo certbot renew --dry-run
 HSTS、CSP、防嵌入/类型嗅探头，并安装续期后的 Nginx 重载钩子。生产模板对登录、AI、上传、
 商品搜索和订单接口分别限流，拒绝从公网访问 `/actuator/`。MySQL、Redis、Nacos 和网关均继续
 只绑定 loopback 或 Docker 私有网络，不能直接映射到公网。
+
+### 监控、告警与结构化日志
+
+`start`、`install` 和成功的 `upgrade` 会自动启动监控栈；也可以单独执行：
+
+```bash
+./start.sh observability-start
+./start.sh observability-status
+```
+
+Prometheus 和 Alertmanager 默认只监听宿主机 `127.0.0.1:19090/19093`，不会暴露到公网。
+应用日志使用 ECS JSON 格式，Prometheus 采集四个服务的 JVM、HTTP、聚合健康状态和 AI 费用指标。
+聚合健康指标包含数据库、Redis 等依赖状态。主机 CPU/磁盘、
+容器内存、5xx 比例、AI 预算和失败率均配置了告警规则。
+
+完整的查看方式、告警演练和外部通知接入见
+[`docs/监控与告警指南.md`](docs/监控与告警指南.md)。
 
 ### 7. 首次初始化店主
 
