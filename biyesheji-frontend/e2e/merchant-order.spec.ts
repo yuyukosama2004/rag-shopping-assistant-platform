@@ -1,7 +1,9 @@
 import { expect, test, type APIRequestContext, type APIResponse } from '@playwright/test'
+import { createHmac, randomUUID } from 'node:crypto'
 
 const apiBaseUrl = process.env.E2E_API_URL || 'http://127.0.0.1:18080'
 const ownerInitToken = process.env.E2E_OWNER_INIT_TOKEN || 'ci-owner-initialization-token'
+const jwtSecret = process.env.E2E_JWT_SECRET || 'ci-jwt-secret-that-is-at-least-thirty-two-bytes'
 
 type ApiEnvelope<T> = { code: number; message: string; data: T }
 
@@ -15,6 +17,21 @@ async function envelope<T>(response: APIResponse): Promise<ApiEnvelope<T>> {
 async function login(request: APIRequestContext, username: string, password: string) {
   const response = await request.post(`${apiBaseUrl}/api/user/login`, { data: { username, password } })
   return (await envelope<{ accessToken: string; refreshToken: string; userId: number }>(response)).data
+}
+
+function customerAccessToken(userId: number) {
+  const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url')
+  const now = Math.floor(Date.now() / 1000)
+  const unsigned = `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({
+    sub: `concurrent_${userId}`,
+    userId,
+    role: 0,
+    tokenType: 'access',
+    jti: randomUUID(),
+    iat: now,
+    exp: now + 600,
+  })}`
+  return `${unsigned}.${createHmac('sha256', jwtSecret).update(unsigned).digest('base64url')}`
 }
 
 test('merchant publishes a product, customer orders it, and merchant ships it', async ({ request, page }) => {
@@ -103,4 +120,53 @@ test('merchant publishes a product, customer orders it, and merchant ships it', 
   await page.goto(`/order/${submit.orderNo}`)
   await expect(page.getByText(submit.orderNo)).toBeVisible()
   await expect(page.getByText(trackingNo, { exact: false })).toBeVisible()
+
+  const concurrencyProduct = (await envelope<{ id: number }>(await request.post(`${apiBaseUrl}/api/merchant/products`, {
+    headers: ownerHeaders,
+    data: {
+      name: `并发库存验收商品 ${suffix}`,
+      brand: 'E2E',
+      category: '并发测试',
+      price: 10.00,
+      description: '库存 100，接受超过 100 个并发购买请求',
+    },
+  }))).data
+  const concurrencySku = (await envelope<{ id: number }>(await request.post(`${apiBaseUrl}/api/merchant/products/${concurrencyProduct.id}/skus`, {
+    headers: ownerHeaders,
+    data: { skuCode: `CONCURRENT-${suffix}`, price: 10.00, initialStock: 100 },
+  }))).data
+  await envelope(await request.put(`${apiBaseUrl}/api/merchant/products/${concurrencyProduct.id}/status`, {
+    headers: ownerHeaders,
+    data: { status: 1 },
+  }))
+
+  const attempts = await Promise.all(Array.from({ length: 110 }, async (_, index) => {
+    const token = customerAccessToken(3_000_000_000 + index)
+    const response = await request.post(`${apiBaseUrl}/api/order/submit`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: {
+        items: [{ productId: concurrencyProduct.id, skuId: concurrencySku.id, quantity: 1 }],
+        receiverName: `并发消费者 ${index}`,
+        receiverPhone: '13800000000',
+        receiverAddress: '并发测试地址 1 号',
+        paymentMethod: 'COD',
+        shippingRuleId: shippingRule.id,
+      },
+    })
+    return { status: response.status(), body: await response.json() as ApiEnvelope<unknown> }
+  }))
+  const successfulOrders = attempts.filter(({ status, body }) => status === 200 && body.code === 200)
+  const failedOrders = attempts.filter(({ status, body }) => status !== 200 || body.code !== 200)
+  expect(successfulOrders.length).toBeGreaterThan(0)
+  expect(successfulOrders.length).toBeLessThanOrEqual(100)
+  expect(failedOrders.every(({ status }) => status === 409 || status === 429)).toBeTruthy()
+
+  const stock = (await envelope<{ total: number; locked: number; available: number }>(
+    await request.get(`${apiBaseUrl}/api/merchant/products/skus/${concurrencySku.id}/stock`, { headers: ownerHeaders }),
+  )).data
+  expect(stock.total).toBe(100)
+  expect(stock.available).toBeGreaterThanOrEqual(0)
+  expect(stock.locked).toBeGreaterThanOrEqual(0)
+  expect(stock.available + stock.locked).toBe(100)
+  expect(stock.locked).toBe(successfulOrders.length)
 })
