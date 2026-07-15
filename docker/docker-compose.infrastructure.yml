@@ -35,7 +35,7 @@ services:
     networks: [internal]
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4.9-alpine
     container_name: biyesheji-redis
     restart: unless-stopped
     ports:
@@ -55,7 +55,7 @@ services:
     networks: [internal]
 
   nacos:
-    image: nacos/nacos-server:v2.3.2
+    image: nacos/nacos-server:v2.5.2
     container_name: biyesheji-nacos
     restart: unless-stopped
     ports:

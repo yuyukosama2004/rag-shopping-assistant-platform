@@ -137,7 +137,7 @@ jobs:
       - name: Validate Nginx syntax template
         run: |
           sed -e "s|PROJECT_DIR|/opt/biyesheji|g" -e "s|GATEWAY_HOST_PORT|18080|g" deploy/e5-nginx.conf > /tmp/biyesheji.conf
-          docker run --rm -v /tmp/biyesheji.conf:/etc/nginx/conf.d/default.conf:ro nginx:1.27-alpine nginx -t
+          docker run --rm -v /tmp/biyesheji.conf:/etc/nginx/conf.d/default.conf:ro nginx:1.28.0-alpine nginx -t
       - name: Validate production TLS Nginx template
         run: |
           mkdir -p /tmp/nginx-certs/live/shop.example.com
@@ -149,7 +149,7 @@ jobs:
           docker run --rm \
             -v /tmp/production.conf:/etc/nginx/conf.d/default.conf:ro \
             -v "$PWD/deploy/biyesheji-proxy-headers.conf:/etc/nginx/conf.d/biyesheji-proxy-headers.conf:ro" \
-            -v /tmp/nginx-certs:/etc/letsencrypt:ro nginx:1.27-alpine nginx -t
+            -v /tmp/nginx-certs:/etc/letsencrypt:ro nginx:1.28.0-alpine nginx -t
       - name: Validate observability configuration
         run: |
           docker run --rm \
@@ -269,4 +269,31 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           trivyignores: ${{ matrix.trivyignores }}
+          exit-code: 1
+
+  infrastructure-image-security:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - component: mysql
+            image: mysql:8.0.46
+          - component: redis
+            image: redis:7.4.9-alpine
+          - component: nacos
+            image: nacos/nacos-server:v2.5.2
+          - component: nginx
+            image: nginx:1.28.0-alpine
+    name: infrastructure-image-security (${{ matrix.component }})
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Scan ${{ matrix.component }} image
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: ${{ matrix.image }}
+          version: v0.69.3
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
           exit-code: 1
