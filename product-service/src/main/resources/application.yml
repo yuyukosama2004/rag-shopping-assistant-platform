@@ -9,6 +9,8 @@ server:
 spring:
   application:
     name: product-service
+  profiles:
+    default: dev
   main:
     banner-mode: off
   datasource:
@@ -47,7 +49,6 @@ mybatis-plus:
     log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
 
 knife4j:
-  enable: true
   openapi:
     title: 商品服务 API
     description: 商品查询、搜索、筛选
@@ -67,9 +68,6 @@ management:
       application: ${spring.application.name}
 
 logging:
-  structured:
-    format:
-      console: ${LOG_STRUCTURED_FORMAT:ecs}
   level:
     root: WARN
     com.biyesheji: INFO

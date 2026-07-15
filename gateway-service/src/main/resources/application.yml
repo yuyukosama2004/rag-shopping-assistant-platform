@@ -9,6 +9,8 @@ server:
 spring:
   application:
     name: gateway-service
+  profiles:
+    default: dev
   main:
     banner-mode: off
   cloud:
@@ -65,9 +67,6 @@ management:
       application: ${spring.application.name}
 
 logging:
-  structured:
-    format:
-      console: ${LOG_STRUCTURED_FORMAT:ecs}
   level:
     root: WARN
     com.biyesheji: INFO
