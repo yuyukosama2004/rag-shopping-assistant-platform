@@ -1,12 +1,25 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
-import { getMerchantAiSetting, updateMerchantAiSetting, type MerchantAiSettingInput } from '../api/merchant'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  createMerchantAiKnowledge,
+  deleteMerchantAiKnowledge,
+  getMerchantAiKnowledge,
+  getMerchantAiSetting,
+  updateMerchantAiKnowledge,
+  updateMerchantAiSetting,
+  type MerchantAiKnowledge,
+  type MerchantAiKnowledgeInput,
+  type MerchantAiSettingInput,
+} from '../api/merchant'
 import { useUserStore } from '../stores/user'
 
 const userStore = useUserStore()
 const loading = ref(false)
 const saving = ref(false)
+const knowledge = ref<MerchantAiKnowledge[]>([])
+const knowledgeDialog = ref(false)
+const editingKnowledgeId = ref<number>()
 const canEdit = computed(() => userStore.user?.role === 1)
 const form = reactive<MerchantAiSettingInput>({
   enabled: 1,
@@ -17,15 +30,45 @@ const form = reactive<MerchantAiSettingInput>({
   disclaimer: '',
   systemPrompt: '',
 })
+const knowledgeForm = reactive<MerchantAiKnowledgeInput>({ category: 'FAQ', title: '', content: '', status: 1, sortOrder: 0 })
+const categoryLabel: Record<MerchantAiKnowledge['category'], string> = {
+  FAQ: '常见问题', SHIPPING: '配送说明', AFTER_SALES: '售后政策', STORE: '店铺信息',
+}
 
 const load = async () => {
   loading.value = true
   try {
-    const data = (await getMerchantAiSetting()).data.data
+    const [settingResponse, knowledgeResponse] = await Promise.all([getMerchantAiSetting(), getMerchantAiKnowledge()])
+    const data = settingResponse.data.data
     Object.assign(form, data)
+    knowledge.value = knowledgeResponse.data.data || []
   } finally {
     loading.value = false
   }
+}
+
+const openKnowledge = (item?: MerchantAiKnowledge) => {
+  editingKnowledgeId.value = item?.id
+  Object.assign(knowledgeForm, item
+    ? { category: item.category, title: item.title, content: item.content, status: item.status, sortOrder: item.sortOrder }
+    : { category: 'FAQ', title: '', content: '', status: 1, sortOrder: 0 })
+  knowledgeDialog.value = true
+}
+
+const saveKnowledge = async () => {
+  if (!knowledgeForm.title.trim() || !knowledgeForm.content.trim()) return ElMessage.warning('请填写标题和内容')
+  if (editingKnowledgeId.value) await updateMerchantAiKnowledge(editingKnowledgeId.value, knowledgeForm)
+  else await createMerchantAiKnowledge(knowledgeForm)
+  ElMessage.success('知识条目已保存')
+  knowledgeDialog.value = false
+  await load()
+}
+
+const removeKnowledge = async (item: MerchantAiKnowledge) => {
+  await ElMessageBox.confirm(`确定删除“${item.title}”吗？`, '删除知识条目', { type: 'warning' })
+  await deleteMerchantAiKnowledge(item.id)
+  ElMessage.success('已删除')
+  await load()
 }
 
 const save = async () => {
@@ -88,4 +131,33 @@ onMounted(load)
       </el-form-item>
     </el-form>
   </el-card>
+
+  <el-card style="margin-top:20px">
+    <template #header>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <strong>商家知识库</strong>
+        <el-button type="primary" :disabled="knowledge.length >= 100" @click="openKnowledge()">新增知识</el-button>
+      </div>
+    </template>
+    <el-alert title="仅启用的条目会进入 AI 对话上下文。适合维护常见问题、配送范围、售后规则和店铺说明，最多 100 条。" type="info" :closable="false" style="margin-bottom:16px" />
+    <el-table :data="knowledge" empty-text="暂无知识条目">
+      <el-table-column label="类型" width="120"><template #default="{ row }">{{ categoryLabel[row.category as MerchantAiKnowledge['category']] }}</template></el-table-column>
+      <el-table-column prop="title" label="标题" min-width="180" />
+      <el-table-column prop="content" label="内容" min-width="320" show-overflow-tooltip />
+      <el-table-column prop="sortOrder" label="排序" width="80" />
+      <el-table-column label="状态" width="90"><template #default="{ row }"><el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? '启用' : '停用' }}</el-tag></template></el-table-column>
+      <el-table-column label="操作" width="150"><template #default="{ row }"><el-button text type="primary" @click="openKnowledge(row)">编辑</el-button><el-button text type="danger" @click="removeKnowledge(row)">删除</el-button></template></el-table-column>
+    </el-table>
+  </el-card>
+
+  <el-dialog v-model="knowledgeDialog" :title="editingKnowledgeId ? '编辑知识' : '新增知识'" width="620px">
+    <el-form label-width="90px">
+      <el-form-item label="类型"><el-select v-model="knowledgeForm.category" style="width:100%"><el-option v-for="(label, value) in categoryLabel" :key="value" :label="label" :value="value" /></el-select></el-form-item>
+      <el-form-item label="标题"><el-input v-model="knowledgeForm.title" maxlength="100" show-word-limit /></el-form-item>
+      <el-form-item label="内容"><el-input v-model="knowledgeForm.content" type="textarea" :rows="7" maxlength="2000" show-word-limit /></el-form-item>
+      <el-form-item label="排序"><el-input-number v-model="knowledgeForm.sortOrder" :min="0" :max="10000" /></el-form-item>
+      <el-form-item label="启用"><el-switch v-model="knowledgeForm.status" :active-value="1" :inactive-value="0" /></el-form-item>
+    </el-form>
+    <template #footer><el-button @click="knowledgeDialog = false">取消</el-button><el-button type="primary" @click="saveKnowledge">保存</el-button></template>
+  </el-dialog>
 </template>
