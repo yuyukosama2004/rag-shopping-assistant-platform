@@ -345,6 +345,8 @@ http://localhost:8080
 | `stop` | 停止并删除应用服务容器，不删除数据卷 |
 | `restart` | 重建并重启应用服务容器 |
 | `status` | 查看容器和服务状态 |
+| `backup` | 创建数据库与商品媒体的 AES-256 加密备份并执行保留策略 |
+| `restore <file>` | 校验并恢复加密备份；必须显式设置恢复确认变量 |
 | `all` | 启动基础设施、构建后端并启动微服务 |
 
 首次运行建议依次执行：
@@ -359,6 +361,26 @@ http://localhost:8080
 `start` 会复用 `docker/docker-compose.app.yml`，并等待四个应用服务的
 `/actuator/health` 健康检查通过。网关仅绑定在 `127.0.0.1`；如宿主机的
 8080 已被占用，请在 `.env` 设置 `GATEWAY_HOST_PORT`，并让 Nginx 指向该端口。
+
+### 备份与恢复
+
+在 `.env` 中设置独立的强随机 `BACKUP_ENCRYPTION_PASSWORD`。备份默认写入
+`backups/data`，同时包含 MySQL 数据和商品媒体，并生成 SHA-256 校验文件；
+`BACKUP_RETENTION_DAYS` 默认为 14 天。
+
+```bash
+./start.sh backup
+```
+
+恢复会替换当前数据库和商品媒体，脚本默认拒绝执行。确认文件和环境后使用：
+
+```bash
+RESTORE_CONFIRM=RESTORE_BIYESHEJI_DATA \
+  ./start.sh restore backups/data/biyesheji-YYYYMMDDTHHMMSSZ.tar.gz.enc
+```
+
+恢复前应先额外保留当前备份。脚本会校验 SHA-256、解密归档、停止应用服务、恢复数据，
+随后重新启动并等待全部健康检查通过。不要把备份密码、解密后的归档或 `.env` 提交到 Git。
 
 ### 7. 首次初始化店主
 

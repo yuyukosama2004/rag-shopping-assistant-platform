@@ -57,7 +57,7 @@ jobs:
           docker compose --env-file .env -f docker/docker-compose.e5.yml config -q
           docker compose --env-file .env -f docker/docker-compose.app.yml config -q
       - name: Validate shell syntax
-        run: bash -n start.sh deploy/e5-deploy.sh deploy/e5-ctl.sh scripts/smoke-test.sh
+        run: bash -n start.sh deploy/e5-deploy.sh deploy/e5-ctl.sh scripts/smoke-test.sh scripts/data-maintenance.sh
       - name: Validate Nginx syntax template
         run: |
           sed -e "s|PROJECT_DIR|/opt/biyesheji|g" -e "s|GATEWAY_HOST_PORT|18080|g" deploy/e5-nginx.conf > /tmp/biyesheji.conf
