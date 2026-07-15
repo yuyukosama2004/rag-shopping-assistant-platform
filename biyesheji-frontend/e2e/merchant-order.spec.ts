@@ -7,7 +7,7 @@ type ApiEnvelope<T> = { code: number; message: string; data: T }
 
 async function envelope<T>(response: APIResponse): Promise<ApiEnvelope<T>> {
   const body = await response.json() as ApiEnvelope<T>
-  expect(response.ok(), `${response.request().method()} ${response.url()}: ${JSON.stringify(body)}`).toBeTruthy()
+  expect(response.ok(), `${response.status()} ${response.url()}: ${JSON.stringify(body)}`).toBeTruthy()
   expect(body.code, body.message).toBe(200)
   return body
 }
