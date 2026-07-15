@@ -15,6 +15,7 @@ import com.biyesheji.order.service.AiService;
 import com.biyesheji.order.service.AiKnowledgeService;
 import com.biyesheji.order.service.AiSettingService;
 import com.biyesheji.order.service.AiUsageService;
+import com.biyesheji.order.service.AiStreamingContentFilter;
 import com.biyesheji.utils.RedisUtil;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -457,6 +458,7 @@ public class AiServiceImpl implements AiService {
                 }
 
                 StringBuilder fullReply = new StringBuilder();
+                AiStreamingContentFilter contentFilter = new AiStreamingContentFilter(setting.getBlockedKeywords());
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.body(), StandardCharsets.UTF_8))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
@@ -465,11 +467,19 @@ public class AiServiceImpl implements AiService {
                             if ("[DONE]".equals(data)) continue;
                             String text = extractContent(data);
                             if (text != null && !text.isEmpty()) {
-                                fullReply.append(text);
-                                emitter.send(SseEmitter.event().data(text));
+                                String safeText = contentFilter.accept(text);
+                                if (!safeText.isEmpty()) {
+                                    fullReply.append(safeText);
+                                    emitter.send(SseEmitter.event().data(safeText));
+                                }
                             }
                         }
                     }
+                }
+                String remainingText = contentFilter.finish();
+                if (!remainingText.isEmpty()) {
+                    fullReply.append(remainingText);
+                    emitter.send(SseEmitter.event().data(remainingText));
                 }
                 if (fullReply.length() > 0) {
                     aiUsageService.recordSuccess(setting, inputChars, fullReply.length(), System.currentTimeMillis() - startedAt);
