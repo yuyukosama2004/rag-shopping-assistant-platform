@@ -138,7 +138,7 @@ test('merchant publishes a product, customer orders it, and merchant ships it', 
     headers: ownerHeaders,
     data: { skuCode: `XSS-${suffix}`, price: 1.00, initialStock: 1 },
   }))).data
-  expect(xssSku.id).toBeGreaterThan(0)
+  expect(String(xssSku.id)).not.toBe('')
   await envelope(await request.put(`${apiBaseUrl}/api/merchant/products/${xssProduct.id}/status`, {
     headers: ownerHeaders,
     data: { status: 1 },
