@@ -3,7 +3,7 @@
 
 services:
   mysql:
-    image: mysql:8.0.46
+    image: mysql:8.0.46-debian
     container_name: biyesheji-mysql
     restart: unless-stopped
     ports:
@@ -55,7 +55,7 @@ services:
     networks: [internal]
 
   nacos:
-    image: nacos/nacos-server:v2.5.2
+    image: nacos/nacos-server:v3.1.2-slim
     container_name: biyesheji-nacos
     restart: unless-stopped
     ports:
