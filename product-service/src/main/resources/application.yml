@@ -36,6 +36,9 @@ media:
   storage-path: ${MEDIA_STORAGE_PATH:/data/media}
   max-bytes: ${MEDIA_MAX_BYTES:5242880}
 
+inventory:
+  low-stock-threshold: ${LOW_STOCK_THRESHOLD:5}
+
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
   global-config:

@@ -187,6 +187,18 @@ test('merchant publishes a product, customer orders it, and merchant ships it', 
     headers: ownerHeaders,
     data: { status: 1 },
   }))
+  const inventorySummary = (await envelope<{ lowStockCount: number; threshold: number }>(
+    await request.get(`${apiBaseUrl}/api/merchant/inventory/summary`, { headers: ownerHeaders }),
+  )).data
+  expect(inventorySummary.threshold).toBe(5)
+  expect(inventorySummary.lowStockCount).toBeGreaterThanOrEqual(1)
+  const lowStockInventory = (await envelope<{ records: Array<{ skuId: number; available: number }> }>(
+    await request.get(`${apiBaseUrl}/api/merchant/inventory`, {
+      headers: ownerHeaders,
+      params: { keyword: `XSS-${suffix}`, lowStockOnly: true },
+    }),
+  )).data
+  expect(lowStockInventory.records).toContainEqual(expect.objectContaining({ skuId: xssSku.id, available: 1 }))
   await page.goto(`/product/${xssProduct.id}`)
   await expect(page.getByText(xssName)).toBeVisible()
   await expect(page.getByText(xssDescription)).toBeVisible()

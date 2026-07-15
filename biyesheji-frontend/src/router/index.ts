@@ -29,6 +29,7 @@ const routes = [
       { path: 'staff', name: 'MerchantStaff', component: () => import('../views/MerchantStaff.vue') },
       { path: 'catalog', name: 'MerchantCatalog', component: () => import('../views/MerchantCatalog.vue') },
       { path: 'products', name: 'MerchantProducts', component: () => import('../views/MerchantProducts.vue') },
+      { path: 'inventory', name: 'MerchantInventory', component: () => import('../views/MerchantInventory.vue') },
       { path: 'orders', name: 'MerchantOrders', component: () => import('../views/MerchantOrders.vue') },
       { path: 'shipping-rules', name: 'MerchantShippingRules', component: () => import('../views/MerchantShippingRules.vue') },
       { path: 'refunds', name: 'MerchantRefunds', component: () => import('../views/MerchantRefunds.vue') },
