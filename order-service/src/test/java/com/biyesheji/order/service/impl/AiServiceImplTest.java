@@ -33,4 +33,14 @@ class AiServiceImplTest {
         assertTrue(service.isCurrentlySellable(product));
         assertFalse(service.isCurrentlySellable(product));
     }
+
+    @Test
+    void emptyCandidatesForbidInventedRecommendations() {
+        AiServiceImpl service = new AiServiceImpl(mock(ProductMapper.class), mock(AiConversationMapper.class), mock(RedisUtil.class), Runnable::run, mock(ProductSkuMapper.class), mock(StockMapper.class));
+
+        String prompt = service.buildPrompt("推荐手机", List.of());
+
+        assertTrue(prompt.contains("不得自行推荐列表外商品"));
+        assertTrue(prompt.contains("联系商家"));
+    }
 }
