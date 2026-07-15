@@ -1,6 +1,6 @@
 # Application services. Build the backend first with ./start.sh build.
 # This compose file intentionally reuses the private network created by the
-# infrastructure compose file, so the database and service registry stay private.
+# infrastructure compose file, so the database and cache stay private.
 name: biyesheji-app
 
 services:
@@ -91,6 +91,9 @@ services:
     env_file: ../.env
     environment:
       SERVER_ADDRESS: 0.0.0.0
+      USER_SERVICE_URI: http://user-service:8081
+      PRODUCT_SERVICE_URI: http://product-service:8082
+      ORDER_SERVICE_URI: http://order-service:8083
     ports:
       - "127.0.0.1:${GATEWAY_HOST_PORT:-8080}:8080"
     networks: [internal]

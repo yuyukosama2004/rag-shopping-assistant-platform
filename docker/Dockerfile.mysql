@@ -1,0 +1,11 @@
+FROM mysql:8.0.46-debian
+
+# Refresh distribution security packages and replace the statically bundled
+# gosu with Debian's maintained package.
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && rm -f /usr/local/bin/gosu \
+    && apt-get install -y --no-install-recommends gosu \
+    && test -x /usr/sbin/gosu \
+    && ln -s /usr/sbin/gosu /usr/local/bin/gosu \
+    && rm -rf /var/lib/apt/lists/*
