@@ -2,12 +2,15 @@ package com.biyesheji.order.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.biyesheji.constant.UserRole;
+import com.biyesheji.dto.MerchantCloseOrderDTO;
+import com.biyesheji.dto.MerchantOrderNoteDTO;
 import com.biyesheji.dto.MerchantShipmentDTO;
 import com.biyesheji.dto.R;
 import com.biyesheji.exception.BizException;
 import com.biyesheji.order.service.OrderService;
 import com.biyesheji.vo.OrderVO;
 import com.biyesheji.vo.MerchantDashboardVO;
+import com.biyesheji.vo.MerchantOrderDetailVO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -32,9 +35,29 @@ public class MerchantOrderController {
     }
 
     @GetMapping("/{orderNo}")
-    public R<OrderVO> detail(@RequestHeader("X-User-Role") Integer role, @PathVariable String orderNo) {
+    public R<MerchantOrderDetailVO> detail(@RequestHeader("X-User-Role") Integer role, @PathVariable String orderNo) {
         requireMerchant(role);
         return R.ok(orderService.merchantDetail(orderNo));
+    }
+
+    @PutMapping("/{orderNo}/note")
+    public R<Void> updateNote(@RequestHeader("X-User-Role") Integer role,
+                              @RequestHeader("X-User-Id") Long operatorId,
+                              @PathVariable String orderNo,
+                              @Valid @RequestBody MerchantOrderNoteDTO dto) {
+        requireMerchant(role);
+        orderService.updateMerchantNote(operatorId, orderNo, dto.getNote());
+        return R.ok();
+    }
+
+    @PostMapping("/{orderNo}/close")
+    public R<Void> close(@RequestHeader("X-User-Role") Integer role,
+                         @RequestHeader("X-User-Id") Long operatorId,
+                         @PathVariable String orderNo,
+                         @Valid @RequestBody MerchantCloseOrderDTO dto) {
+        requireMerchant(role);
+        orderService.close(operatorId, orderNo, dto.getReason());
+        return R.ok();
     }
 
     @PostMapping("/{orderNo}/confirm-payment")

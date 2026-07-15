@@ -100,6 +100,19 @@ test('merchant publishes a product, customer orders it, and merchant ships it', 
     },
   }))).data
 
+  await envelope(await request.put(`${apiBaseUrl}/api/merchant/orders/${submit.orderNo}/note`, {
+    headers: ownerHeaders,
+    data: { note: 'Playwright 商家内部备注' },
+  }))
+  const merchantDetail = (await envelope<{
+    order: { orderNo: string }
+    merchantNote: string
+    operations: Array<{ action: string }>
+  }>(await request.get(`${apiBaseUrl}/api/merchant/orders/${submit.orderNo}`, { headers: ownerHeaders }))).data
+  expect(merchantDetail.order.orderNo).toBe(submit.orderNo)
+  expect(merchantDetail.merchantNote).toBe('Playwright 商家内部备注')
+  expect(merchantDetail.operations.some(operation => operation.action === 'MERCHANT_NOTE')).toBeTruthy()
+
   await envelope(await request.post(`${apiBaseUrl}/api/merchant/orders/${submit.orderNo}/accept`, { headers: ownerHeaders }))
   const duplicateAccept = await request.post(`${apiBaseUrl}/api/merchant/orders/${submit.orderNo}/accept`, { headers: ownerHeaders })
   expect(duplicateAccept.status()).toBe(400)
@@ -113,6 +126,37 @@ test('merchant publishes a product, customer orders it, and merchant ships it', 
     data: { carrier: '顺丰速运', trackingNo: `${trackingNo}-DUPLICATE` },
   })
   expect(duplicateShipment.status()).toBe(400)
+  const closeShippedOrder = await request.post(`${apiBaseUrl}/api/merchant/orders/${submit.orderNo}/close`, {
+    headers: ownerHeaders,
+    data: { reason: '不应允许关闭已发货订单' },
+  })
+  expect(closeShippedOrder.status()).toBe(400)
+
+  const closableOrder = (await envelope<{ orderNo: string }>(await request.post(`${apiBaseUrl}/api/order/submit`, {
+    headers: { Authorization: `Bearer ${customerAccessToken(2_900_000_000)}` },
+    data: {
+      items: [{ productId: product.id, skuId: sku.id, quantity: 1 }],
+      receiverName: '关单库存验收',
+      receiverPhone: '13800000000',
+      receiverAddress: '关单测试地址 1 号',
+      paymentMethod: 'COD',
+      shippingRuleId: shippingRule.id,
+    },
+  }))).data
+  await envelope(await request.post(`${apiBaseUrl}/api/merchant/orders/${closableOrder.orderNo}/close`, {
+    headers: ownerHeaders,
+    data: { reason: 'Playwright 验证释放预占库存' },
+  }))
+  const closedDetail = (await envelope<{
+    order: { status: number }
+    operations: Array<{ action: string }>
+  }>(await request.get(`${apiBaseUrl}/api/merchant/orders/${closableOrder.orderNo}`, { headers: ownerHeaders }))).data
+  expect(closedDetail.order.status).toBe(4)
+  expect(closedDetail.operations.some(operation => operation.action === 'MERCHANT_CLOSE')).toBeTruthy()
+  const originalSkuStock = (await envelope<{ total: number; locked: number; available: number }>(
+    await request.get(`${apiBaseUrl}/api/merchant/products/skus/${sku.id}/stock`, { headers: ownerHeaders }),
+  )).data
+  expect(originalSkuStock).toMatchObject({ total: 10, locked: 2, available: 8 })
 
   const detail = (await envelope<{ status: number; shippingCarrier: string; trackingNo: string }>(
     await request.get(`${apiBaseUrl}/api/order/${submit.orderNo}`, { headers: customerHeaders }),

@@ -10,6 +10,7 @@ import com.biyesheji.entity.Order;
 import com.biyesheji.entity.ShippingRule;
 import com.biyesheji.constant.OrderStatus;
 import com.biyesheji.vo.MerchantDashboardVO;
+import com.biyesheji.vo.MerchantOrderDetailVO;
 import com.biyesheji.order.mapper.OrderItemMapper;
 import com.biyesheji.order.mapper.OrderMapper;
 import com.biyesheji.order.mapper.OrderOperationMapper;
@@ -32,11 +33,14 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -131,5 +135,68 @@ class OrderServiceImplTest {
         assertEquals(2, dashboard.getTodayOrderCount());
         assertEquals(3, dashboard.getPendingOrderCount());
         assertEquals(new BigDecimal("120.00"), dashboard.getTodayConfirmedSales());
+    }
+
+    @Test
+    void merchantDetailIncludesInternalNoteAndOperationHistory() {
+        Order order = new Order();
+        order.setOrderNo("ORDER-DETAIL"); order.setMerchantNote("优先发货"); order.setStatus(OrderStatus.PENDING.getCode());
+        OrderOperation operation = new OrderOperation();
+        operation.setAction("MERCHANT_NOTE");
+        when(orderMapper.selectOne(any())).thenReturn(order);
+        when(orderItemMapper.selectList(any())).thenReturn(List.of());
+        when(orderOperationMapper.selectList(any())).thenReturn(List.of(operation));
+
+        MerchantOrderDetailVO detail = orderService.merchantDetail("ORDER-DETAIL");
+
+        assertEquals("优先发货", detail.getMerchantNote());
+        assertEquals("ORDER-DETAIL", detail.getOrder().getOrderNo());
+        assertEquals("MERCHANT_NOTE", detail.getOperations().get(0).getAction());
+    }
+
+    @Test
+    void updatesMerchantNoteWithoutWritingItsContentsToAuditHistory() {
+        Order order = new Order(); order.setOrderNo("ORDER-NOTE");
+        when(orderMapper.selectOne(any())).thenReturn(order);
+        when(orderMapper.update(any(), any())).thenReturn(1);
+
+        orderService.updateMerchantNote(9L, "ORDER-NOTE", "  客户要求周末送达  ");
+
+        ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
+        verify(orderMapper).update(orderCaptor.capture(), any());
+        assertEquals("客户要求周末送达", orderCaptor.getValue().getMerchantNote());
+        ArgumentCaptor<OrderOperation> operationCaptor = ArgumentCaptor.forClass(OrderOperation.class);
+        verify(orderOperationMapper).insert(operationCaptor.capture());
+        assertEquals("更新商家备注", operationCaptor.getValue().getNote());
+    }
+
+    @Test
+    void closesUnpaidOrderAndRestoresReservedStock() {
+        Order order = new Order();
+        order.setOrderNo("ORDER-CLOSE"); order.setStatus(OrderStatus.PENDING.getCode()); order.setPaymentMethod("OFFLINE");
+        OrderItem item = new OrderItem(); item.setSkuId(11L); item.setQuantity(2);
+        when(orderMapper.selectOne(any())).thenReturn(order);
+        when(orderMapper.update(any(), any())).thenReturn(1);
+        when(orderItemMapper.selectList(any())).thenReturn(List.of(item));
+
+        orderService.close(9L, "ORDER-CLOSE", "无法配送");
+
+        verify(stockService).restore(11L, 2);
+        ArgumentCaptor<OrderOperation> captor = ArgumentCaptor.forClass(OrderOperation.class);
+        verify(orderOperationMapper).insert(captor.capture());
+        assertEquals("MERCHANT_CLOSE", captor.getValue().getAction());
+        assertEquals("无法配送", captor.getValue().getNote());
+    }
+
+    @Test
+    void refusesToCloseConfirmedPaymentOrder() {
+        Order order = new Order();
+        order.setOrderNo("ORDER-PAID"); order.setStatus(OrderStatus.PAID.getCode()); order.setPaymentMethod("OFFLINE");
+        when(orderMapper.selectOne(any())).thenReturn(order);
+
+        assertThrows(RuntimeException.class, () -> orderService.close(9L, "ORDER-PAID", "错误关单"));
+
+        verify(orderMapper, never()).update(any(), any());
+        verify(stockService, never()).restore(anyLong(), anyInt());
     }
 }

@@ -122,8 +122,25 @@ export interface MerchantOrder {
   shippingCarrier?: string
   trackingNo?: string
   payTime?: string
+  processingAt?: string
+  shippedAt?: string
+  cancelTime?: string
   createdAt: string
   items: Array<{ id: number; productName: string; skuCode?: string; skuSpecJson?: string; price: number; quantity: number; subtotal: number }>
+}
+
+export interface MerchantOrderOperation {
+  id: number
+  action: string
+  operatorId?: number
+  note?: string
+  createdAt: string
+}
+
+export interface MerchantOrderDetail {
+  order: MerchantOrder
+  merchantNote?: string
+  operations: MerchantOrderOperation[]
 }
 
 export interface MerchantShippingRule {
@@ -234,6 +251,9 @@ export function getMerchantSkuStock(skuId: number) { return request.get(`/api/me
 export function adjustMerchantSkuStock(skuId: number, quantity: number, reason: string) { return request.put(`/api/merchant/products/skus/${skuId}/stock`, { quantity, reason }) }
 export function getMerchantSkuStockLedger(skuId: number) { return request.get(`/api/merchant/products/skus/${skuId}/stock/ledger`) }
 export function getMerchantOrders(pageNum = 1, pageSize = 20, status?: number) { return request.get('/api/merchant/orders', { params: { pageNum, pageSize, status } }) }
+export function getMerchantOrderDetail(orderNo: string) { return request.get(`/api/merchant/orders/${orderNo}`) }
+export function updateMerchantOrderNote(orderNo: string, note: string) { return request.put(`/api/merchant/orders/${orderNo}/note`, { note }) }
+export function closeMerchantOrder(orderNo: string, reason: string) { return request.post(`/api/merchant/orders/${orderNo}/close`, { reason }) }
 export function getMerchantDashboard() { return request.get('/api/merchant/orders/dashboard') }
 export function getMerchantShippingRules() { return request.get('/api/merchant/shipping-rules') }
 export function createMerchantShippingRule(data: MerchantShippingRuleInput) { return request.post('/api/merchant/shipping-rules', data) }

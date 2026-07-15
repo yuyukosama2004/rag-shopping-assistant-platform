@@ -10,8 +10,11 @@ const request = vi.hoisted(() => ({
 vi.mock('./request', () => ({ default: request }))
 
 import {
+  closeMerchantOrder,
+  getMerchantOrderDetail,
   getMerchantProducts,
   shipMerchantOrder,
+  updateMerchantOrderNote,
   updateMerchantProductStatus,
 } from './merchant'
 
@@ -34,5 +37,15 @@ describe('merchant API client', () => {
     const shipment = { carrier: '顺丰速运', trackingNo: 'SF-E2E-001', note: '自动化验收' }
     shipMerchantOrder('ORDER-42', shipment)
     expect(request.post).toHaveBeenCalledWith('/api/merchant/orders/ORDER-42/ship', shipment)
+  })
+
+  it('uses the merchant order detail and internal note endpoints', () => {
+    getMerchantOrderDetail('ORDER-42')
+    updateMerchantOrderNote('ORDER-42', '周末送达')
+    closeMerchantOrder('ORDER-42', '无法配送')
+
+    expect(request.get).toHaveBeenCalledWith('/api/merchant/orders/ORDER-42')
+    expect(request.put).toHaveBeenCalledWith('/api/merchant/orders/ORDER-42/note', { note: '周末送达' })
+    expect(request.post).toHaveBeenCalledWith('/api/merchant/orders/ORDER-42/close', { reason: '无法配送' })
   })
 })
