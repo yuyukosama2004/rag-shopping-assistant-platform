@@ -28,6 +28,18 @@ public class AiSettingSaveDTO {
     @NotNull @Min(1) @Max(1000)
     private Integer perUserDailyLimit;
 
+    @NotNull @DecimalMin("0.00")
+    private BigDecimal dailyBudget;
+
+    @NotNull @DecimalMin("0.00")
+    private BigDecimal inputPricePerMillion;
+
+    @NotNull @DecimalMin("0.00")
+    private BigDecimal outputPricePerMillion;
+
+    @Size(max = 1000)
+    private String blockedKeywords;
+
     @Size(max = 500)
     private String disclaimer;
 

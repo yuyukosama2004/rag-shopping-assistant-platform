@@ -7,6 +7,7 @@ import {
   getMerchantAiKnowledge,
   getMerchantAiIndexTasks,
   getMerchantAiSetting,
+  getMerchantAiUsage,
   updateMerchantAiKnowledge,
   updateMerchantAiSetting,
   retryMerchantAiIndexTask,
@@ -22,6 +23,7 @@ const loading = ref(false)
 const saving = ref(false)
 const knowledge = ref<MerchantAiKnowledge[]>([])
 const indexTasks = ref<MerchantAiIndexTask[]>([])
+const usage = reactive({ total: 0, success: 0, failed: 0, estimatedCost: 0, averageDurationMs: 0, dailyBudget: 0 })
 const knowledgeDialog = ref(false)
 const editingKnowledgeId = ref<number>()
 const canEdit = computed(() => userStore.user?.role === 1)
@@ -31,6 +33,10 @@ const form = reactive<MerchantAiSettingInput>({
   temperature: 0.7,
   maxOutputTokens: 1200,
   perUserDailyLimit: 30,
+  dailyBudget: 5,
+  inputPricePerMillion: 2,
+  outputPricePerMillion: 8,
+  blockedKeywords: '',
   disclaimer: '',
   systemPrompt: '',
 })
@@ -42,13 +48,14 @@ const categoryLabel: Record<MerchantAiKnowledge['category'], string> = {
 const load = async () => {
   loading.value = true
   try {
-    const [settingResponse, knowledgeResponse, taskResponse] = await Promise.all([
-      getMerchantAiSetting(), getMerchantAiKnowledge(), getMerchantAiIndexTasks(),
+    const [settingResponse, knowledgeResponse, taskResponse, usageResponse] = await Promise.all([
+      getMerchantAiSetting(), getMerchantAiKnowledge(), getMerchantAiIndexTasks(), getMerchantAiUsage(),
     ])
     const data = settingResponse.data.data
     Object.assign(form, data)
     knowledge.value = knowledgeResponse.data.data || []
     indexTasks.value = taskResponse.data.data || []
+    Object.assign(usage, usageResponse.data.data || {})
   } finally {
     loading.value = false
   }
@@ -123,6 +130,13 @@ onMounted(load)
     />
     <el-alert v-if="!canEdit" title="店员账号只能查看，只有店主可以修改 AI 设置。" type="warning" :closable="false" style="margin-bottom:20px" />
 
+    <el-row :gutter="16" style="margin-bottom:24px">
+      <el-col :span="6"><el-statistic title="今日请求" :value="Number(usage.total || 0)" /></el-col>
+      <el-col :span="6"><el-statistic title="成功 / 失败" :value="`${usage.success || 0} / ${usage.failed || 0}`" /></el-col>
+      <el-col :span="6"><el-statistic title="预估成本" :value="Number(usage.estimatedCost || 0)" :precision="4" prefix="¥" /></el-col>
+      <el-col :span="6"><el-statistic title="平均耗时" :value="Number(usage.averageDurationMs || 0)" suffix=" ms" /></el-col>
+    </el-row>
+
     <el-form label-width="150px" style="max-width:800px" :disabled="!canEdit">
       <el-form-item label="启用 AI 导购">
         <el-switch v-model="form.enabled" :active-value="1" :inactive-value="0" />
@@ -139,6 +153,19 @@ onMounted(load)
       </el-form-item>
       <el-form-item label="每用户每日次数">
         <el-input-number v-model="form.perUserDailyLimit" :min="1" :max="1000" />
+      </el-form-item>
+      <el-form-item label="每日预算">
+        <el-input-number v-model="form.dailyBudget" :min="0" :precision="2" :step="1" />
+        <div style="color:#909399;font-size:12px">按下方单价估算；设为 0 表示不限制。</div>
+      </el-form-item>
+      <el-form-item label="输入单价/百万Token">
+        <el-input-number v-model="form.inputPricePerMillion" :min="0" :precision="4" :step="0.1" />
+      </el-form-item>
+      <el-form-item label="输出单价/百万Token">
+        <el-input-number v-model="form.outputPricePerMillion" :min="0" :precision="4" :step="0.1" />
+      </el-form-item>
+      <el-form-item label="输入敏感词">
+        <el-input v-model="form.blockedKeywords" type="textarea" :rows="3" maxlength="1000" show-word-limit placeholder="用逗号或换行分隔；命中后拒绝发送给模型" />
       </el-form-item>
       <el-form-item label="系统提示词">
         <el-input v-model="form.systemPrompt" type="textarea" :rows="5" maxlength="4000" show-word-limit />

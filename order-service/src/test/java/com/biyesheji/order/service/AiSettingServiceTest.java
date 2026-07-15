@@ -18,9 +18,9 @@ class AiSettingServiceTest {
         AiSettingMapper mapper = mock(AiSettingMapper.class);
         AiSetting setting = setting(0, 30);
         when(mapper.selectById(1L)).thenReturn(setting);
-        AiSettingService service = new AiSettingService(mapper, mock(RedisUtil.class));
+        AiSettingService service = new AiSettingService(mapper, mock(RedisUtil.class), mock(AiUsageService.class));
 
-        BizException error = assertThrows(BizException.class, () -> service.requireChatAllowed(8L));
+        BizException error = assertThrows(BizException.class, () -> service.requireChatAllowed(8L, "推荐手机"));
 
         assertEquals(503, error.getCode());
     }
@@ -31,11 +31,25 @@ class AiSettingServiceTest {
         RedisUtil redis = mock(RedisUtil.class);
         when(mapper.selectById(1L)).thenReturn(setting(1, 2));
         when(redis.increment(anyString())).thenReturn(3L);
-        AiSettingService service = new AiSettingService(mapper, redis);
+        AiSettingService service = new AiSettingService(mapper, redis, mock(AiUsageService.class));
 
-        BizException error = assertThrows(BizException.class, () -> service.requireChatAllowed(8L));
+        BizException error = assertThrows(BizException.class, () -> service.requireChatAllowed(8L, "推荐手机"));
 
         assertEquals(429, error.getCode());
+    }
+
+    @Test
+    void rejectsMerchantBlockedKeywordBeforeCallingAi() {
+        AiSettingMapper mapper = mock(AiSettingMapper.class);
+        AiSetting setting = setting(1, 2);
+        setting.setBlockedKeywords("赌博, phishing");
+        when(mapper.selectById(1L)).thenReturn(setting);
+        AiSettingService service = new AiSettingService(mapper, mock(RedisUtil.class), mock(AiUsageService.class));
+
+        BizException error = assertThrows(BizException.class,
+                () -> service.requireChatAllowed(8L, "请推荐 PHISHING 工具"));
+
+        assertEquals(400, error.getCode());
     }
 
     private AiSetting setting(int enabled, int limit) {

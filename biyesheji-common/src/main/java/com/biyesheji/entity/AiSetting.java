@@ -19,6 +19,10 @@ public class AiSetting extends BaseEntity {
     private BigDecimal temperature;
     private Integer maxOutputTokens;
     private Integer perUserDailyLimit;
+    private BigDecimal dailyBudget;
+    private BigDecimal inputPricePerMillion;
+    private BigDecimal outputPricePerMillion;
+    private String blockedKeywords;
     private String disclaimer;
     private String systemPrompt;
 }
