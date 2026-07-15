@@ -40,3 +40,4 @@ users.csv
 backups/data/
 *.tar.gz.enc
 *.tar.gz.enc.sha256
+.releases/
