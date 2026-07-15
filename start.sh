@@ -115,6 +115,9 @@ status() {
     && info "Gateway request succeeded" || die "Gateway request failed"
 }
 
+# shellcheck source=scripts/data-maintenance.sh
+. "$PROJECT_DIR/scripts/data-maintenance.sh"
+
 case "${1:-help}" in
   infra-start) start_infra ;;
   infra-stop) stop_infra ;;
@@ -124,10 +127,12 @@ case "${1:-help}" in
   stop) stop_services ;;
   restart) stop_services; start_services ;;
   status) status ;;
+  backup) backup_data ;;
+  restore) restore_data "${2:-}" ;;
   all) start_infra; build; build_frontend; start_services ;;
   *)
     cat <<'EOF'
-Usage: ./start.sh {infra-start|infra-stop|build|frontend-build|start|stop|restart|status|all}
+Usage: ./start.sh {infra-start|infra-stop|build|frontend-build|start|stop|restart|status|backup|restore|all}
 
 All commands require a populated .env file. Services are attached to the private
 Docker network; only the gateway is bound to its configured loopback port for Nginx.
