@@ -71,9 +71,14 @@ build() {
 }
 
 build_frontend() {
+  local host_uid host_gid
+  host_uid="$(id -u)"
+  host_gid="$(id -g)"
   info "Building frontend with Node 22"
-  docker run --rm -v "$PROJECT_DIR/biyesheji-frontend:/workspace" -w /workspace \
-    "${NODE_IMAGE:-node:22-bookworm-slim}" sh -c 'npm ci && npm run build'
+  docker run --rm -e HOST_UID="$host_uid" -e HOST_GID="$host_gid" \
+    -v "$PROJECT_DIR/biyesheji-frontend:/workspace" -w /workspace \
+    "${NODE_IMAGE:-node:22-bookworm-slim}" sh -c \
+    'npm ci && npm run build && chown -R "$HOST_UID:$HOST_GID" node_modules dist'
 }
 
 wait_healthy() {
@@ -123,10 +128,27 @@ status() {
 
 start_observability() {
   load_env
+  pull_observability_images
   info "Starting Prometheus, Alertmanager and host/container exporters"
-  observability_compose up -d
+  observability_compose up -d --pull never
   wait_http "http://127.0.0.1:${PROMETHEUS_HOST_PORT:-19090}/-/ready" "Prometheus" 60
   wait_http "http://127.0.0.1:${ALERTMANAGER_HOST_PORT:-19093}/-/ready" "Alertmanager" 60
+}
+
+pull_observability_images() {
+  local image attempt
+  while IFS= read -r image; do
+    [ -n "$image" ] || continue
+    docker image inspect "$image" >/dev/null 2>&1 && continue
+    for attempt in 1 2 3 4 5; do
+      info "Pulling $image (attempt $attempt/5)"
+      if docker pull "$image"; then
+        break
+      fi
+      [ "$attempt" -lt 5 ] || die "Failed to pull $image after 5 attempts"
+      sleep 5
+    done
+  done < <(observability_compose config --images | sort -u)
 }
 
 stop_observability() {
