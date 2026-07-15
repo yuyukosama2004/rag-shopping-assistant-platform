@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-API_BASE_URL="${API_BASE_URL:-http://127.0.0.1:8080}"
+if [ -z "${API_BASE_URL:-}" ]; then
+  gateway_host_port="8080"
+  if [ -f .env ]; then
+    configured_port="$(sed -n 's/^GATEWAY_HOST_PORT=//p' .env | tail -n 1)"
+    [ -z "$configured_port" ] || gateway_host_port="$configured_port"
+  fi
+  API_BASE_URL="http://127.0.0.1:${gateway_host_port}"
+fi
 WEB_BASE_URL="${WEB_BASE_URL:-http://127.0.0.1}"
 
 die() { echo "ERROR: $*" >&2; exit 1; }
