@@ -650,6 +650,9 @@ docker compose -f docker/docker-compose.infrastructure.yml up -d
 应用服务与 MySQL、Redis 使用私有 Docker 网络；对宿主机仅暴露可配置的
 网关回环端口。Nginx 应将 `/api/` 反向代理到 `127.0.0.1:${GATEWAY_HOST_PORT}`。
 
+从使用 Nacos 的旧版本升级时，`infra-start` 会移除已不再需要的 Nacos 容器，但保留旧的
+`nacos-data` 数据卷供人工确认。新版本通过 Docker 私有网络中的固定服务名路由，不再运行注册中心。
+
 部署后可执行冒烟测试。若网关使用非默认端口，显式传入对应地址：
 
 ```bash

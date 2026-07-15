@@ -49,7 +49,7 @@ wait_http() {
 start_infra() {
   load_env
   info "Starting MySQL and Redis"
-  compose up -d
+  compose up -d --remove-orphans
   wait_healthy biyesheji-mysql 60
   wait_healthy biyesheji-redis 30
 }
