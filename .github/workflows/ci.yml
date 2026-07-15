@@ -57,8 +57,20 @@ jobs:
           docker compose --env-file .env -f docker/docker-compose.e5.yml config -q
           docker compose --env-file .env -f docker/docker-compose.app.yml config -q
       - name: Validate shell syntax
-        run: bash -n start.sh deploy/e5-deploy.sh deploy/e5-ctl.sh scripts/smoke-test.sh scripts/data-maintenance.sh scripts/release-maintenance.sh
+        run: bash -n start.sh deploy/e5-deploy.sh deploy/e5-ctl.sh deploy/setup-tls.sh scripts/smoke-test.sh scripts/data-maintenance.sh scripts/release-maintenance.sh
       - name: Validate Nginx syntax template
         run: |
           sed -e "s|PROJECT_DIR|/opt/biyesheji|g" -e "s|GATEWAY_HOST_PORT|18080|g" deploy/e5-nginx.conf > /tmp/biyesheji.conf
           docker run --rm -v /tmp/biyesheji.conf:/etc/nginx/conf.d/default.conf:ro nginx:1.27-alpine nginx -t
+      - name: Validate production TLS Nginx template
+        run: |
+          mkdir -p /tmp/nginx-certs/live/shop.example.com
+          openssl req -x509 -nodes -newkey rsa:2048 -days 1 -subj '/CN=shop.example.com' \
+            -keyout /tmp/nginx-certs/live/shop.example.com/privkey.pem \
+            -out /tmp/nginx-certs/live/shop.example.com/fullchain.pem >/dev/null 2>&1
+          sed -e 's|DOMAIN|shop.example.com|g' -e 's|PROJECT_DIR|/srv/biyesheji|g' \
+              -e 's|GATEWAY_HOST_PORT|18080|g' deploy/production-nginx.conf.template > /tmp/production.conf
+          docker run --rm \
+            -v /tmp/production.conf:/etc/nginx/conf.d/default.conf:ro \
+            -v "$PWD/deploy/biyesheji-proxy-headers.conf:/etc/nginx/conf.d/biyesheji-proxy-headers.conf:ro" \
+            -v /tmp/nginx-certs:/etc/letsencrypt:ro nginx:1.27-alpine nginx -t
