@@ -374,7 +374,9 @@ public class AiServiceImpl implements AiService {
         aiExecutor.execute(() -> {
             try {
                 // RAG 检索：向量语义匹配 Top-10
-                List<Product> candidates = ragSearch(query, 10);
+                List<Product> candidates = ragSearch(query, 10).stream()
+                        .filter(this::isCurrentlySellable)
+                        .toList();
                 String prompt = buildPrompt(query, candidates);
 
                 Map<String, Object> body = new LinkedHashMap<>();
@@ -447,6 +449,11 @@ public class AiServiceImpl implements AiService {
         });
 
         return emitter;
+    }
+
+    private boolean isCurrentlySellable(Product cached) {
+        Product current = productMapper.selectById(cached.getId());
+        return current != null && current.getStatus() != null && current.getStatus() == 1;
     }
 
     @Override
