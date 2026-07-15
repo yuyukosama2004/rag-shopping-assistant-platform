@@ -5,8 +5,11 @@ import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.biyesheji.entity.AiConversation;
 import com.biyesheji.entity.Product;
+import com.biyesheji.entity.ProductSku;
 import com.biyesheji.order.mapper.AiConversationMapper;
 import com.biyesheji.order.mapper.ProductMapper;
+import com.biyesheji.order.mapper.ProductSkuMapper;
+import com.biyesheji.order.mapper.StockMapper;
 import com.biyesheji.order.service.AiService;
 import com.biyesheji.utils.RedisUtil;
 import jakarta.annotation.PostConstruct;
@@ -38,6 +41,8 @@ public class AiServiceImpl implements AiService {
     private final AiConversationMapper aiConversationMapper;
     private final RedisUtil redisUtil;
     private final Executor aiExecutor;
+    private final ProductSkuMapper productSkuMapper;
+    private final StockMapper stockMapper;
 
     // ====== DeepSeek 配置 ======
     @Value("${deepseek.api-key:}")
@@ -69,11 +74,14 @@ public class AiServiceImpl implements AiService {
             .build();
 
     public AiServiceImpl(ProductMapper productMapper, AiConversationMapper aiConversationMapper,
-                         RedisUtil redisUtil, @Qualifier("aiExecutor") Executor aiExecutor) {
+                         RedisUtil redisUtil, @Qualifier("aiExecutor") Executor aiExecutor,
+                         ProductSkuMapper productSkuMapper, StockMapper stockMapper) {
         this.productMapper = productMapper;
         this.aiConversationMapper = aiConversationMapper;
         this.redisUtil = redisUtil;
         this.aiExecutor = aiExecutor;
+        this.productSkuMapper = productSkuMapper;
+        this.stockMapper = stockMapper;
     }
 
     // ================================================================
@@ -451,9 +459,17 @@ public class AiServiceImpl implements AiService {
         return emitter;
     }
 
-    private boolean isCurrentlySellable(Product cached) {
+    boolean isCurrentlySellable(Product cached) {
         Product current = productMapper.selectById(cached.getId());
-        return current != null && current.getStatus() != null && current.getStatus() == 1;
+        if (current == null || current.getStatus() == null || current.getStatus() != 1) return false;
+        List<Long> activeSkuIds = productSkuMapper.selectList(new LambdaQueryWrapper<ProductSku>()
+                        .eq(ProductSku::getProductId, cached.getId())
+                        .eq(ProductSku::getStatus, 1)).stream()
+                .map(ProductSku::getId)
+                .toList();
+        return !activeSkuIds.isEmpty() && stockMapper.selectCount(new LambdaQueryWrapper<com.biyesheji.entity.Stock>()
+                .in(com.biyesheji.entity.Stock::getSkuId, activeSkuIds)
+                .gt(com.biyesheji.entity.Stock::getAvailable, 0)) > 0;
     }
 
     @Override
