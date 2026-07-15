@@ -2,9 +2,14 @@ FROM eclipse-temurin:17-jre-jammy
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
+    && groupadd --system --gid 10001 app \
+    && useradd --system --uid 10001 --gid app --home-dir /app --shell /usr/sbin/nologin app \
+    && install -d -o app -g app /app /data/media \
     && rm -rf /var/lib/apt/lists/*
 
 ARG JAR_FILE
-COPY ${JAR_FILE} /app/app.jar
+COPY --chown=app:app ${JAR_FILE} /app/app.jar
+
+USER app
 
 ENTRYPOINT ["java", "-Xms128m", "-Xmx384m", "-XX:+UseSerialGC", "-Djava.awt.headless=true", "-jar", "/app/app.jar"]
