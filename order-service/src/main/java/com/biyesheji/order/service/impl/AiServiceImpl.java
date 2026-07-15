@@ -495,7 +495,7 @@ public class AiServiceImpl implements AiService {
         } catch (Exception e) { return ""; }
     }
 
-    private String buildPrompt(String query, List<Product> candidates) {
+    String buildPrompt(String query, List<Product> candidates) {
         StringBuilder sb = new StringBuilder();
         sb.append("用户需求: ").append(query).append("\n\n可选机型:\n");
         for (Product p : candidates) {
@@ -509,8 +509,12 @@ public class AiServiceImpl implements AiService {
               .append(" | 销量: ").append(p.getSales())
               .append(" | SKU: ").append(p.getId()).append("\n");
         }
-        sb.append("\n请基于以上数据推荐1-3款最合适的手机。");
-        if (candidates.isEmpty()) sb.append("（无匹配机型，请告知用户扩大范围。）");
+        sb.append("\n只能推荐以上候选列表中的商品，不得编造商品、价格、库存、优惠或售后承诺。");
+        if (candidates.isEmpty()) {
+            sb.append("当前没有可售候选商品，请明确告知用户并建议联系商家，不得自行推荐列表外商品。");
+        } else {
+            sb.append("请从候选列表中推荐1-3款最合适的商品。");
+        }
         return sb.toString();
     }
 }
