@@ -82,9 +82,14 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
                 return unauthorized(exchange, "Token缺少用户信息");
             }
             ServerHttpRequest request = exchange.getRequest().mutate()
-                    .header("X-User-Id", userId.toString())
-                    .header("X-Username", claims.getSubject())
-                    .header("X-User-Role", String.valueOf(claims.get("role", Integer.class)))
+                    .headers(headers -> {
+                        headers.remove("X-User-Id");
+                        headers.remove("X-Username");
+                        headers.remove("X-User-Role");
+                        headers.set("X-User-Id", userId.toString());
+                        headers.set("X-Username", claims.getSubject());
+                        headers.set("X-User-Role", String.valueOf(claims.get("role", Integer.class)));
+                    })
                     .build();
             return chain.filter(exchange.mutate().request(request).build());
         } catch (Exception e) {

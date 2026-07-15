@@ -6,6 +6,7 @@ import com.biyesheji.order.mapper.AiConversationMapper;
 import com.biyesheji.order.mapper.ProductMapper;
 import com.biyesheji.order.mapper.ProductSkuMapper;
 import com.biyesheji.order.mapper.StockMapper;
+import com.biyesheji.order.service.AiSettingService;
 import com.biyesheji.utils.RedisUtil;
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +24,7 @@ class AiServiceImplTest {
         ProductMapper products = mock(ProductMapper.class);
         ProductSkuMapper skus = mock(ProductSkuMapper.class);
         StockMapper stocks = mock(StockMapper.class);
-        AiServiceImpl service = new AiServiceImpl(products, mock(AiConversationMapper.class), mock(RedisUtil.class), Runnable::run, skus, stocks);
+        AiServiceImpl service = new AiServiceImpl(products, mock(AiConversationMapper.class), mock(RedisUtil.class), Runnable::run, skus, stocks, mock(AiSettingService.class));
         Product product = new Product(); product.setId(1L); product.setStatus(1);
         ProductSku sku = new ProductSku(); sku.setId(11L); sku.setProductId(1L); sku.setStatus(1);
         when(products.selectById(1L)).thenReturn(product);
@@ -36,7 +37,7 @@ class AiServiceImplTest {
 
     @Test
     void emptyCandidatesForbidInventedRecommendations() {
-        AiServiceImpl service = new AiServiceImpl(mock(ProductMapper.class), mock(AiConversationMapper.class), mock(RedisUtil.class), Runnable::run, mock(ProductSkuMapper.class), mock(StockMapper.class));
+        AiServiceImpl service = new AiServiceImpl(mock(ProductMapper.class), mock(AiConversationMapper.class), mock(RedisUtil.class), Runnable::run, mock(ProductSkuMapper.class), mock(StockMapper.class), mock(AiSettingService.class));
 
         String prompt = service.buildPrompt("推荐手机", List.of());
 

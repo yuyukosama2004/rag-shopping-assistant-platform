@@ -4,6 +4,7 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.biyesheji.entity.AiConversation;
+import com.biyesheji.entity.AiSetting;
 import com.biyesheji.entity.Product;
 import com.biyesheji.entity.ProductSku;
 import com.biyesheji.order.mapper.AiConversationMapper;
@@ -11,6 +12,7 @@ import com.biyesheji.order.mapper.ProductMapper;
 import com.biyesheji.order.mapper.ProductSkuMapper;
 import com.biyesheji.order.mapper.StockMapper;
 import com.biyesheji.order.service.AiService;
+import com.biyesheji.order.service.AiSettingService;
 import com.biyesheji.utils.RedisUtil;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +45,7 @@ public class AiServiceImpl implements AiService {
     private final Executor aiExecutor;
     private final ProductSkuMapper productSkuMapper;
     private final StockMapper stockMapper;
+    private final AiSettingService aiSettingService;
 
     // ====== DeepSeek 配置 ======
     @Value("${deepseek.api-key:}")
@@ -75,13 +78,15 @@ public class AiServiceImpl implements AiService {
 
     public AiServiceImpl(ProductMapper productMapper, AiConversationMapper aiConversationMapper,
                          RedisUtil redisUtil, @Qualifier("aiExecutor") Executor aiExecutor,
-                         ProductSkuMapper productSkuMapper, StockMapper stockMapper) {
+                         ProductSkuMapper productSkuMapper, StockMapper stockMapper,
+                         AiSettingService aiSettingService) {
         this.productMapper = productMapper;
         this.aiConversationMapper = aiConversationMapper;
         this.redisUtil = redisUtil;
         this.aiExecutor = aiExecutor;
         this.productSkuMapper = productSkuMapper;
         this.stockMapper = stockMapper;
+        this.aiSettingService = aiSettingService;
     }
 
     // ================================================================
@@ -378,6 +383,7 @@ public class AiServiceImpl implements AiService {
             emitter.complete();
             return emitter;
         }
+        AiSetting setting = aiSettingService.requireChatAllowed(userId);
 
         aiExecutor.execute(() -> {
             try {
@@ -388,11 +394,16 @@ public class AiServiceImpl implements AiService {
                 String prompt = buildPrompt(query, candidates);
 
                 Map<String, Object> body = new LinkedHashMap<>();
-                body.put("model", model);
+                body.put("model", setting.getModel());
                 body.put("stream", true);
+                body.put("temperature", setting.getTemperature());
+                body.put("max_tokens", setting.getMaxOutputTokens());
 
                 List<Map<String, String>> messages = new ArrayList<>();
-                messages.add(Map.of("role", "system", "content", systemPrompt));
+                String configuredPrompt = StringUtils.hasText(setting.getSystemPrompt())
+                        ? setting.getSystemPrompt()
+                        : (StringUtils.hasText(systemPrompt) ? systemPrompt : "你是本店的 AI 导购，请诚实回答商品选购问题。");
+                messages.add(Map.of("role", "system", "content", configuredPrompt));
 
                 List<AiConversation> history = userId != null ? aiConversationMapper.selectList(
                         new LambdaQueryWrapper<AiConversation>()
@@ -404,6 +415,9 @@ public class AiServiceImpl implements AiService {
                     messages.add(Map.of("role", h.getRole(), "content", h.getContent()));
                 }
                 saveMessage(userId, "user", query, null);
+                if (StringUtils.hasText(setting.getDisclaimer())) {
+                    prompt += "\n\n回答末尾请原样附上提示：" + setting.getDisclaimer();
+                }
                 messages.add(Map.of("role", "user", "content", prompt));
 
                 body.put("messages", messages);
