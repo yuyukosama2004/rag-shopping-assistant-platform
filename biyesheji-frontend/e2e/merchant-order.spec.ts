@@ -101,11 +101,18 @@ test('merchant publishes a product, customer orders it, and merchant ships it', 
   }))).data
 
   await envelope(await request.post(`${apiBaseUrl}/api/merchant/orders/${submit.orderNo}/accept`, { headers: ownerHeaders }))
+  const duplicateAccept = await request.post(`${apiBaseUrl}/api/merchant/orders/${submit.orderNo}/accept`, { headers: ownerHeaders })
+  expect(duplicateAccept.status()).toBe(400)
   const trackingNo = `SF-${suffix}`
   await envelope(await request.post(`${apiBaseUrl}/api/merchant/orders/${submit.orderNo}/ship`, {
     headers: ownerHeaders,
     data: { carrier: '顺丰速运', trackingNo, note: 'Playwright 自动发货' },
   }))
+  const duplicateShipment = await request.post(`${apiBaseUrl}/api/merchant/orders/${submit.orderNo}/ship`, {
+    headers: ownerHeaders,
+    data: { carrier: '顺丰速运', trackingNo: `${trackingNo}-DUPLICATE` },
+  })
+  expect(duplicateShipment.status()).toBe(400)
 
   const detail = (await envelope<{ status: number; shippingCarrier: string; trackingNo: string }>(
     await request.get(`${apiBaseUrl}/api/order/${submit.orderNo}`, { headers: customerHeaders }),
@@ -120,6 +127,51 @@ test('merchant publishes a product, customer orders it, and merchant ships it', 
   await page.goto(`/order/${submit.orderNo}`)
   await expect(page.getByText(submit.orderNo)).toBeVisible()
   await expect(page.getByText(trackingNo, { exact: false })).toBeVisible()
+
+  const xssName = `<img src=x onerror="window.__biyeshejiXss=1"> ${suffix}`
+  const xssDescription = `<script>window.__biyeshejiXss=1</script>`
+  const xssProduct = (await envelope<{ id: number }>(await request.post(`${apiBaseUrl}/api/merchant/products`, {
+    headers: ownerHeaders,
+    data: { name: xssName, brand: 'E2E', category: '安全测试', price: 1.00, description: xssDescription },
+  }))).data
+  const xssSku = (await envelope<{ id: number }>(await request.post(`${apiBaseUrl}/api/merchant/products/${xssProduct.id}/skus`, {
+    headers: ownerHeaders,
+    data: { skuCode: `XSS-${suffix}`, price: 1.00, initialStock: 1 },
+  }))).data
+  expect(String(xssSku.id)).not.toBe('')
+  await envelope(await request.put(`${apiBaseUrl}/api/merchant/products/${xssProduct.id}/status`, {
+    headers: ownerHeaders,
+    data: { status: 1 },
+  }))
+  await page.goto(`/product/${xssProduct.id}`)
+  await expect(page.getByText(xssName)).toBeVisible()
+  await expect(page.getByText(xssDescription)).toBeVisible()
+  expect(await page.locator('img[src="x"]').count()).toBe(0)
+  expect(await page.evaluate(() => (window as typeof window & { __biyeshejiXss?: number }).__biyeshejiXss)).toBeUndefined()
+
+  const maliciousUpload = await request.post(`${apiBaseUrl}/api/merchant/media`, {
+    headers: ownerHeaders,
+    multipart: {
+      file: { name: 'attack.png', mimeType: 'image/png', buffer: Buffer.from('<script>alert(1)</script>') },
+    },
+  })
+  expect(maliciousUpload.status()).toBe(400)
+
+  const lockedUsername = `locked_${suffix}`
+  await envelope(await request.post(`${apiBaseUrl}/api/user/register`, {
+    data: { username: lockedUsername, password, nickname: '锁定测试用户' },
+  }))
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const failedLogin = await request.post(`${apiBaseUrl}/api/user/login`, {
+      data: { username: lockedUsername, password: 'Definitely-Wrong-Password!' },
+    })
+    expect(failedLogin.status()).toBe(400)
+    expect((await failedLogin.json() as ApiEnvelope<unknown>).code).toBe(1003)
+  }
+  const lockedLogin = await request.post(`${apiBaseUrl}/api/user/login`, {
+    data: { username: lockedUsername, password },
+  })
+  expect(lockedLogin.status()).toBe(403)
 
   const concurrencyProduct = (await envelope<{ id: number }>(await request.post(`${apiBaseUrl}/api/merchant/products`, {
     headers: ownerHeaders,
