@@ -157,6 +157,19 @@ export interface MerchantRefund {
   createdAt: string
 }
 
+export interface MerchantAiSetting {
+  id: number
+  enabled: number
+  model: string
+  temperature: number
+  maxOutputTokens: number
+  perUserDailyLimit: number
+  disclaimer?: string
+  systemPrompt?: string
+}
+
+export type MerchantAiSettingInput = Omit<MerchantAiSetting, 'id'>
+
 export function getPublicStoreSetting() {
   return request.get('/api/store/setting')
 }
@@ -206,3 +219,5 @@ export function rejectMerchantRefund(id: number, merchantNote = '') { return req
 export function confirmMerchantOrderPayment(orderNo: string) { return request.post(`/api/merchant/orders/${orderNo}/confirm-payment`) }
 export function acceptMerchantOrder(orderNo: string) { return request.post(`/api/merchant/orders/${orderNo}/accept`) }
 export function shipMerchantOrder(orderNo: string, data: { carrier: string; trackingNo: string; note?: string }) { return request.post(`/api/merchant/orders/${orderNo}/ship`, data) }
+export function getMerchantAiSetting() { return request.get('/api/merchant/ai/setting') }
+export function updateMerchantAiSetting(data: MerchantAiSettingInput) { return request.put('/api/merchant/ai/setting', data) }
