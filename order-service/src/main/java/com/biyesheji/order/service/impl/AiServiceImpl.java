@@ -12,6 +12,7 @@ import com.biyesheji.order.mapper.ProductMapper;
 import com.biyesheji.order.mapper.ProductSkuMapper;
 import com.biyesheji.order.mapper.StockMapper;
 import com.biyesheji.order.service.AiService;
+import com.biyesheji.order.service.AiKnowledgeService;
 import com.biyesheji.order.service.AiSettingService;
 import com.biyesheji.utils.RedisUtil;
 import jakarta.annotation.PostConstruct;
@@ -46,6 +47,7 @@ public class AiServiceImpl implements AiService {
     private final ProductSkuMapper productSkuMapper;
     private final StockMapper stockMapper;
     private final AiSettingService aiSettingService;
+    private final AiKnowledgeService aiKnowledgeService;
 
     // ====== DeepSeek 配置 ======
     @Value("${deepseek.api-key:}")
@@ -79,7 +81,7 @@ public class AiServiceImpl implements AiService {
     public AiServiceImpl(ProductMapper productMapper, AiConversationMapper aiConversationMapper,
                          RedisUtil redisUtil, @Qualifier("aiExecutor") Executor aiExecutor,
                          ProductSkuMapper productSkuMapper, StockMapper stockMapper,
-                         AiSettingService aiSettingService) {
+                         AiSettingService aiSettingService, AiKnowledgeService aiKnowledgeService) {
         this.productMapper = productMapper;
         this.aiConversationMapper = aiConversationMapper;
         this.redisUtil = redisUtil;
@@ -87,6 +89,7 @@ public class AiServiceImpl implements AiService {
         this.productSkuMapper = productSkuMapper;
         this.stockMapper = stockMapper;
         this.aiSettingService = aiSettingService;
+        this.aiKnowledgeService = aiKnowledgeService;
     }
 
     // ================================================================
@@ -403,6 +406,8 @@ public class AiServiceImpl implements AiService {
                 String configuredPrompt = StringUtils.hasText(setting.getSystemPrompt())
                         ? setting.getSystemPrompt()
                         : (StringUtils.hasText(systemPrompt) ? systemPrompt : "你是本店的 AI 导购，请诚实回答商品选购问题。");
+                String knowledgeContext = aiKnowledgeService.buildActiveContext();
+                if (StringUtils.hasText(knowledgeContext)) configuredPrompt += "\n\n" + knowledgeContext;
                 messages.add(Map.of("role", "system", "content", configuredPrompt));
 
                 List<AiConversation> history = userId != null ? aiConversationMapper.selectList(

@@ -170,6 +170,17 @@ export interface MerchantAiSetting {
 
 export type MerchantAiSettingInput = Omit<MerchantAiSetting, 'id'>
 
+export interface MerchantAiKnowledge {
+  id: number
+  category: 'FAQ' | 'SHIPPING' | 'AFTER_SALES' | 'STORE'
+  title: string
+  content: string
+  status: number
+  sortOrder: number
+}
+
+export type MerchantAiKnowledgeInput = Omit<MerchantAiKnowledge, 'id'>
+
 export function getPublicStoreSetting() {
   return request.get('/api/store/setting')
 }
@@ -221,3 +232,7 @@ export function acceptMerchantOrder(orderNo: string) { return request.post(`/api
 export function shipMerchantOrder(orderNo: string, data: { carrier: string; trackingNo: string; note?: string }) { return request.post(`/api/merchant/orders/${orderNo}/ship`, data) }
 export function getMerchantAiSetting() { return request.get('/api/merchant/ai/setting') }
 export function updateMerchantAiSetting(data: MerchantAiSettingInput) { return request.put('/api/merchant/ai/setting', data) }
+export function getMerchantAiKnowledge() { return request.get('/api/merchant/ai/knowledge') }
+export function createMerchantAiKnowledge(data: MerchantAiKnowledgeInput) { return request.post('/api/merchant/ai/knowledge', data) }
+export function updateMerchantAiKnowledge(id: number, data: MerchantAiKnowledgeInput) { return request.put(`/api/merchant/ai/knowledge/${id}`, data) }
+export function deleteMerchantAiKnowledge(id: number) { return request.delete(`/api/merchant/ai/knowledge/${id}`) }
