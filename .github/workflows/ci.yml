@@ -188,6 +188,7 @@ jobs:
           scanners: vuln,misconfig
           severity: HIGH,CRITICAL
           ignore-unfixed: true
+          trivyignores: .trivyignore.yaml
           exit-code: 1
 
   image-security:
@@ -281,18 +282,24 @@ jobs:
           - component: mysql
             image: biyesheji-mysql:ci
             dockerfile: docker/Dockerfile.mysql
+            trivyignores: .trivyignore-mysql.yaml
           - component: redis
             image: redis:7.4.9-alpine
             dockerfile: ''
+            trivyignores: ''
           - component: nginx
             image: biyesheji-nginx-validation:ci
             dockerfile: docker/Dockerfile.nginx-validation
+            trivyignores: ''
     name: infrastructure-image-security (${{ matrix.component }})
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Build hardened ${{ matrix.component }} image
         if: matrix.dockerfile != ''
         run: docker build -f "${{ matrix.dockerfile }}" -t "${{ matrix.image }}" .
+      - name: Verify MySQL privilege-drop wrapper
+        if: matrix.component == 'mysql'
+        run: docker run --rm --entrypoint /bin/sh "${{ matrix.image }}" -ec 'test "$(head -n 1 /usr/local/bin/gosu)" = "#!/bin/sh"; ! grep -aq "Go build" /usr/local/bin/gosu'
       - name: Scan ${{ matrix.component }} image
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
         with:
@@ -301,4 +308,5 @@ jobs:
           scanners: vuln
           severity: HIGH,CRITICAL
           ignore-unfixed: true
+          trivyignores: ${{ matrix.trivyignores }}
           exit-code: 1
