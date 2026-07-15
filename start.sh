@@ -117,6 +117,8 @@ status() {
 
 # shellcheck source=scripts/data-maintenance.sh
 . "$PROJECT_DIR/scripts/data-maintenance.sh"
+# shellcheck source=scripts/release-maintenance.sh
+. "$PROJECT_DIR/scripts/release-maintenance.sh"
 
 case "${1:-help}" in
   infra-start) start_infra ;;
@@ -126,13 +128,16 @@ case "${1:-help}" in
   start) start_services ;;
   stop) stop_services ;;
   restart) stop_services; start_services ;;
-  status) status ;;
+  status) status; release_status ;;
   backup) backup_data ;;
   restore) restore_data "${2:-}" ;;
+  install) install_release "${2:-}" ;;
+  upgrade) upgrade_release "${2:-}" ;;
+  rollback) rollback_release "${2:-}" ;;
   all) start_infra; build; build_frontend; start_services ;;
   *)
     cat <<'EOF'
-Usage: ./start.sh {infra-start|infra-stop|build|frontend-build|start|stop|restart|status|backup|restore|all}
+Usage: ./start.sh {infra-start|infra-stop|build|frontend-build|start|stop|restart|status|backup|restore|install|upgrade|rollback|all}
 
 All commands require a populated .env file. Services are attached to the private
 Docker network; only the gateway is bound to its configured loopback port for Nginx.
