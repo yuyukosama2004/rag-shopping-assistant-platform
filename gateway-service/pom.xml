@@ -35,11 +35,6 @@
             <groupId>com.alibaba.cloud</groupId>
             <artifactId>spring-cloud-alibaba-sentinel-gateway</artifactId>
         </dependency>
-        <!-- Sentinel Core -->
-        <dependency>
-            <groupId>com.alibaba.csp</groupId>
-            <artifactId>sentinel-spring-cloud-gateway-adapter</artifactId>
-        </dependency>
         <!-- Sentinel Datasource (Converter class) -->
         <dependency>
             <groupId>com.alibaba.csp</groupId>
