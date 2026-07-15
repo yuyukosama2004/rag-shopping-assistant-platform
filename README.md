@@ -234,6 +234,8 @@ cp .env.example .env
 
 `.env` 不会提交到 Git。JWT 密钥至少为 32 字节；`OWNER_INIT_TOKEN` 是仅用于首次创建店主的随机密钥，创建成功后接口会永久拒绝再次初始化。不要把真实 AI Key、初始化令牌或数据库口令写回配置文件。
 
+Docker Compose 默认启用 `prod` 配置：关闭 API 文档、禁止 Flyway clean，并输出 ECS JSON 日志。直接从 IDE 或命令行启动服务时默认使用 `dev`；自动化测试可通过 `SPRING_PROFILES_ACTIVE=test` 显式启用测试配置。不要在公网部署中改用 `dev`。
+
 ### 3. 启动基础设施
 
 项目提供了 MySQL 和 Redis 的 Docker Compose 配置：

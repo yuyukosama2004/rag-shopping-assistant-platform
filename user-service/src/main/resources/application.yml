@@ -9,6 +9,8 @@ server:
 spring:
   application:
     name: user-service
+  profiles:
+    default: dev
   main:
     banner-mode: off
   datasource:
@@ -43,7 +45,6 @@ mybatis-plus:
     log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
 
 knife4j:
-  enable: true
   openapi:
     title: 用户服务 API
     description: 注册、登录、用户信息、地址管理
@@ -63,9 +64,6 @@ management:
       application: ${spring.application.name}
 
 logging:
-  structured:
-    format:
-      console: ${LOG_STRUCTURED_FORMAT:ecs}
   level:
     root: WARN
     com.biyesheji: INFO
