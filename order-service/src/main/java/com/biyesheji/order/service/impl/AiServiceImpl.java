@@ -502,6 +502,23 @@ public class AiServiceImpl implements AiService {
         return conv;
     }
 
+    @Override
+    public void refreshProductIndex(Long productId, String operation) {
+        Product current = productMapper.selectById(productId);
+        if ("DELETE".equals(operation) || current == null || !Integer.valueOf(1).equals(current.getStatus())) {
+            productCache.remove(productId);
+            productEmbeddings.remove(productId);
+            return;
+        }
+        productCache.put(productId, current);
+        if (!StringUtils.hasText(openRouterKey)) {
+            throw new IllegalStateException("OPENROUTER_API_KEY 未配置，无法更新向量索引");
+        }
+        float[] vector = embedText(buildProductText(current));
+        if (vector == null) throw new IllegalStateException("商品向量生成失败");
+        productEmbeddings.put(productId, vector);
+    }
+
     // ================================================================
     //  工具方法
     // ================================================================

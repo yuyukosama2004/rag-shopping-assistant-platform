@@ -9,6 +9,7 @@ import com.biyesheji.product.mapper.ProductMapper;
 import com.biyesheji.product.mapper.ProductSkuMapper;
 import com.biyesheji.product.mapper.StockLedgerMapper;
 import com.biyesheji.product.mapper.StockMapper;
+import com.biyesheji.product.service.AiIndexTaskPublisher;
 import com.biyesheji.utils.RedisUtil;
 import org.junit.jupiter.api.Test;
 
@@ -25,7 +26,7 @@ class ProductServiceImplTest {
     private final ProductMapper productMapper = mock(ProductMapper.class);
     private final ProductSkuMapper productSkuMapper = mock(ProductSkuMapper.class);
     private final ProductServiceImpl service = new ProductServiceImpl(productMapper, mock(RedisUtil.class), productSkuMapper,
-            mock(StockMapper.class), mock(StockLedgerMapper.class));
+            mock(StockMapper.class), mock(StockLedgerMapper.class), mock(AiIndexTaskPublisher.class));
 
     @Test
     void rejectsPublishingProductWithoutActiveSku() {

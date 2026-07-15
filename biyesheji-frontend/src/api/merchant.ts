@@ -181,6 +181,17 @@ export interface MerchantAiKnowledge {
 
 export type MerchantAiKnowledgeInput = Omit<MerchantAiKnowledge, 'id'>
 
+export interface MerchantAiIndexTask {
+  id: number
+  productId: number
+  operation: 'UPSERT' | 'DELETE'
+  status: 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILED' | 'SUPERSEDED'
+  attempts: number
+  errorMessage?: string
+  processedAt?: string
+  createdAt: string
+}
+
 export function getPublicStoreSetting() {
   return request.get('/api/store/setting')
 }
@@ -236,3 +247,5 @@ export function getMerchantAiKnowledge() { return request.get('/api/merchant/ai/
 export function createMerchantAiKnowledge(data: MerchantAiKnowledgeInput) { return request.post('/api/merchant/ai/knowledge', data) }
 export function updateMerchantAiKnowledge(id: number, data: MerchantAiKnowledgeInput) { return request.put(`/api/merchant/ai/knowledge/${id}`, data) }
 export function deleteMerchantAiKnowledge(id: number) { return request.delete(`/api/merchant/ai/knowledge/${id}`) }
+export function getMerchantAiIndexTasks() { return request.get('/api/merchant/ai/index-tasks') }
+export function retryMerchantAiIndexTask(id: number) { return request.post(`/api/merchant/ai/index-tasks/${id}/retry`) }

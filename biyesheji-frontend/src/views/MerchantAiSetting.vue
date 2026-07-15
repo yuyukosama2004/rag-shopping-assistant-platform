@@ -5,11 +5,14 @@ import {
   createMerchantAiKnowledge,
   deleteMerchantAiKnowledge,
   getMerchantAiKnowledge,
+  getMerchantAiIndexTasks,
   getMerchantAiSetting,
   updateMerchantAiKnowledge,
   updateMerchantAiSetting,
+  retryMerchantAiIndexTask,
   type MerchantAiKnowledge,
   type MerchantAiKnowledgeInput,
+  type MerchantAiIndexTask,
   type MerchantAiSettingInput,
 } from '../api/merchant'
 import { useUserStore } from '../stores/user'
@@ -18,6 +21,7 @@ const userStore = useUserStore()
 const loading = ref(false)
 const saving = ref(false)
 const knowledge = ref<MerchantAiKnowledge[]>([])
+const indexTasks = ref<MerchantAiIndexTask[]>([])
 const knowledgeDialog = ref(false)
 const editingKnowledgeId = ref<number>()
 const canEdit = computed(() => userStore.user?.role === 1)
@@ -38,10 +42,13 @@ const categoryLabel: Record<MerchantAiKnowledge['category'], string> = {
 const load = async () => {
   loading.value = true
   try {
-    const [settingResponse, knowledgeResponse] = await Promise.all([getMerchantAiSetting(), getMerchantAiKnowledge()])
+    const [settingResponse, knowledgeResponse, taskResponse] = await Promise.all([
+      getMerchantAiSetting(), getMerchantAiKnowledge(), getMerchantAiIndexTasks(),
+    ])
     const data = settingResponse.data.data
     Object.assign(form, data)
     knowledge.value = knowledgeResponse.data.data || []
+    indexTasks.value = taskResponse.data.data || []
   } finally {
     loading.value = false
   }
@@ -69,6 +76,19 @@ const removeKnowledge = async (item: MerchantAiKnowledge) => {
   await deleteMerchantAiKnowledge(item.id)
   ElMessage.success('已删除')
   await load()
+}
+
+const retryTask = async (task: MerchantAiIndexTask) => {
+  await retryMerchantAiIndexTask(task.id)
+  ElMessage.success('索引任务已重新排队')
+  await load()
+}
+
+const taskTagType = (status: MerchantAiIndexTask['status']) => {
+  if (status === 'SUCCESS') return 'success'
+  if (status === 'FAILED') return 'danger'
+  if (status === 'SUPERSEDED') return 'info'
+  return 'warning'
 }
 
 const save = async () => {
@@ -160,4 +180,18 @@ onMounted(load)
     </el-form>
     <template #footer><el-button @click="knowledgeDialog = false">取消</el-button><el-button type="primary" @click="saveKnowledge">保存</el-button></template>
   </el-dialog>
+
+  <el-card style="margin-top:20px">
+    <template #header><strong>商品索引任务</strong></template>
+    <el-alert title="商品创建、修改和上下架会自动生成任务。失败通常表示向量服务未配置或暂时不可用，可在修复后重试。" type="info" :closable="false" style="margin-bottom:16px" />
+    <el-table :data="indexTasks" empty-text="暂无索引任务">
+      <el-table-column prop="productId" label="商品 ID" width="180" />
+      <el-table-column label="动作" width="100"><template #default="{ row }">{{ row.operation === 'UPSERT' ? '更新' : '移除' }}</template></el-table-column>
+      <el-table-column label="状态" width="120"><template #default="{ row }"><el-tag :type="taskTagType(row.status)">{{ row.status }}</el-tag></template></el-table-column>
+      <el-table-column prop="attempts" label="尝试" width="80" />
+      <el-table-column prop="errorMessage" label="失败原因" min-width="280" show-overflow-tooltip />
+      <el-table-column prop="createdAt" label="创建时间" width="180" />
+      <el-table-column label="操作" width="100"><template #default="{ row }"><el-button v-if="row.status === 'FAILED'" text type="primary" @click="retryTask(row)">重试</el-button></template></el-table-column>
+    </el-table>
+  </el-card>
 </template>
