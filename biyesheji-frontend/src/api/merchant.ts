@@ -164,6 +164,10 @@ export interface MerchantAiSetting {
   temperature: number
   maxOutputTokens: number
   perUserDailyLimit: number
+  dailyBudget: number
+  inputPricePerMillion: number
+  outputPricePerMillion: number
+  blockedKeywords?: string
   disclaimer?: string
   systemPrompt?: string
 }
@@ -242,6 +246,7 @@ export function confirmMerchantOrderPayment(orderNo: string) { return request.po
 export function acceptMerchantOrder(orderNo: string) { return request.post(`/api/merchant/orders/${orderNo}/accept`) }
 export function shipMerchantOrder(orderNo: string, data: { carrier: string; trackingNo: string; note?: string }) { return request.post(`/api/merchant/orders/${orderNo}/ship`, data) }
 export function getMerchantAiSetting() { return request.get('/api/merchant/ai/setting') }
+export function getMerchantAiUsage() { return request.get('/api/merchant/ai/setting/usage') }
 export function updateMerchantAiSetting(data: MerchantAiSettingInput) { return request.put('/api/merchant/ai/setting', data) }
 export function getMerchantAiKnowledge() { return request.get('/api/merchant/ai/knowledge') }
 export function createMerchantAiKnowledge(data: MerchantAiKnowledgeInput) { return request.post('/api/merchant/ai/knowledge', data) }

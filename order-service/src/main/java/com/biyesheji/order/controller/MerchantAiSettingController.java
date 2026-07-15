@@ -6,6 +6,7 @@ import com.biyesheji.dto.R;
 import com.biyesheji.entity.AiSetting;
 import com.biyesheji.exception.BizException;
 import com.biyesheji.order.service.AiSettingService;
+import com.biyesheji.order.service.AiUsageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class MerchantAiSettingController {
     private final AiSettingService service;
+    private final AiUsageService usageService;
 
     @GetMapping
     public R<AiSetting> get(@RequestHeader("X-User-Role") Integer role) {
@@ -32,6 +34,13 @@ public class MerchantAiSettingController {
                                @Valid @RequestBody AiSettingSaveDTO dto) {
         requireOwner(role);
         return R.ok(service.update(dto));
+    }
+
+    @GetMapping("/usage")
+    public R<java.util.Map<String, Object>> usage(@RequestHeader("X-User-Role") Integer role) {
+        requireMerchant(role);
+        AiSetting setting = service.get();
+        return R.ok(usageService.todaySummary(setting));
     }
 
     private void requireMerchant(Integer role) {
