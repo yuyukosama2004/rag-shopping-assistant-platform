@@ -180,7 +180,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: false
       - name: Scan source, dependencies, and configuration
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -208,7 +208,7 @@ jobs:
           trap 'rm -f .env' EXIT
           APP_IMAGE_TAG=ci docker compose --env-file .env -f docker/docker-compose.app.yml build
       - name: Scan user service image
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
           image-ref: biyesheji-user-service:ci
           version: v0.69.3
@@ -217,7 +217,7 @@ jobs:
           ignore-unfixed: true
           exit-code: 1
       - name: Scan product service image
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
           image-ref: biyesheji-product-service:ci
           version: v0.69.3
@@ -226,7 +226,7 @@ jobs:
           ignore-unfixed: true
           exit-code: 1
       - name: Scan order service image
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
           image-ref: biyesheji-order-service:ci
           version: v0.69.3
@@ -235,7 +235,7 @@ jobs:
           ignore-unfixed: true
           exit-code: 1
       - name: Scan gateway service image
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
           image-ref: biyesheji-gateway-service:ci
           version: v0.69.3
@@ -263,7 +263,7 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Scan ${{ matrix.component }} image
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
           image-ref: ${{ matrix.image }}
           version: v0.69.3
@@ -301,7 +301,7 @@ jobs:
         if: matrix.component == 'mysql'
         run: docker run --rm --entrypoint /bin/sh "${{ matrix.image }}" -ec 'test "$(head -n 1 /usr/local/bin/gosu)" = "#!/bin/sh"; ! grep -aq "Go build" /usr/local/bin/gosu'
       - name: Scan ${{ matrix.component }} image
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
           image-ref: ${{ matrix.image }}
           version: v0.69.3
