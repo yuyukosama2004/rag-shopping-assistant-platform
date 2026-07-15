@@ -1,0 +1,41 @@
+vulnerabilities:
+  - id: CVE-2026-39828
+    paths: [bin/alertmanager, bin/amtool]
+    expired_at: 2026-08-15
+    statement: Official latest image; affected SSH code is unreachable because no SSH receiver is configured.
+  - id: CVE-2026-39829
+    paths: [bin/alertmanager, bin/amtool]
+    expired_at: 2026-08-15
+    statement: Official latest image; affected SSH code is unreachable because no SSH receiver is configured.
+  - id: CVE-2026-39830
+    paths: [bin/alertmanager, bin/amtool]
+    expired_at: 2026-08-15
+    statement: Official latest image; affected SSH code is unreachable because no SSH receiver is configured.
+  - id: CVE-2026-39831
+    paths: [bin/alertmanager, bin/amtool]
+    expired_at: 2026-08-15
+    statement: Official latest image; affected SSH code is unreachable because no SSH receiver is configured.
+  - id: CVE-2026-39832
+    paths: [bin/alertmanager, bin/amtool]
+    expired_at: 2026-08-15
+    statement: Official latest image; affected SSH code is unreachable because no SSH receiver is configured.
+  - id: CVE-2026-39835
+    paths: [bin/alertmanager, bin/amtool]
+    expired_at: 2026-08-15
+    statement: Official latest image; affected SSH code is unreachable because no SSH receiver is configured.
+  - id: CVE-2026-42508
+    paths: [bin/alertmanager, bin/amtool]
+    expired_at: 2026-08-15
+    statement: Official latest image; affected SSH known-hosts code is not used by configured receivers.
+  - id: CVE-2026-46595
+    paths: [bin/alertmanager, bin/amtool]
+    expired_at: 2026-08-15
+    statement: Official latest image; affected SSH code is unreachable because no SSH receiver is configured.
+  - id: CVE-2026-46597
+    paths: [bin/alertmanager, bin/amtool]
+    expired_at: 2026-08-15
+    statement: Official latest image; affected SSH code is unreachable because no SSH receiver is configured.
+  - id: CVE-2026-39822
+    paths: [bin/alertmanager, bin/amtool]
+    expired_at: 2026-08-15
+    statement: Configuration is a trusted read-only mount and the UI is bound to loopback; recheck the next upstream release.

@@ -80,16 +80,14 @@ jobs:
           docker run --rm \
             -v "$PWD/deploy/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
             -v "$PWD/deploy/observability/alerts.yml:/etc/prometheus/alerts.yml:ro" \
+            --entrypoint /bin/promtool \
             prom/prometheus:v3.13.1 \
-            promtool check config /etc/prometheus/prometheus.yml
+            check config /etc/prometheus/prometheus.yml
           docker run --rm \
             -v "$PWD/deploy/observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro" \
+            --entrypoint /bin/amtool \
             prom/alertmanager:v0.33.1 \
-            amtool check-config /etc/alertmanager/alertmanager.yml
-          docker run --rm \
-            -v "$PWD/deploy/observability/blackbox.yml:/etc/blackbox/blackbox.yml:ro" \
-            prom/blackbox-exporter:v0.28.0 \
-            --config.file=/etc/blackbox/blackbox.yml --config.check
+            check-config /etc/alertmanager/alertmanager.yml
 
   source-security:
     runs-on: ubuntu-latest
@@ -179,14 +177,14 @@ jobs:
             image: prom/prometheus:v3.13.1
           - component: alertmanager
             image: prom/alertmanager:v0.33.1
-          - component: blackbox-exporter
-            image: prom/blackbox-exporter:v0.28.0
+            trivyignores: .trivyignore-alertmanager.yaml
           - component: node-exporter
             image: prom/node-exporter:v1.12.1
           - component: cadvisor
             image: ghcr.io/google/cadvisor:v0.60.5
     name: observability-image-security (${{ matrix.component }})
     steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Scan ${{ matrix.component }} image
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
         with:
@@ -195,4 +193,5 @@ jobs:
           scanners: vuln
           severity: HIGH,CRITICAL
           ignore-unfixed: true
+          trivyignores: ${{ matrix.trivyignores }}
           exit-code: 1

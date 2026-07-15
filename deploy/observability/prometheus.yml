@@ -24,24 +24,6 @@ scrape_configs:
           - biyesheji-product-service:8082
           - biyesheji-order-service:8083
 
-  - job_name: biyesheji-health
-    metrics_path: /probe
-    params:
-      module: [http_health]
-    static_configs:
-      - targets:
-          - http://biyesheji-gateway-service:8080/actuator/health
-          - http://biyesheji-user-service:8081/actuator/health
-          - http://biyesheji-product-service:8082/actuator/health
-          - http://biyesheji-order-service:8083/actuator/health
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: __param_target
-      - source_labels: [__param_target]
-        target_label: instance
-      - target_label: __address__
-        replacement: biyesheji-blackbox-exporter:9115
-
   - job_name: alertmanager
     static_configs:
       - targets: [biyesheji-alertmanager:9093]

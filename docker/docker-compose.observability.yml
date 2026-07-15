@@ -31,16 +31,6 @@ services:
       - "127.0.0.1:${ALERTMANAGER_HOST_PORT:-19093}:9093"
     networks: [internal]
 
-  blackbox-exporter:
-    image: prom/blackbox-exporter:v0.28.0
-    container_name: biyesheji-blackbox-exporter
-    restart: unless-stopped
-    command:
-      - --config.file=/etc/blackbox/blackbox.yml
-    volumes:
-      - ../deploy/observability/blackbox.yml:/etc/blackbox/blackbox.yml:ro
-    networks: [internal]
-
   node-exporter:
     image: prom/node-exporter:v1.12.1
     container_name: biyesheji-node-exporter

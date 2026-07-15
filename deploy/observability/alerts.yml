@@ -2,7 +2,7 @@ groups:
   - name: biyesheji-availability
     rules:
       - alert: BiyeshejiServiceUnhealthy
-        expr: probe_success{job="biyesheji-health"} == 0
+        expr: biyesheji_application_health{job="biyesheji-app"} == 0
         for: 1m
         labels:
           severity: critical
