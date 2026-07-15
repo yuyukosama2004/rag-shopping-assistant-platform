@@ -36,7 +36,7 @@ public interface InventoryMapper {
             FROM t_product_sku sku
             JOIN t_product p ON p.id = sku.product_id
             JOIN t_stock stock ON stock.sku_id = sku.id
-            WHERE p.deleted = 0 AND p.status = 1 AND sku.status = 1 AND stock.available &lt;= #{threshold}
+            WHERE p.deleted = 0 AND p.status = 1 AND sku.status = 1 AND stock.available <= #{threshold}
             """)
     long countLowStock(@Param("threshold") int threshold);
 }
