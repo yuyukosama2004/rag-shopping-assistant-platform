@@ -27,6 +27,7 @@ import com.biyesheji.order.service.ShippingRuleService;
 import com.biyesheji.utils.RedisUtil;
 import com.biyesheji.vo.OrderVO;
 import com.biyesheji.vo.MerchantDashboardVO;
+import com.biyesheji.vo.MerchantOrderDetailVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -239,10 +240,58 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public OrderVO merchantDetail(String orderNo) {
+    public MerchantOrderDetailVO merchantDetail(String orderNo) {
         Order order = orderMapper.selectOne(new LambdaQueryWrapper<Order>().eq(Order::getOrderNo, orderNo));
         if (order == null) throw new BizException(ResultCode.ORDER_NOT_FOUND, "订单不存在");
-        return OrderVO.from(order, orderItems(orderNo));
+        MerchantOrderDetailVO detail = new MerchantOrderDetailVO();
+        detail.setOrder(OrderVO.from(order, orderItems(orderNo)));
+        detail.setMerchantNote(order.getMerchantNote());
+        detail.setOperations(orderOperationMapper.selectList(new LambdaQueryWrapper<OrderOperation>()
+                .eq(OrderOperation::getOrderNo, orderNo)
+                .orderByAsc(OrderOperation::getCreatedAt)));
+        return detail;
+    }
+
+    @Override
+    @Transactional
+    public void updateMerchantNote(Long operatorId, String orderNo, String note) {
+        requireOrder(orderNo);
+        String normalized = note == null || note.trim().isEmpty() ? null : note.trim();
+        Order update = new Order();
+        update.setMerchantNote(normalized);
+        int rows = orderMapper.update(update, new LambdaUpdateWrapper<Order>().eq(Order::getOrderNo, orderNo));
+        if (rows == 0) throw new BizException(ResultCode.ORDER_NOT_FOUND, "订单不存在");
+        recordOperation(orderNo, operatorId, "MERCHANT_NOTE", normalized == null ? "清除商家备注" : "更新商家备注");
+    }
+
+    @Override
+    @Transactional
+    public void close(Long operatorId, String orderNo, String reason) {
+        if (reason == null || reason.trim().isEmpty() || reason.trim().length() > 255) {
+            throw new BizException("请填写不超过255个字符的关单原因");
+        }
+        Order order = requireOrder(orderNo);
+        boolean pending = order.getStatus() == OrderStatus.PENDING.getCode();
+        boolean unpaidCodProcessing = order.getStatus() == OrderStatus.PROCESSING.getCode()
+                && "COD".equals(order.getPaymentMethod()) && order.getPayTime() == null;
+        if (!pending && !unpaidCodProcessing) {
+            throw new BizException("仅未确认收款的待处理订单可关闭；已收款订单请走退款流程");
+        }
+
+        Order update = new Order();
+        update.setStatus(OrderStatus.CANCELLED.getCode());
+        update.setCancelTime(LocalDateTime.now());
+        LambdaUpdateWrapper<Order> condition = new LambdaUpdateWrapper<Order>()
+                .eq(Order::getOrderNo, orderNo)
+                .eq(Order::getStatus, order.getStatus());
+        if (unpaidCodProcessing) {
+            condition.eq(Order::getPaymentMethod, "COD").isNull(Order::getPayTime);
+        }
+        if (orderMapper.update(update, condition) == 0) {
+            throw new BizException("订单状态已变化，请刷新后重试");
+        }
+        restoreOrderItems(orderNo);
+        recordOperation(orderNo, operatorId, "MERCHANT_CLOSE", reason.trim());
     }
 
     @Override
