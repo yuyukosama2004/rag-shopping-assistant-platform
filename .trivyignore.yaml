@@ -1,0 +1,9 @@
+misconfigurations:
+  - id: AVD-DS-0002
+    paths: [docker/Dockerfile.mysql]
+    expired_at: 2026-08-15
+    statement: The official MySQL entrypoint requires root only to repair mounted-volume ownership and immediately execs mysqld as mysql through setpriv.
+  - id: AVD-DS-0002
+    paths: [docker/Dockerfile.nginx-validation]
+    expired_at: 2026-08-15
+    statement: This image is used only for offline nginx configuration syntax validation in CI and never starts a network listener.

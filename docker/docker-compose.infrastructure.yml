@@ -3,7 +3,10 @@
 
 services:
   mysql:
-    image: mysql:8.0.46
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.mysql
+    image: biyesheji-mysql:8.0.46-debian-hardened
     container_name: biyesheji-mysql
     restart: unless-stopped
     ports:
@@ -35,7 +38,7 @@ services:
     networks: [internal]
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4.9-alpine
     container_name: biyesheji-redis
     restart: unless-stopped
     ports:
@@ -54,34 +57,9 @@ services:
     mem_limit: 128M
     networks: [internal]
 
-  nacos:
-    image: nacos/nacos-server:v2.3.2
-    container_name: biyesheji-nacos
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:8848:8848"
-      - "127.0.0.1:9848:9848"
-    environment:
-      MODE: standalone
-      PREFER_HOST_MODE: hostname
-      JVM_XMS: 128m
-      JVM_XMX: 512m
-      JVM_XMN: 64m
-    volumes:
-      - nacos-data:/home/nacos/data
-    healthcheck:
-      test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:8848/nacos/ > /dev/null"]
-      interval: 10s
-      timeout: 5s
-      retries: 18
-      start_period: 45s
-    mem_limit: 640M
-    networks: [internal]
-
 volumes:
   mysql-data:
   redis-data:
-  nacos-data:
 
 networks:
   internal:

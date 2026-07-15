@@ -48,11 +48,10 @@ wait_http() {
 
 start_infra() {
   load_env
-  info "Starting MySQL, Redis and Nacos"
-  compose up -d
+  info "Starting MySQL and Redis"
+  compose up -d --remove-orphans
   wait_healthy biyesheji-mysql 60
   wait_healthy biyesheji-redis 30
-  wait_healthy biyesheji-nacos 90
 }
 
 stop_infra() {

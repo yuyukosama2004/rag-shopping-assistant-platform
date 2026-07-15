@@ -35,7 +35,7 @@ wait_internal_unhealthy() {
 }
 
 recover_dependencies() {
-  docker start biyesheji-mysql biyesheji-redis biyesheji-nacos >/dev/null 2>&1 || true
+  docker start biyesheji-mysql biyesheji-redis biyesheji-product-service >/dev/null 2>&1 || true
 }
 trap recover_dependencies EXIT
 
@@ -53,16 +53,25 @@ wait_container_healthy biyesheji-mysql 90
 wait_internal_health biyesheji-product-service 8082
 echo MYSQL_FAILURE_AND_RECOVERY_OK
 
-docker stop biyesheji-nacos >/dev/null
-curl --fail --silent 'http://127.0.0.1:18080/api/product/page?pageNum=1&pageSize=1' >/dev/null
-docker start biyesheji-nacos >/dev/null
-wait_container_healthy biyesheji-nacos 120
+docker stop biyesheji-product-service >/dev/null
+for _ in $(seq 1 30); do
+  if ! curl --fail --silent 'http://127.0.0.1:18080/api/product/page?pageNum=1&pageSize=1' >/dev/null; then
+    break
+  fi
+  sleep 1
+done
+if curl --fail --silent 'http://127.0.0.1:18080/api/product/page?pageNum=1&pageSize=1' >/dev/null; then
+  echo "ERROR: gateway did not report the stopped static upstream" >&2
+  exit 1
+fi
+docker start biyesheji-product-service >/dev/null
+wait_container_healthy biyesheji-product-service 120
 for _ in $(seq 1 60); do
   curl --fail --silent 'http://127.0.0.1:18080/api/product/page?pageNum=1&pageSize=1' >/dev/null && break
   sleep 2
 done
 curl --fail --silent 'http://127.0.0.1:18080/api/product/page?pageNum=1&pageSize=1' >/dev/null
-echo NACOS_SHORT_OUTAGE_RECOVERY_OK
+echo STATIC_UPSTREAM_FAILURE_AND_RECOVERY_OK
 
 docker restart biyesheji-order-service >/dev/null
 wait_container_healthy biyesheji-order-service 120
