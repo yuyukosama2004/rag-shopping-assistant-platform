@@ -1,0 +1,43 @@
+{
+  "index_fingerprint": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "products": {
+    "1003": {"id": 1003, "brand": "Apple", "price": 5999, "sellable": true},
+    "1004": {"id": 1004, "brand": "Samsung", "price": 9699, "sellable": true},
+    "1007": {"id": 1007, "brand": "Xiaomi", "price": 3999, "sellable": true},
+    "1009": {"id": 1009, "brand": "Redmi", "price": 1899, "sellable": true},
+    "1010": {"id": 1010, "brand": "Huawei", "price": 6999, "sellable": true},
+    "1012": {"id": 1012, "brand": "Huawei", "price": 3499, "sellable": true},
+    "1015": {"id": 1015, "brand": "vivo", "price": 5999, "sellable": true},
+    "1017": {"id": 1017, "brand": "iQOO", "price": 4299, "sellable": true},
+    "1021": {"id": 1021, "brand": "Honor", "price": 3499, "sellable": true},
+    "1023": {"id": 1023, "brand": "realme", "price": 1899, "sellable": true},
+    "1024": {"id": 1024, "brand": "Sony", "price": 8999, "sellable": true},
+    "1025": {"id": 1025, "brand": "Nubia", "price": 3999, "sellable": true},
+    "1026": {"id": 1026, "brand": "ZTE", "price": 5699, "sellable": true},
+    "1027": {"id": 1027, "brand": "Motorola", "price": 3499, "sellable": true},
+    "1028": {"id": 1028, "brand": "Nothing", "price": 3799, "sellable": true},
+    "1030": {"id": 1030, "brand": "ASUS", "price": 5999, "sellable": true}
+  },
+  "cases": {
+    "phone-budget-camera-001": {"retrieved": [{"id": 1007, "score": 0.96}]},
+    "phone-budget-battery-002": {"retrieved": [{"id": 1023, "score": 0.95}]},
+    "phone-gaming-refresh-003": {"retrieved": [{"id": 1017, "score": 0.94}]},
+    "phone-concert-zoom-004": {"retrieved": [{"id": 1015, "score": 0.97}]},
+    "phone-ios-budget-005": {"retrieved": [{"id": 1003, "score": 0.99}]},
+    "phone-compact-flagship-006": {"retrieved": [{"id": 1007, "score": 0.93}]},
+    "phone-esports-165hz-007": {"retrieved": [{"id": 1030, "score": 0.98}]},
+    "phone-4k-display-008": {"retrieved": [{"id": 1024, "score": 0.99}]},
+    "phone-full-screen-009": {"retrieved": [{"id": 1025, "score": 0.96}]},
+    "phone-business-satellite-010": {"retrieved": [{"id": 1026, "score": 0.92}]},
+    "phone-clean-android-011": {"retrieved": [{"id": 1027, "score": 0.95}]},
+    "phone-design-unique-012": {"retrieved": [{"id": 1028, "score": 0.97}]},
+    "phone-selfie-light-013": {"retrieved": [{"id": 1012, "score": 0.91}]},
+    "phone-portrait-014": {"retrieved": [{"id": 1021, "score": 0.94}]},
+    "phone-fast-charge-015": {"retrieved": [{"id": 1023, "score": 0.98}]},
+    "phone-200mp-budget-016": {"retrieved": [{"id": 1009, "score": 0.99}]},
+    "phone-large-battery-017": {"retrieved": [{"id": 1023, "score": 0.96}]},
+    "phone-wireless-charge-018": {"retrieved": [{"id": 1021, "score": 0.93}]},
+    "phone-huawei-battery-019": {"retrieved": [{"id": 1010, "score": 0.98}]},
+    "phone-spen-020": {"retrieved": [{"id": 1004, "score": 0.99}]}
+  }
+}

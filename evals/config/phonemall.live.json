@@ -1,0 +1,71 @@
+{
+  "schema_version": "1",
+  "project": {
+    "name": "phonemall",
+    "revision": "${GIT_SHA:-local}"
+  },
+  "dataset": {
+    "path": "evals/datasets/shopping_queries.pending.jsonl"
+  },
+  "adapter": {
+    "type": "http",
+    "base_url": "${PHONEMALL_BASE_URL:-http://127.0.0.1:8080}",
+    "endpoint": "/api/merchant/ai/evaluate",
+    "timeout_seconds": 60,
+    "headers": {
+      "Authorization": "Bearer ${PHONEMALL_MERCHANT_TOKEN}"
+    }
+  },
+  "execution_policy": {
+    "min_completion_rate": 1.0,
+    "retries": 1,
+    "max_retryable_error_rate": 0.0
+  },
+  "metrics": [
+    {
+      "type": "recall_at_k",
+      "k": 5
+    },
+    {
+      "type": "mrr"
+    },
+    {
+      "type": "forbidden_item_rate"
+    },
+    {
+      "type": "constraint_pass_rate"
+    },
+    {
+      "type": "unexpected_empty_result_rate"
+    }
+  ],
+  "gates": [
+    {
+      "metric": "recall_at_5",
+      "min": 0.8
+    },
+    {
+      "metric": "mrr",
+      "min": 0.7
+    },
+    {
+      "metric": "forbidden_item_rate",
+      "max": 0.0
+    },
+    {
+      "metric": "constraint_pass_rate",
+      "min": 1.0
+    },
+    {
+      "metric": "unexpected_empty_result_rate",
+      "max": 0.0
+    }
+  ],
+  "report": {
+    "formats": [
+      "json",
+      "markdown"
+    ],
+    "output_dir": "evals/reports"
+  }
+}
