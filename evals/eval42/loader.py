@@ -53,7 +53,11 @@ def load_dataset(path: Path) -> tuple[list[DatasetCase], str]:
         cases.append(case)
     if not cases:
         raise DatasetError(f"dataset is empty: {path}")
-    return cases, "sha256:" + hashlib.sha256(raw).hexdigest()
+    canonical_hashes = json.dumps(
+        [case.case_hash for case in cases],
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return cases, "sha256:" + hashlib.sha256(canonical_hashes).hexdigest()
 
 
 def _parse_case(payload: dict[str, Any], path: Path, line_number: int) -> DatasetCase:

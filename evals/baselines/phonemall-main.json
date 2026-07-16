@@ -1,0 +1,266 @@
+{
+  "schema_version": "1",
+  "project_name": "phonemall",
+  "created_at": "2026-07-16T12:27:25.853970+00:00",
+  "dataset": {
+    "version": "2026-07-16-candidate",
+    "hash": "sha256:d1156c23b86d9d1213e02b101541196058a812bac13a351ffd4ebee4bd83ae40"
+  },
+  "run_fingerprint": {
+    "target_revision": "fixture",
+    "adapter_version": "phonemall-http-v1",
+    "eval42_version": "phonemall-phase2",
+    "config_hash": "sha256:a63ed5ffbbcd23d318976ce5d88cfc8b9a4f6ddaa4b8039cdd08be22865a79fd",
+    "metric_hash": "sha256:6df7009bff9e0173f6101a424d462ddda549f49ba1fab7fc88a2bbbf7f941fb6",
+    "environment": "fixture"
+  },
+  "summary": {
+    "constraint_pass_rate": 1.0,
+    "forbidden_item_rate": 0.0,
+    "mrr": 1.0,
+    "recall_at_5": 1.0,
+    "unexpected_empty_result_rate": 0.0
+  },
+  "cases": [
+    {
+      "case_id": "phone-budget-camera-001",
+      "case_hash": "sha256:d256ececf82f3732f1b3b6976ac50ae2339fc08b47cc74a8a2b541bdf21705e9",
+      "status": "completed",
+      "metrics": {
+        "recall_at_5": 1.0,
+        "mrr": 1.0,
+        "forbidden_item_rate": 0.0,
+        "unexpected_empty_result_rate": 0.0,
+        "constraint_pass_rate": 1.0
+      }
+    },
+    {
+      "case_id": "phone-budget-battery-002",
+      "case_hash": "sha256:63fe866e8b7a47e06361d01394ed40a4d2aab377d57a24264d234024d1d88ba7",
+      "status": "completed",
+      "metrics": {
+        "recall_at_5": 1.0,
+        "mrr": 1.0,
+        "forbidden_item_rate": 0.0,
+        "unexpected_empty_result_rate": 0.0,
+        "constraint_pass_rate": 1.0
+      }
+    },
+    {
+      "case_id": "phone-gaming-refresh-003",
+      "case_hash": "sha256:2bebd0d6283dff2352f374d2fbe2a70d0d8ec9ca6c4359729af88b17c1753a83",
+      "status": "completed",
+      "metrics": {
+        "recall_at_5": 1.0,
+        "mrr": 1.0,
+        "forbidden_item_rate": 0.0,
+        "unexpected_empty_result_rate": 0.0,
+        "constraint_pass_rate": 1.0
+      }
+    },
+    {
+      "case_id": "phone-concert-zoom-004",
+      "case_hash": "sha256:294f0c7aae572a705e3dd7af7cce30c6eacbbf5f37615c80bd624e3d56a9c7f3",
+      "status": "completed",
+      "metrics": {
+        "recall_at_5": 1.0,
+        "mrr": 1.0,
+        "forbidden_item_rate": 0.0,
+        "unexpected_empty_result_rate": 0.0,
+        "constraint_pass_rate": 1.0
+      }
+    },
+    {
+      "case_id": "phone-ios-budget-005",
+      "case_hash": "sha256:f9d7b46391dd5c1b85d3f0e8065489a5ed392774b8baa555935c08847d4fd0ef",
+      "status": "completed",
+      "metrics": {
+        "recall_at_5": 1.0,
+        "mrr": 1.0,
+        "forbidden_item_rate": 0.0,
+        "unexpected_empty_result_rate": 0.0,
+        "constraint_pass_rate": 1.0
+      }
+    },
+    {
+      "case_id": "phone-compact-flagship-006",
+      "case_hash": "sha256:1c479413c5d548f77371d6af4e75352401c37d25eeec29cf51a02e411de9afc6",
+      "status": "completed",
+      "metrics": {
+        "recall_at_5": 1.0,
+        "mrr": 1.0,
+        "forbidden_item_rate": 0.0,
+        "unexpected_empty_result_rate": 0.0,
+        "constraint_pass_rate": 1.0
+      }
+    },
+    {
+      "case_id": "phone-esports-165hz-007",
+      "case_hash": "sha256:315fb08cc10ea093354493f388d09801d012c1635746cba60a1c014f2a74409c",
+      "status": "completed",
+      "metrics": {
+        "recall_at_5": 1.0,
+        "mrr": 1.0,
+        "forbidden_item_rate": 0.0,
+        "unexpected_empty_result_rate": 0.0,
+        "constraint_pass_rate": 1.0
+      }
+    },
+    {
+      "case_id": "phone-4k-display-008",
+      "case_hash": "sha256:d84fb10c42c35a5270596d5c0977cba10effd95da08ed053869b9c6560be2570",
+      "status": "completed",
+      "metrics": {
+        "recall_at_5": 1.0,
+        "mrr": 1.0,
+        "forbidden_item_rate": 0.0,
+        "unexpected_empty_result_rate": 0.0,
+        "constraint_pass_rate": 1.0
+      }
+    },
+    {
+      "case_id": "phone-full-screen-009",
+      "case_hash": "sha256:bb6882199212f10b6c8451f5f6da1b7893c0cda46d8bd5689017c9536d871631",
+      "status": "completed",
+      "metrics": {
+        "recall_at_5": 1.0,
+        "mrr": 1.0,
+        "forbidden_item_rate": 0.0,
+        "unexpected_empty_result_rate": 0.0,
+        "constraint_pass_rate": 1.0
+      }
+    },
+    {
+      "case_id": "phone-business-satellite-010",
+      "case_hash": "sha256:f8d0de2f23fb9b15833c0af6cb2d6484292ba19e9da39fab10317a7c8077b383",
+      "status": "completed",
+      "metrics": {
+        "recall_at_5": 1.0,
+        "mrr": 1.0,
+        "forbidden_item_rate": 0.0,
+        "unexpected_empty_result_rate": 0.0,
+        "constraint_pass_rate": 1.0
+      }
+    },
+    {
+      "case_id": "phone-clean-android-011",
+      "case_hash": "sha256:e45441c7be28d91805cc1ac5f349f8c069301abddef63a056126346d19067717",
+      "status": "completed",
+      "metrics": {
+        "recall_at_5": 1.0,
+        "mrr": 1.0,
+        "forbidden_item_rate": 0.0,
+        "unexpected_empty_result_rate": 0.0,
+        "constraint_pass_rate": 1.0
+      }
+    },
+    {
+      "case_id": "phone-design-unique-012",
+      "case_hash": "sha256:45371a5bcd2151bf943fe351caf50ee1748eea443f5ae12cf48dc37e5bd28386",
+      "status": "completed",
+      "metrics": {
+        "recall_at_5": 1.0,
+        "mrr": 1.0,
+        "forbidden_item_rate": 0.0,
+        "unexpected_empty_result_rate": 0.0,
+        "constraint_pass_rate": 1.0
+      }
+    },
+    {
+      "case_id": "phone-selfie-light-013",
+      "case_hash": "sha256:331ce551d19e37b3709f63c7c5fe6c635b5b9a6170234047ece10e70ed2e25d5",
+      "status": "completed",
+      "metrics": {
+        "recall_at_5": 1.0,
+        "mrr": 1.0,
+        "forbidden_item_rate": 0.0,
+        "unexpected_empty_result_rate": 0.0,
+        "constraint_pass_rate": 1.0
+      }
+    },
+    {
+      "case_id": "phone-portrait-014",
+      "case_hash": "sha256:746bff04a7c2acbc0bd9fbb1a5aa6f84be1e8b348c01628635685df757f5e979",
+      "status": "completed",
+      "metrics": {
+        "recall_at_5": 1.0,
+        "mrr": 1.0,
+        "forbidden_item_rate": 0.0,
+        "unexpected_empty_result_rate": 0.0,
+        "constraint_pass_rate": 1.0
+      }
+    },
+    {
+      "case_id": "phone-fast-charge-015",
+      "case_hash": "sha256:3312ed89cad7e61412c93987d1bab52d74896502233316b68f23e6c4e4a941d3",
+      "status": "completed",
+      "metrics": {
+        "recall_at_5": 1.0,
+        "mrr": 1.0,
+        "forbidden_item_rate": 0.0,
+        "unexpected_empty_result_rate": 0.0,
+        "constraint_pass_rate": 1.0
+      }
+    },
+    {
+      "case_id": "phone-200mp-budget-016",
+      "case_hash": "sha256:1c72602c0a86688278f68c1dd6134b44f45580ee7f7b1c8427307f6c0ac71b00",
+      "status": "completed",
+      "metrics": {
+        "recall_at_5": 1.0,
+        "mrr": 1.0,
+        "forbidden_item_rate": 0.0,
+        "unexpected_empty_result_rate": 0.0,
+        "constraint_pass_rate": 1.0
+      }
+    },
+    {
+      "case_id": "phone-large-battery-017",
+      "case_hash": "sha256:d6e3cbb5dd1151de13499a18ac584fc4bbcfe797b1be72bd5f9271b612d0af19",
+      "status": "completed",
+      "metrics": {
+        "recall_at_5": 1.0,
+        "mrr": 1.0,
+        "forbidden_item_rate": 0.0,
+        "unexpected_empty_result_rate": 0.0,
+        "constraint_pass_rate": 1.0
+      }
+    },
+    {
+      "case_id": "phone-wireless-charge-018",
+      "case_hash": "sha256:6fa4360197761419c65eebadfddb7fbd7a18dec95aa76a4736cfe2524750e79e",
+      "status": "completed",
+      "metrics": {
+        "recall_at_5": 1.0,
+        "mrr": 1.0,
+        "forbidden_item_rate": 0.0,
+        "unexpected_empty_result_rate": 0.0,
+        "constraint_pass_rate": 1.0
+      }
+    },
+    {
+      "case_id": "phone-huawei-battery-019",
+      "case_hash": "sha256:53e6e4a875d55d76dc0e3ad15fb8e1eaabcf10b8edeaf9b6960c5159a4ca64ff",
+      "status": "completed",
+      "metrics": {
+        "recall_at_5": 1.0,
+        "mrr": 1.0,
+        "forbidden_item_rate": 0.0,
+        "unexpected_empty_result_rate": 0.0,
+        "constraint_pass_rate": 1.0
+      }
+    },
+    {
+      "case_id": "phone-spen-020",
+      "case_hash": "sha256:08cb4f11b475efbbf8a7142f7d49a4d1918ba09bae3e23680620dca77f586db5",
+      "status": "completed",
+      "metrics": {
+        "recall_at_5": 1.0,
+        "mrr": 1.0,
+        "forbidden_item_rate": 0.0,
+        "unexpected_empty_result_rate": 0.0,
+        "constraint_pass_rate": 1.0
+      }
+    }
+  ]
+}

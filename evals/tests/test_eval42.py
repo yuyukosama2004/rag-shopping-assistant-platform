@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from evals.eval42.adapters import _deduplicate
+from evals.eval42.baseline import BaselineError, load_baseline
 from evals.eval42.loader import DatasetError, load_dataset
 from evals.eval42.metrics import evaluate_case, evaluate_gates
 from evals.eval42.models import CaseResult, DatasetCase, RetrievedItem
@@ -34,6 +35,30 @@ class LoaderTest(unittest.TestCase):
             path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
             with self.assertRaisesRegex(DatasetError, "leaked into input"):
                 load_dataset(path)
+
+    def test_dataset_hash_is_independent_of_line_endings(self) -> None:
+        payload = {
+            "schema_version": "1",
+            "id": "portable",
+            "input": {"query": "phone"},
+            "expected": {"relevant_ids": [1]},
+            "tags": [],
+            "metadata": {
+                "dataset_version": "test",
+                "reviewed_by": "test",
+            },
+        }
+        line = json.dumps(payload)
+        with tempfile.TemporaryDirectory() as directory:
+            lf_path = Path(directory) / "lf.jsonl"
+            crlf_path = Path(directory) / "crlf.jsonl"
+            lf_path.write_bytes((line + "\n").encode("utf-8"))
+            crlf_path.write_bytes((line + "\r\n").encode("utf-8"))
+
+            _, lf_hash = load_dataset(lf_path)
+            _, crlf_hash = load_dataset(crlf_path)
+
+        self.assertEqual(lf_hash, crlf_hash)
 
 
 class MetricsTest(unittest.TestCase):
@@ -121,6 +146,36 @@ class MetricsTest(unittest.TestCase):
         )
         self.assertEqual(["fail", "pass"], [gate["status"] for gate in gates])
 
+    def test_gate_engine_detects_baseline_regression(self) -> None:
+        gates = evaluate_gates(
+            {"recall_at_5": 0.9},
+            [
+                {
+                    "metric": "recall_at_5",
+                    "min": 0.8,
+                    "max_regression": 0.05,
+                }
+            ],
+            {"recall_at_5": 1.0},
+        )
+
+        self.assertEqual("fail", gates[0]["status"])
+        self.assertAlmostEqual(0.1, gates[0]["regression"])
+
+
+class BaselineTest(unittest.TestCase):
+
+    def test_malformed_baseline_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "baseline.json"
+            path.write_text(
+                json.dumps({"schema_version": "1", "cases": [{}]}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(BaselineError):
+                load_baseline(path)
+
 
 class RunnerTest(unittest.TestCase):
 
@@ -135,7 +190,59 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual("pass", report["summary"]["gate"])
         self.assertEqual(20, report["summary"]["total_cases"])
         self.assertEqual(20, report["summary"]["completed_cases"])
+        self.assertEqual(
+            "comparable",
+            report["summary"]["baseline_comparison"]["status"],
+        )
+        self.assertEqual(1.0, report["gates"][0]["baseline"])
         self.assertTrue((report_dir / "report.md").exists())
+
+    def test_lowered_recall_is_a_quality_failure_and_new_baseline_failure(self) -> None:
+        source = json.loads(
+            (ROOT / "evals" / "config" / "phonemall.mock.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        fixture = json.loads(
+            (ROOT / "evals" / "fixtures" / "phonemall_mock.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        degraded_cases = ["phone-budget-camera-001", "phone-budget-battery-002"]
+        for case_id in degraded_cases:
+            fixture["cases"][case_id]["retrieved"] = [{"id": 1003, "score": 0.99}]
+
+        reports_root = ROOT / "evals" / "reports"
+        reports_root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=reports_root) as directory:
+            directory_path = Path(directory)
+            fixture_path = directory_path / "fixture.json"
+            fixture_path.write_text(json.dumps(fixture), encoding="utf-8")
+            source["adapter"]["base_url"] = (
+                "mock://" + fixture_path.relative_to(ROOT).as_posix()
+            )
+            source["report"]["output_dir"] = str(directory_path / "output")
+            config_path = directory_path / "config.json"
+            config_path.write_text(json.dumps(source), encoding="utf-8")
+
+            self.assertEqual(2, run(config_path))
+            report = json.loads(
+                (directory_path / "output" / "report.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertLess(report["summary"]["metrics"]["recall_at_5"], 1.0)
+            recall_gate = next(
+                gate
+                for gate in report["gates"]
+                if gate["metric"] == "recall_at_5"
+            )
+            self.assertEqual("fail", recall_gate["status"])
+            self.assertAlmostEqual(0.1, recall_gate["regression"])
+            self.assertEqual(
+                sorted(degraded_cases),
+                report["summary"]["baseline_comparison"]["new_failures"],
+            )
 
     def test_quality_gate_failure_returns_two(self) -> None:
         source = json.loads(
@@ -181,6 +288,25 @@ class RunnerTest(unittest.TestCase):
             path.write_text(json.dumps(source), encoding="utf-8")
 
             self.assertEqual(3, run(path))
+
+    def test_case_budget_stops_execution_as_untrusted(self) -> None:
+        source = json.loads(
+            (ROOT / "evals" / "config" / "phonemall.mock.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        source["run_budget"]["max_cases"] = 1
+        with tempfile.TemporaryDirectory() as directory:
+            source["report"]["output_dir"] = directory
+            path = Path(directory) / "config.json"
+            path.write_text(json.dumps(source), encoding="utf-8")
+
+            self.assertEqual(3, run(path))
+            report = json.loads(
+                (Path(directory) / "report.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual("max_cases", report["summary"]["budget_stop_reason"])
+            self.assertEqual(1, report["summary"]["completed_cases"])
 
 
 if __name__ == "__main__":

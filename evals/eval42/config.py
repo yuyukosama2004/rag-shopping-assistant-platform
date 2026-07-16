@@ -72,3 +72,31 @@ def _validate(config: dict[str, Any]) -> None:
     retries = policy.get("retries")
     if not isinstance(retries, int) or not 0 <= retries <= 5:
         raise ConfigError("execution_policy.retries must be between 0 and 5")
+    baseline = config.get("baseline")
+    if baseline is not None and not baseline.get("path"):
+        raise ConfigError("baseline.path must be a non-empty string")
+    budget = config.get("run_budget", {})
+    if (
+            budget.get("max_cases") is not None
+            and (
+                not isinstance(budget["max_cases"], int)
+                or budget["max_cases"] < 1
+            )
+    ):
+        raise ConfigError("run_budget.max_cases must be a positive integer")
+    if (
+            budget.get("max_duration_seconds") is not None
+            and (
+                not isinstance(budget["max_duration_seconds"], (int, float))
+                or budget["max_duration_seconds"] <= 0
+            )
+    ):
+        raise ConfigError("run_budget.max_duration_seconds must be positive")
+    if (
+            budget.get("max_estimated_cost") is not None
+            and (
+                not isinstance(budget["max_estimated_cost"], (int, float))
+                or budget["max_estimated_cost"] < 0
+            )
+    ):
+        raise ConfigError("run_budget.max_estimated_cost must not be negative")
