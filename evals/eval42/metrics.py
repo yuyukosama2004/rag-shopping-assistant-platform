@@ -69,23 +69,54 @@ def aggregate(case_metrics: list[dict[str, float]]) -> dict[str, float]:
 def evaluate_gates(
         metrics: dict[str, float],
         gates: list[dict[str, Any]],
+        baseline_metrics: dict[str, float] | None = None,
 ) -> list[dict[str, Any]]:
+    baseline_metrics = baseline_metrics or {}
     results = []
     for gate in gates:
         name = gate["metric"]
         value = metrics.get(name)
+        baseline = baseline_metrics.get(name)
         status = "not_applicable"
+        regression = None
         if value is not None:
             passed = True
             if "min" in gate:
                 passed = passed and value >= float(gate["min"])
             if "max" in gate:
                 passed = passed and value <= float(gate["max"])
+            if baseline is not None and (
+                    "max_regression" in gate
+                    or "max_relative_regression" in gate
+            ):
+                regression = (
+                    baseline - value
+                    if "min" in gate or "max" not in gate
+                    else value - baseline
+                )
+                if "max_regression" in gate:
+                    passed = passed and regression <= float(gate["max_regression"])
+                if "max_relative_regression" in gate:
+                    relative = (
+                        regression / abs(baseline)
+                        if baseline != 0
+                        else (float("inf") if regression > 0 else 0.0)
+                    )
+                    passed = passed and relative <= float(
+                        gate["max_relative_regression"]
+                    )
             status = "pass" if passed else "fail"
         results.append(
             {
                 "metric": name,
                 "value": value,
+                "baseline": baseline,
+                "delta": (
+                    value - baseline
+                    if value is not None and baseline is not None
+                    else None
+                ),
+                "regression": regression,
                 "status": status,
                 "severity": gate.get("severity", "error"),
             }

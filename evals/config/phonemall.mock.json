@@ -2,7 +2,7 @@
   "schema_version": "1",
   "project": {
     "name": "phonemall",
-    "revision": "fixture"
+    "revision": "${GIT_SHA:-fixture}"
   },
   "dataset": {
     "path": "evals/datasets/shopping_queries.pending.jsonl"
@@ -40,11 +40,13 @@
   "gates": [
     {
       "metric": "recall_at_5",
-      "min": 0.8
+      "min": 0.8,
+      "max_regression": 0.05
     },
     {
       "metric": "mrr",
-      "min": 0.7
+      "min": 0.7,
+      "max_regression": 0.05
     },
     {
       "metric": "forbidden_item_rate",
@@ -59,11 +61,18 @@
       "max": 0.0
     }
   ],
+  "baseline": {
+    "path": "evals/baselines/phonemall-main.json"
+  },
   "report": {
     "formats": [
       "json",
       "markdown"
     ],
     "output_dir": "evals/reports"
+  },
+  "run_budget": {
+    "max_cases": 20,
+    "max_duration_seconds": 30
   }
 }

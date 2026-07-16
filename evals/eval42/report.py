@@ -24,6 +24,8 @@ def _markdown(report: dict[str, Any]) -> str:
         f"- Gate: **{summary['gate']}**",
         f"- Cases: {summary['completed_cases']}/{summary['total_cases']} completed",
         f"- Completion rate: {summary['completion_rate']:.3f}",
+        f"- Retryable error rate: {summary['retryable_error_rate']:.3f}",
+        f"- Budget stop: {summary['budget_stop_reason'] or 'none'}",
         "",
         "## Metrics",
         "",
@@ -32,10 +34,41 @@ def _markdown(report: dict[str, Any]) -> str:
     ]
     for name, value in sorted(summary["metrics"].items()):
         lines.append(f"| `{name}` | {value:.4f} |")
-    lines.extend(["", "## Gates", "", "| Metric | Value | Status |", "|---|---:|---|"])
+    lines.extend([
+        "",
+        "## Gates",
+        "",
+        "| Metric | Current | Baseline | Delta | Status |",
+        "|---|---:|---:|---:|---|",
+    ])
     for gate in report["gates"]:
         value = "n/a" if gate["value"] is None else f"{gate['value']:.4f}"
-        lines.append(f"| `{gate['metric']}` | {value} | {gate['status']} |")
+        baseline = "n/a" if gate["baseline"] is None else f"{gate['baseline']:.4f}"
+        delta = "n/a" if gate["delta"] is None else f"{gate['delta']:+.4f}"
+        lines.append(
+            f"| `{gate['metric']}` | {value} | {baseline} | {delta} | "
+            f"{gate['status']} |"
+        )
+    baseline_diff = summary.get("baseline_comparison")
+    if baseline_diff:
+        lines.extend([
+            "",
+            "## Baseline comparison",
+            "",
+            f"- Status: {baseline_diff['status']}",
+            f"- Baseline revision: {baseline_diff['baseline_revision']}",
+            f"- Comparable cases: {len(baseline_diff['comparable_cases'])}",
+            f"- Changed cases: {', '.join(baseline_diff['changed_cases']) or 'none'}",
+            f"- New cases: {', '.join(baseline_diff['new_cases']) or 'none'}",
+            f"- Removed cases: {', '.join(baseline_diff['removed_cases']) or 'none'}",
+            f"- New failures: {', '.join(baseline_diff['new_failures']) or 'none'}",
+            f"- Fixed cases: {', '.join(baseline_diff['fixed_cases']) or 'none'}",
+            "",
+            "| Metric | Delta |",
+            "|---|---:|",
+        ])
+        for name, delta_value in baseline_diff["metric_deltas"].items():
+            lines.append(f"| `{name}` | {delta_value:+.4f} |")
     lines.extend(["", "## Cases", ""])
     for case in report["cases"]:
         marker = "PASS" if not case["failures"] and case["status"] == "completed" else "FAIL"
