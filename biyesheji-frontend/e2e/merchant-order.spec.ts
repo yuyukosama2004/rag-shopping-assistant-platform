@@ -166,7 +166,7 @@ test('merchant publishes a product, customer orders it, and merchant ships it', 
     localStorage.setItem('userInfo', JSON.stringify({ id: userId, username, nickname: '验收店主', role: 1 }))
   }, { accessToken: owner.accessToken, refreshToken: owner.refreshToken, userId: owner.userId, username: ownerUsername })
   await page.goto('/merchant/inventory')
-  await expect(page.getByText('库存管理', { exact: true })).toBeVisible()
+  await expect(page.locator('.toolbar strong', { hasText: '库存管理' })).toBeVisible()
   await expect(page.locator('.merchant-menu')).toBeVisible()
   const mobileViewport = await page.evaluate(() => ({
     clientWidth: document.documentElement.clientWidth,
