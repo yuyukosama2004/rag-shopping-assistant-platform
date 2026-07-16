@@ -59,7 +59,7 @@ public class GlobalExceptionHandler {
             case 401 -> HttpStatus.UNAUTHORIZED;
             case 403 -> HttpStatus.FORBIDDEN;
             case 404, 1002, 2003 -> HttpStatus.NOT_FOUND;
-            case 1001, 2001, 2002 -> HttpStatus.CONFLICT;
+            case 409, 1001, 2001, 2002 -> HttpStatus.CONFLICT;
             case 429 -> HttpStatus.TOO_MANY_REQUESTS;
             default -> HttpStatus.BAD_REQUEST;
         };

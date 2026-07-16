@@ -7,6 +7,8 @@ import com.biyesheji.dto.UserUpdateDTO;
 import com.biyesheji.entity.User;
 import com.biyesheji.exception.BizException;
 import com.biyesheji.user.service.UserService;
+import com.biyesheji.user.dto.AccountDeleteDTO;
+import com.biyesheji.user.vo.AccountDataExportVO;
 import com.biyesheji.utils.JwtUtil;
 import com.biyesheji.vo.LoginVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -69,5 +71,19 @@ public class UserController {
         updateUser.setEmail(body.getEmail());
         updateUser.setAvatar(body.getAvatar());
         return R.ok(userService.updateInfo(jwtUtil.getAccessUserId(authHeader.replace("Bearer ", "")), updateUser));
+    }
+
+    @Operation(summary = "导出当前消费者的账户资料")
+    @GetMapping("/export")
+    public R<AccountDataExportVO> export(@RequestHeader("Authorization") String authHeader) {
+        return R.ok(userService.exportAccountData(jwtUtil.getAccessUserId(authHeader.replace("Bearer ", ""))));
+    }
+
+    @Operation(summary = "注销当前消费者账户")
+    @DeleteMapping("/account")
+    public R<Void> deleteAccount(@RequestHeader("Authorization") String authHeader,
+                                 @Valid @RequestBody AccountDeleteDTO dto) {
+        userService.deleteAccount(jwtUtil.getAccessUserId(authHeader.replace("Bearer ", "")), dto.getPassword(), dto.getConfirmation());
+        return R.ok();
     }
 }

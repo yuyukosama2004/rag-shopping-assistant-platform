@@ -180,6 +180,37 @@ test('merchant publishes a product, customer orders it, and merchant ships it', 
   )).data
   expect(detail).toMatchObject({ status: 2, shippingCarrier: '顺丰速运', trackingNo })
 
+  const accountExport = (await envelope<{
+    profile: { username: string }
+    orders: Array<{ orderNo: string; items: Array<{ skuId: number }> }>
+  }>(await request.get(`${apiBaseUrl}/api/user/export`, { headers: customerHeaders }))).data
+  expect(accountExport.profile.username).toBe(customerUsername)
+  expect(accountExport.orders).toContainEqual(expect.objectContaining({
+    orderNo: submit.orderNo,
+    items: expect.arrayContaining([expect.objectContaining({ skuId: sku.id })]),
+  }))
+  expect(JSON.stringify(accountExport)).not.toContain('merchantNote')
+  expect(JSON.stringify(accountExport)).not.toContain('password')
+  const activeAccountDeletion = await request.delete(`${apiBaseUrl}/api/user/account`, {
+    headers: customerHeaders,
+    data: { password, confirmation: 'DELETE_ACCOUNT' },
+  })
+  expect(activeAccountDeletion.status()).toBe(409)
+
+  const disposableUsername = `disposable_${suffix}`
+  await envelope(await request.post(`${apiBaseUrl}/api/user/register`, {
+    data: { username: disposableUsername, password, nickname: '待注销消费者' },
+  }))
+  const disposable = await login(request, disposableUsername, password)
+  await envelope(await request.delete(`${apiBaseUrl}/api/user/account`, {
+    headers: { Authorization: `Bearer ${disposable.accessToken}` },
+    data: { password, confirmation: 'DELETE_ACCOUNT' },
+  }))
+  const deletedLogin = await request.post(`${apiBaseUrl}/api/user/login`, {
+    data: { username: disposableUsername, password },
+  })
+  expect(deletedLogin.status()).toBe(400)
+
   await page.addInitScript(({ accessToken, refreshToken, userId, username }) => {
     localStorage.setItem('accessToken', accessToken)
     localStorage.setItem('refreshToken', refreshToken)
