@@ -7,10 +7,10 @@ const userStore = useUserStore()
 </script>
 
 <template>
-  <el-container style="min-height:100vh;background:#f5f7fa">
-    <el-aside width="220px" style="background:#1f2937;color:#fff">
-      <div style="padding:24px 20px;font-size:18px;font-weight:700">商家工作台</div>
-      <el-menu router background-color="#1f2937" text-color="#cbd5e1" active-text-color="#fff" :default-active="router.currentRoute.value.path">
+  <el-container class="merchant-shell">
+    <el-aside width="220px" class="merchant-aside">
+      <div class="merchant-title">商家工作台</div>
+      <el-menu class="merchant-menu" router background-color="#1f2937" text-color="#cbd5e1" active-text-color="#fff" :default-active="router.currentRoute.value.path">
         <el-menu-item index="/merchant"><el-icon><HomeFilled /></el-icon><span>概览</span></el-menu-item>
         <el-menu-item v-if="userStore.user?.role === 1" index="/merchant/store"><el-icon><Setting /></el-icon><span>店铺设置</span></el-menu-item>
         <el-menu-item v-if="userStore.user?.role === 1" index="/merchant/staff"><el-icon><User /></el-icon><span>店员管理</span></el-menu-item>
@@ -24,7 +24,7 @@ const userStore = useUserStore()
       </el-menu>
     </el-aside>
     <el-container>
-      <el-header style="display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid #e5e7eb">
+      <el-header class="merchant-header">
         <span>单店自托管商城</span>
         <div>
           <span style="margin-right:16px">{{ userStore.user?.nickname || userStore.user?.username }}</span>
@@ -32,7 +32,12 @@ const userStore = useUserStore()
           <el-button text type="danger" @click="userStore.logout()">退出</el-button>
         </div>
       </el-header>
-      <el-main><router-view /></el-main>
+      <el-main class="merchant-main"><router-view /></el-main>
     </el-container>
   </el-container>
 </template>
+
+<style scoped>
+.merchant-shell{min-height:100vh;background:#f5f7fa}.merchant-aside{background:#1f2937;color:#fff}.merchant-title{padding:24px 20px;font-size:18px;font-weight:700}.merchant-header{display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid #e5e7eb}
+@media(max-width:767px){.merchant-shell{display:block}.merchant-aside{width:100%!important}.merchant-title{padding:12px 14px}.merchant-menu{display:flex;overflow-x:auto;border-right:0}.merchant-menu :deep(.el-menu-item){flex:0 0 auto;height:44px;padding:0 14px}.merchant-header{height:auto;min-height:52px;padding:8px 12px;gap:8px;flex-wrap:wrap}.merchant-main{padding:12px}}
+</style>

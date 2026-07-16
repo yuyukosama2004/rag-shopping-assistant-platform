@@ -158,6 +158,23 @@ test('merchant publishes a product, customer orders it, and merchant ships it', 
   )).data
   expect(originalSkuStock).toMatchObject({ total: 10, locked: 2, available: 8 })
 
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/merchant/login')
+  await page.evaluate(({ accessToken, refreshToken, userId, username }) => {
+    localStorage.setItem('accessToken', accessToken)
+    localStorage.setItem('refreshToken', refreshToken)
+    localStorage.setItem('userInfo', JSON.stringify({ id: userId, username, nickname: '验收店主', role: 1 }))
+  }, { accessToken: owner.accessToken, refreshToken: owner.refreshToken, userId: owner.userId, username: ownerUsername })
+  await page.goto('/merchant/inventory')
+  await expect(page.getByText('库存管理', { exact: true })).toBeVisible()
+  await expect(page.locator('.merchant-menu')).toBeVisible()
+  const mobileViewport = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+  }))
+  expect(mobileViewport.scrollWidth).toBeLessThanOrEqual(mobileViewport.clientWidth)
+  await page.setViewportSize({ width: 1280, height: 720 })
+
   const detail = (await envelope<{ status: number; shippingCarrier: string; trackingNo: string }>(
     await request.get(`${apiBaseUrl}/api/order/${submit.orderNo}`, { headers: customerHeaders }),
   )).data
