@@ -75,7 +75,7 @@ class UserServiceImplTest {
 
         assertThrows(BizException.class, () -> userService.deleteAccount(7L, "correct-password", "DELETE_ACCOUNT"));
 
-        verify(userMapper, never()).updateById(any());
+        verify(userMapper, never()).updateById(any(User.class));
         verify(addressMapper, never()).delete(any());
     }
 
