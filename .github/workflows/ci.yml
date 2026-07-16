@@ -185,6 +185,7 @@ jobs:
       - name: Scan source, dependencies, and configuration
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
+          skip-setup-trivy: ${{ runner.environment == 'self-hosted' }}
           scan-type: fs
           scan-ref: .
           version: v0.69.3
@@ -213,6 +214,7 @@ jobs:
       - name: Scan user service image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
+          skip-setup-trivy: ${{ runner.environment == 'self-hosted' }}
           image-ref: biyesheji-user-service:ci
           version: v0.69.3
           scanners: vuln
@@ -222,6 +224,7 @@ jobs:
       - name: Scan product service image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
+          skip-setup-trivy: ${{ runner.environment == 'self-hosted' }}
           image-ref: biyesheji-product-service:ci
           version: v0.69.3
           scanners: vuln
@@ -231,6 +234,7 @@ jobs:
       - name: Scan order service image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
+          skip-setup-trivy: ${{ runner.environment == 'self-hosted' }}
           image-ref: biyesheji-order-service:ci
           version: v0.69.3
           scanners: vuln
@@ -240,6 +244,7 @@ jobs:
       - name: Scan gateway service image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
+          skip-setup-trivy: ${{ runner.environment == 'self-hosted' }}
           image-ref: biyesheji-gateway-service:ci
           version: v0.69.3
           scanners: vuln
@@ -268,6 +273,7 @@ jobs:
       - name: Scan ${{ matrix.component }} image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
+          skip-setup-trivy: ${{ runner.environment == 'self-hosted' }}
           image-ref: ${{ matrix.image }}
           version: v0.69.3
           scanners: vuln
@@ -306,6 +312,7 @@ jobs:
       - name: Scan ${{ matrix.component }} image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
+          skip-setup-trivy: ${{ runner.environment == 'self-hosted' }}
           image-ref: ${{ matrix.image }}
           version: v0.69.3
           scanners: vuln
