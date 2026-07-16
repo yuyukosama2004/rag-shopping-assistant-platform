@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from evals.eval42.adapters import _deduplicate
 from evals.eval42.loader import DatasetError, load_dataset
 from evals.eval42.metrics import evaluate_case, evaluate_gates
 from evals.eval42.models import CaseResult, DatasetCase, RetrievedItem
@@ -36,6 +37,18 @@ class LoaderTest(unittest.TestCase):
 
 
 class MetricsTest(unittest.TestCase):
+
+    def test_preserves_first_rank_when_deduplicating_results(self) -> None:
+        items = [
+            RetrievedItem("1", 0.9, 1, {}),
+            RetrievedItem("1", 0.8, 2, {}),
+            RetrievedItem("2", 0.7, 3, {}),
+        ]
+
+        deduplicated = _deduplicate(items)
+
+        self.assertEqual(["1", "2"], [item.item_id for item in deduplicated])
+        self.assertEqual([1, 3], [item.rank for item in deduplicated])
 
     def test_reports_relevance_forbidden_and_constraint_failures(self) -> None:
         case = DatasetCase(
@@ -77,6 +90,26 @@ class MetricsTest(unittest.TestCase):
         self.assertEqual(1.0, evaluation.metrics["forbidden_item_rate"])
         self.assertEqual(0.0, evaluation.metrics["constraint_pass_rate"])
         self.assertGreaterEqual(len(evaluation.failures), 3)
+
+    def test_empty_result_uses_explicit_empty_metric_not_fake_zero_scores(self) -> None:
+        case = DatasetCase(
+            case_id="case-empty",
+            input={"query": "phone"},
+            expected={"relevant_ids": [1], "constraints": {}},
+            tags=(),
+            metadata={},
+            case_hash="sha256:test",
+        )
+
+        evaluation = evaluate_case(
+            case,
+            CaseResult(case_id="case-empty", status="completed"),
+            5,
+        )
+
+        self.assertEqual(1.0, evaluation.metrics["unexpected_empty_result_rate"])
+        self.assertNotIn("forbidden_item_rate", evaluation.metrics)
+        self.assertNotIn("constraint_pass_rate", evaluation.metrics)
 
     def test_gate_engine_honors_minimum_and_maximum(self) -> None:
         gates = evaluate_gates(

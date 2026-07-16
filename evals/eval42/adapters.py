@@ -126,11 +126,15 @@ class HttpAdapter:
             self,
             case: DatasetCase,
             response: dict[str, Any],
-            started_at: float,
+        started_at: float,
     ) -> CaseResult:
         try:
-            retrieved = [_item(item) for item in response["retrieved_products"]]
-            eligible = [_item(item) for item in response["eligible_products"]]
+            retrieved = _deduplicate(
+                [_item(item) for item in response["retrieved_products"]]
+            )
+            eligible = _deduplicate(
+                [_item(item) for item in response["eligible_products"]]
+            )
         except (KeyError, TypeError, ValueError) as exception:
             raise AdapterError(f"target response shape is invalid: {exception}", False) from exception
         usage = dict(response.get("usage", {}))
@@ -159,6 +163,16 @@ def _item(payload: dict[str, Any]) -> RetrievedItem:
         rank=int(payload["rank"]),
         attributes=attributes,
     )
+
+
+def _deduplicate(items: list[RetrievedItem]) -> list[RetrievedItem]:
+    seen: set[str] = set()
+    result = []
+    for item in items:
+        if item.item_id not in seen:
+            seen.add(item.item_id)
+            result.append(item)
+    return result
 
 
 def _elapsed_ms(started_at: float) -> int:

@@ -32,9 +32,8 @@ def evaluate_case(case: DatasetCase, result: CaseResult, recall_k: int) -> CaseE
             failures.append("missing relevant products: " + ", ".join(missing))
 
     forbidden_hits = [item_id for item_id in eligible_ids if item_id in forbidden]
-    metrics["forbidden_item_rate"] = (
-        len(forbidden_hits) / len(eligible_ids) if eligible_ids else 0.0
-    )
+    if eligible_ids:
+        metrics["forbidden_item_rate"] = len(forbidden_hits) / len(eligible_ids)
     if forbidden_hits:
         failures.append("returned forbidden products: " + ", ".join(forbidden_hits))
 
@@ -47,14 +46,14 @@ def evaluate_case(case: DatasetCase, result: CaseResult, recall_k: int) -> CaseE
         failures.append("expected an empty result but products were returned")
 
     constraints = expected.get("constraints", {})
-    passed = sum(_passes_constraints(item, constraints) for item in result.eligible_items)
-    metrics["constraint_pass_rate"] = (
-        passed / len(result.eligible_items)
-        if result.eligible_items
-        else (1.0 if expected_empty else 0.0)
-    )
-    if passed != len(result.eligible_items):
-        failures.append("one or more eligible products violated hard constraints")
+    if result.eligible_items:
+        passed = sum(
+            _passes_constraints(item, constraints)
+            for item in result.eligible_items
+        )
+        metrics["constraint_pass_rate"] = passed / len(result.eligible_items)
+        if passed != len(result.eligible_items):
+            failures.append("one or more eligible products violated hard constraints")
 
     return CaseEvaluation(metrics=metrics, failures=tuple(failures))
 
