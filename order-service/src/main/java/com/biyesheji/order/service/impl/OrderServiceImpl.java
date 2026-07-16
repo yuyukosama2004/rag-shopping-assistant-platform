@@ -24,6 +24,7 @@ import com.biyesheji.order.mapper.ProductSkuMapper;
 import com.biyesheji.order.service.OrderService;
 import com.biyesheji.order.service.StockService;
 import com.biyesheji.order.service.ShippingRuleService;
+import com.biyesheji.order.service.OrderNotificationOutboxService;
 import com.biyesheji.utils.RedisUtil;
 import com.biyesheji.vo.OrderVO;
 import com.biyesheji.vo.MerchantDashboardVO;
@@ -62,6 +63,7 @@ public class OrderServiceImpl implements OrderService {
     private final StockService stockService;
     private final ShippingRuleService shippingRuleService;
     private final RedisUtil redisUtil;
+    private final OrderNotificationOutboxService notificationOutboxService;
 
     @Override
     @Transactional
@@ -98,6 +100,7 @@ public class OrderServiceImpl implements OrderService {
                 ProductSku sku = skus.get(item.getSkuId());
                 orderItemMapper.insert(createOrderItem(order, product, sku, item));
             }
+            notificationOutboxService.enqueue(orderNo, "ORDER_CREATED", OrderStatus.PENDING.getCode());
             created = true;
             redisUtil.set(dedupKey, orderNo, 5, TimeUnit.MINUTES);
             return orderNo;
@@ -156,6 +159,7 @@ public class OrderServiceImpl implements OrderService {
                     .isNull(Order::getPayTime));
             if (rows == 0) throw new BizException("货到付款订单只能在发货后确认收款");
             recordOperation(orderNo, operatorId, "MERCHANT_CONFIRM_COD_PAYMENT", "商家确认货到付款");
+            notificationOutboxService.enqueue(orderNo, "ORDER_PAYMENT_CONFIRMED", order.getStatus());
             return;
         }
         confirmPaymentInternal(operatorId, orderNo, "MERCHANT_CONFIRM_PAYMENT", "商家确认收款");
@@ -190,6 +194,7 @@ public class OrderServiceImpl implements OrderService {
             stockService.confirmDeduct(item.getSkuId(), item.getQuantity());
         }
         recordOperation(orderNo, operatorId, action, note);
+        notificationOutboxService.enqueue(orderNo, "ORDER_PAYMENT_CONFIRMED", OrderStatus.PAID.getCode());
     }
 
     @Override
@@ -203,6 +208,7 @@ public class OrderServiceImpl implements OrderService {
         }
         restoreOrderItems(orderNo);
         recordOperation(orderNo, userId, "CUSTOMER_CANCEL", "消费者取消订单");
+        notificationOutboxService.enqueue(orderNo, "ORDER_CANCELLED", OrderStatus.CANCELLED.getCode());
     }
 
     @Override
@@ -216,6 +222,7 @@ public class OrderServiceImpl implements OrderService {
                 .eq(Order::getStatus, OrderStatus.SHIPPED.getCode()));
         if (rows == 0) throw new BizException("订单不存在或尚未发货");
         recordOperation(orderNo, userId, "CUSTOMER_COMPLETE", "消费者确认收货");
+        notificationOutboxService.enqueue(orderNo, "ORDER_COMPLETED", OrderStatus.COMPLETED.getCode());
     }
 
     @Override
@@ -292,6 +299,7 @@ public class OrderServiceImpl implements OrderService {
         }
         restoreOrderItems(orderNo);
         recordOperation(orderNo, operatorId, "MERCHANT_CLOSE", reason.trim());
+        notificationOutboxService.enqueue(orderNo, "ORDER_CANCELLED", OrderStatus.CANCELLED.getCode());
     }
 
     @Override
@@ -307,6 +315,7 @@ public class OrderServiceImpl implements OrderService {
                 .eq(Order::getStatus, OrderStatus.PROCESSING.getCode()));
         if (rows == 0) throw new BizException("订单不存在或尚未接单处理");
         recordOperation(orderNo, operatorId, "MERCHANT_SHIP", dto.getNote());
+        notificationOutboxService.enqueue(orderNo, "ORDER_SHIPPED", OrderStatus.SHIPPED.getCode());
     }
 
     @Override

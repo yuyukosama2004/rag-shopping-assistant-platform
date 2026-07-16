@@ -20,6 +20,7 @@ const userStore = useUserStore()
         <el-menu-item index="/merchant/shipping-rules"><el-icon><Van /></el-icon><span>配送规则</span></el-menu-item>
         <el-menu-item index="/merchant/orders"><el-icon><Tickets /></el-icon><span>订单管理</span></el-menu-item>
         <el-menu-item index="/merchant/refunds"><el-icon><RefreshLeft /></el-icon><span>退款管理</span></el-menu-item>
+        <el-menu-item index="/merchant/notifications"><el-icon><Bell /></el-icon><span>通知记录</span></el-menu-item>
         <el-menu-item index="/merchant/ai"><el-icon><ChatDotRound /></el-icon><span>AI 导购</span></el-menu-item>
       </el-menu>
     </el-aside>

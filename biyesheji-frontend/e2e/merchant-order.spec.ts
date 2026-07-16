@@ -126,6 +126,14 @@ test('merchant publishes a product, customer orders it, and merchant ships it', 
     data: { carrier: '顺丰速运', trackingNo: `${trackingNo}-DUPLICATE` },
   })
   expect(duplicateShipment.status()).toBe(400)
+  const notifications = (await envelope<Array<{ orderNo: string; eventType: string; payload: string }>>(
+    await request.get(`${apiBaseUrl}/api/merchant/notifications`, { headers: ownerHeaders }),
+  )).data
+  expect(notifications).toEqual(expect.arrayContaining([
+    expect.objectContaining({ orderNo: submit.orderNo, eventType: 'ORDER_CREATED' }),
+    expect.objectContaining({ orderNo: submit.orderNo, eventType: 'ORDER_SHIPPED' }),
+  ]))
+  expect(notifications.every(event => !event.payload.includes('receiverPhone') && !event.payload.includes('merchantNote'))).toBeTruthy()
   const closeShippedOrder = await request.post(`${apiBaseUrl}/api/merchant/orders/${submit.orderNo}/close`, {
     headers: ownerHeaders,
     data: { reason: '不应允许关闭已发货订单' },
