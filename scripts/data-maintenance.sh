@@ -1,5 +1,65 @@
 #!/usr/bin/env bash
 
+validate_s3_media_env() {
+  [ -n "${MEDIA_S3_BUCKET:-}" ] || die "MEDIA_S3_BUCKET is required when MEDIA_STORAGE_TYPE=s3"
+  [ -n "${MEDIA_S3_ACCESS_KEY:-}" ] || die "MEDIA_S3_ACCESS_KEY is required for S3 backup and restore"
+  [ -n "${MEDIA_S3_SECRET_KEY:-}" ] || die "MEDIA_S3_SECRET_KEY is required for S3 backup and restore"
+}
+
+run_s3_cli() {
+  local bind_mount="$1"
+  shift
+  local -a command=(docker run --rm --network biyesheji-internal
+    -e "AWS_ACCESS_KEY_ID=$MEDIA_S3_ACCESS_KEY"
+    -e "AWS_SECRET_ACCESS_KEY=$MEDIA_S3_SECRET_KEY"
+    -e "AWS_DEFAULT_REGION=${MEDIA_S3_REGION:-us-east-1}"
+    -v "$bind_mount"
+    "${BACKUP_AWS_CLI_IMAGE:-amazon/aws-cli:2.27.55}")
+  if [ -n "${MEDIA_S3_ENDPOINT:-}" ]; then
+    command+=(--endpoint-url "$MEDIA_S3_ENDPOINT")
+  fi
+  command+=("$@")
+  "${command[@]}"
+}
+
+archive_product_media() {
+  local work_dir="$1" media_volume="$2"
+  if [ "${MEDIA_STORAGE_TYPE:-local}" = "s3" ]; then
+    validate_s3_media_env
+    mkdir "$work_dir/media"
+    run_s3_cli "$work_dir:/backup" s3 sync \
+      "s3://$MEDIA_S3_BUCKET/${MEDIA_S3_PREFIX:-product-media}" /backup/media --only-show-errors
+    tar -C "$work_dir/media" -czf "$work_dir/media.tar.gz" .
+  else
+    docker volume inspect "$media_volume" >/dev/null 2>&1 || die "Media volume not found: $media_volume"
+    docker run --rm \
+      -v "$media_volume:/data:ro" \
+      -v "$work_dir:/backup" \
+      "${BACKUP_TOOL_IMAGE:-alpine:3.20}" \
+      tar -C /data -czf /backup/media.tar.gz .
+  fi
+}
+
+restore_product_media() {
+  local work_dir="$1" media_volume="$2"
+  if [ "${MEDIA_STORAGE_TYPE:-local}" = "s3" ]; then
+    validate_s3_media_env
+    mkdir "$work_dir/media"
+    tar -C "$work_dir/media" -xzf "$work_dir/media.tar.gz"
+    run_s3_cli "$work_dir:/backup:ro" s3 rm \
+      "s3://$MEDIA_S3_BUCKET/${MEDIA_S3_PREFIX:-product-media}" --recursive --only-show-errors
+    run_s3_cli "$work_dir:/backup:ro" s3 sync /backup/media \
+      "s3://$MEDIA_S3_BUCKET/${MEDIA_S3_PREFIX:-product-media}" --only-show-errors
+  else
+    docker volume inspect "$media_volume" >/dev/null 2>&1 || die "Media volume not found: $media_volume"
+    docker run --rm \
+      -v "$media_volume:/data" \
+      -v "$work_dir:/backup:ro" \
+      "${BACKUP_TOOL_IMAGE:-alpine:3.20}" \
+      sh -c 'find /data -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +; tar -C /data -xzf /backup/media.tar.gz'
+  fi
+}
+
 backup_data() (
   set -euo pipefail
   load_env
@@ -14,7 +74,6 @@ backup_data() (
   mkdir -p "$backup_dir"
   backup_dir="$(cd "$backup_dir" && pwd -P)"
   [ "$backup_dir" != "/" ] || die "BACKUP_DIR must not be the filesystem root"
-  docker volume inspect "$media_volume" >/dev/null 2>&1 || die "Media volume not found: $media_volume"
 
   timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
   work_dir="$backup_dir/.tmp-$timestamp-$$"
@@ -28,11 +87,7 @@ backup_data() (
     mysqldump -uroot --single-transaction --routines --triggers biyesheji > "$work_dir/database.sql"
 
   info "Archiving product media"
-  docker run --rm \
-    -v "$media_volume:/data:ro" \
-    -v "$work_dir:/backup" \
-    "${BACKUP_TOOL_IMAGE:-alpine:3.20}" \
-    tar -C /data -czf /backup/media.tar.gz .
+  archive_product_media "$work_dir" "$media_volume"
 
   cat > "$work_dir/metadata.env" <<EOF
 BACKUP_FORMAT_VERSION=1
@@ -40,6 +95,7 @@ CREATED_AT_UTC=$timestamp
 SOURCE_GIT_COMMIT=$(git -C "$PROJECT_DIR" rev-parse HEAD 2>/dev/null || echo unknown)
 DATABASE_NAME=biyesheji
 MEDIA_VOLUME=$media_volume
+MEDIA_STORAGE_TYPE=${MEDIA_STORAGE_TYPE:-local}
 EOF
 
   tar -C "$work_dir" -czf "$plain_archive" database.sql media.tar.gz metadata.env
@@ -83,7 +139,6 @@ restore_data() (
   [ -s "$work_dir/database.sql" ] || die "Backup does not contain database.sql"
   [ -f "$work_dir/media.tar.gz" ] || die "Backup does not contain media.tar.gz"
   media_volume="${PRODUCT_MEDIA_VOLUME:-biyesheji-app_product-media}"
-  docker volume inspect "$media_volume" >/dev/null 2>&1 || die "Media volume not found: $media_volume"
 
   info "Stopping application services before restore"
   app_compose down
@@ -95,11 +150,7 @@ restore_data() (
     mysql -uroot biyesheji < "$work_dir/database.sql"
 
   info "Replacing product media"
-  docker run --rm \
-    -v "$media_volume:/data" \
-    -v "$work_dir:/backup:ro" \
-    "${BACKUP_TOOL_IMAGE:-alpine:3.20}" \
-    sh -c 'find /data -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +; tar -C /data -xzf /backup/media.tar.gz'
+  restore_product_media "$work_dir" "$media_volume"
   start_services
   info "Restore completed and services are healthy"
 )

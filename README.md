@@ -278,7 +278,28 @@ $env:OPENROUTER_API_KEY="你的 OpenRouter API Key"
 
 未配置 AI 密钥时，用户、商品、购物车和订单等基础电商功能仍可独立运行。
 
-### 4.1 配置订单 Webhook（可选）
+### 4.1 配置商品媒体存储（可选）
+
+默认使用 Docker 命名卷持久化商品图片。若商家已有 AWS S3、MinIO、Cloudflare R2
+或其他 S3 兼容对象存储，可在 `.env` 中切换：
+
+```dotenv
+MEDIA_STORAGE_TYPE=s3
+MEDIA_S3_ENDPOINT=https://s3-compatible.example
+MEDIA_S3_REGION=us-east-1
+MEDIA_S3_BUCKET=shop-media
+MEDIA_S3_ACCESS_KEY=replace-me
+MEDIA_S3_SECRET_KEY=replace-me
+MEDIA_S3_PATH_STYLE=true
+MEDIA_S3_PREFIX=product-media
+```
+
+AWS S3 可将 `MEDIA_S3_ENDPOINT` 留空，并按供应商要求设置 Region。应用只向消费者返回
+`/api/media/<id>`，Bucket 无需公开；访问密钥只授予指定 Bucket/前缀的读取、写入和删除权限。
+内置 `backup`/`restore` 会通过固定版本 AWS CLI 镜像同步对象，仍建议在对象存储侧启用版本控制、
+生命周期和跨位置备份。切换存储类型前须先迁移现有对象，否则旧图片 URL 虽保持不变但对象不存在。
+
+### 4.2 配置订单 Webhook（可选）
 
 商家可在 `.env` 中启用订单事件通知：
 

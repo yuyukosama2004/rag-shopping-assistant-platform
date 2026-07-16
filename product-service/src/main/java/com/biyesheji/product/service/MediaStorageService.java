@@ -1,8 +1,8 @@
 package com.biyesheji.product.service;
 
 import com.biyesheji.exception.BizException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -10,29 +10,27 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.UUID;
 
 @Service
 public class MediaStorageService {
-    private final Path root;
+    private final MediaObjectStore objectStore;
     private final long maxBytes;
 
-    public MediaStorageService(@Value("${media.storage-path:/data/media}") String storagePath,
+    @Autowired
+    public MediaStorageService(MediaObjectStore objectStore,
                                @Value("${media.max-bytes:5242880}") long maxBytes) {
-        this.root = Path.of(storagePath).toAbsolutePath().normalize();
+        this.objectStore = objectStore;
         this.maxBytes = maxBytes;
-        try {
-            Files.createDirectories(root);
-        } catch (IOException e) {
-            throw new IllegalStateException("无法创建媒体存储目录", e);
-        }
+    }
+
+    MediaStorageService(String storagePath, long maxBytes) {
+        this(new LocalMediaObjectStore(storagePath), maxBytes);
     }
 
     public String save(MultipartFile file) {
         if (file == null || file.isEmpty() || file.getSize() > maxBytes) {
-            throw new BizException(400, "图片不能为空且不能超过5MiB");
+            throw new BizException(400, "图片不能为空且不能超过配置的大小限制");
         }
         byte[] content;
         try {
@@ -49,27 +47,23 @@ public class MediaStorageService {
             throw new BizException(400, "图片格式无效");
         }
         String filename = UUID.randomUUID() + "." + format;
-        try {
-            Files.write(root.resolve(filename), content);
-        } catch (IOException e) {
-            throw new IllegalStateException("图片保存失败", e);
-        }
+        objectStore.put(filename, content, "png".equals(format) ? "image/png" : "image/jpeg");
         return "/api/media/" + filename;
     }
 
     public Resource load(String filename) {
-        if (!filename.matches("[0-9a-f-]{36}\\.(jpg|png)")) throw new BizException(404, "图片不存在");
-        Path file = root.resolve(filename).normalize();
-        if (!file.startsWith(root) || !Files.isRegularFile(file)) throw new BizException(404, "图片不存在");
-        return new FileSystemResource(file);
+        validateFilename(filename, 404);
+        return objectStore.get(filename);
     }
 
     public void delete(String filename) {
-        if (!filename.matches("[0-9a-f-]{36}\\.(jpg|png)")) throw new BizException(400, "图片标识无效");
-        try {
-            Files.deleteIfExists(root.resolve(filename).normalize());
-        } catch (IOException e) {
-            throw new IllegalStateException("图片删除失败", e);
+        validateFilename(filename, 400);
+        objectStore.delete(filename);
+    }
+
+    private void validateFilename(String filename, int code) {
+        if (filename == null || !filename.matches("[0-9a-f-]{36}\\.(jpg|png)")) {
+            throw new BizException(code, code == 404 ? "图片不存在" : "图片标识无效");
         }
     }
 
