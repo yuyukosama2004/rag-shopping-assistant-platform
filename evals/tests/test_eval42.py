@@ -36,6 +36,30 @@ class LoaderTest(unittest.TestCase):
             with self.assertRaisesRegex(DatasetError, "leaked into input"):
                 load_dataset(path)
 
+    def test_dataset_hash_is_independent_of_line_endings(self) -> None:
+        payload = {
+            "schema_version": "1",
+            "id": "portable",
+            "input": {"query": "phone"},
+            "expected": {"relevant_ids": [1]},
+            "tags": [],
+            "metadata": {
+                "dataset_version": "test",
+                "reviewed_by": "test",
+            },
+        }
+        line = json.dumps(payload)
+        with tempfile.TemporaryDirectory() as directory:
+            lf_path = Path(directory) / "lf.jsonl"
+            crlf_path = Path(directory) / "crlf.jsonl"
+            lf_path.write_bytes((line + "\n").encode("utf-8"))
+            crlf_path.write_bytes((line + "\r\n").encode("utf-8"))
+
+            _, lf_hash = load_dataset(lf_path)
+            _, crlf_hash = load_dataset(crlf_path)
+
+        self.assertEqual(lf_hash, crlf_hash)
+
 
 class MetricsTest(unittest.TestCase):
 
