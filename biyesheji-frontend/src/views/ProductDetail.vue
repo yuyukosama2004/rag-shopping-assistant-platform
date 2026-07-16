@@ -5,13 +5,21 @@ import { getProductDetail, getProductSkus } from '../api/product'
 import { addToCart } from '../api/order'
 import { getAddressList } from '../api/user'
 import { ElMessage } from 'element-plus'
+import { ApiRequestError, getErrorMessage } from '../api/request'
 
 const route = useRoute(); const router = useRouter()
 const product = ref<any>(null); const spec = ref<any>(null); const qty = ref(1)
 const skus = ref<any[]>([]); const selectedSku = ref<any>(null)
 const addresses = ref<any[]>([]); const selectedAddr = ref(0); const manualAddr = ref({ name: '', phone: '', address: '' })
+const loading = ref(true)
+const error = ref('')
+const unavailable = ref(false)
+const adding = ref(false)
 
-onMounted(async () => {
+const load = async () => {
+  loading.value = true
+  error.value = ''
+  unavailable.value = false
   try {
     const r = await getProductDetail(String(route.params.id))
     if (!r.data || !r.data.data) { return }
@@ -24,22 +32,36 @@ onMounted(async () => {
       const def = addresses.value.find((a: any) => a.isDefault === 1)
       if (def) { selectedAddr.value = def.id; manualAddr.value = { name: def.receiverName, phone: def.receiverPhone, address: def.detail } }
     } catch {}
-  } catch {}
-})
+  } catch (cause: any) {
+    const status = cause instanceof ApiRequestError ? cause.status : cause?.response?.status
+    unavailable.value = status === 404
+    error.value = unavailable.value ? '商品不存在或已下架' : getErrorMessage(cause, '商品加载失败，请稍后重试')
+  } finally { loading.value = false }
+}
+onMounted(load)
 const selectAddr = (a: any) => { selectedAddr.value = a.id; manualAddr.value = { name: a.receiverName, phone: a.receiverPhone, address: a.detail } }
+const selectSku = (sku: any) => { if (sku.available > 0) { selectedSku.value = sku; qty.value = 1 } }
 
 const skuLabel = (sku: any) => {
   try { return Object.entries(JSON.parse(sku.specJson || '{}')).map(([key, value]) => `${key}: ${String(value)}`).join(' / ') || sku.skuCode } catch { return sku.skuCode }
 }
 const addCart = async () => {
+  if (adding.value) return false
   if (!selectedSku.value) { ElMessage.warning('当前商品暂无可售规格'); return false }
+  if (qty.value > selectedSku.value.available) { ElMessage.warning('购买数量超过当前库存'); return false }
+  adding.value = true
   try { await addToCart(product.value.id, selectedSku.value.id, qty.value); ElMessage.success('已加入购物车'); return true } catch { return false }
+  finally { adding.value = false }
 }
 const goBuy = async () => { if (await addCart()) router.push('/checkout') }
 </script>
 
 <template>
-  <div v-if="product">
+  <div v-if="loading" v-loading="true" style="min-height:360px" />
+  <el-result v-else-if="error" :icon="unavailable ? 'warning' : 'error'" :title="error" :sub-title="unavailable ? '商品可能已被商家下架，请返回商品列表选择其他商品。' : '请检查网络后重试。'">
+    <template #extra><el-button v-if="!unavailable" type="primary" @click="load">重新加载</el-button><el-button @click="router.push('/products')">返回商品列表</el-button></template>
+  </el-result>
+  <div v-else-if="product">
     <div class="detail-wrap">
       <div class="detail-img"><img :src="product.mainImage||''" /></div>
       <div class="detail-info">
@@ -59,7 +81,7 @@ const goBuy = async () => { if (await addCart()) router.push('/checkout') }
           <div style="font-size:13px;color:#999;margin-bottom:6px">选择规格</div>
           <div style="display:flex;flex-wrap:wrap;gap:8px">
             <span v-for="sku in skus" :key="sku.id"
-              @click="sku.available > 0 && (selectedSku = sku)"
+              @click="selectSku(sku)"
               style="padding:6px 14px;border:1px solid #ddd;border-radius:2px;font-size:13px;cursor:pointer;min-width:80px;text-align:center"
               :style="selectedSku?.id===sku.id ? {borderColor:'var(--jd-red)',color:'var(--jd-red)',background:'#FFF0F0'} : sku.available > 0 ? {} : {color:'#bbb',background:'#f5f5f5',cursor:'not-allowed'}"
             >{{ skuLabel(sku) }}（{{ sku.available > 0 ? `库存 ${sku.available}` : '缺货' }}）</span>
@@ -90,9 +112,9 @@ const goBuy = async () => { if (await addCart()) router.push('/checkout') }
 
         <div style="display:flex;align-items:center;gap:12px">
           <span style="font-size:13px;color:#999">数量</span>
-          <el-input-number v-model="qty" :min="1" :max="99" size="small" style="width:120px" />
-          <el-button size="large" @click="addCart" style="width:160px">加入购物车</el-button>
-          <el-button size="large" type="danger" @click="goBuy" style="width:160px">立即购买</el-button>
+          <el-input-number v-model="qty" :min="1" :max="selectedSku?.available || 1" :disabled="!selectedSku || adding" size="small" style="width:120px" />
+          <el-button size="large" :loading="adding" :disabled="!selectedSku" @click="addCart" style="width:160px">加入购物车</el-button>
+          <el-button size="large" type="danger" :loading="adding" :disabled="!selectedSku" @click="goBuy" style="width:160px">立即购买</el-button>
         </div>
       </div>
     </div>
@@ -109,5 +131,5 @@ const goBuy = async () => { if (await addCart()) router.push('/checkout') }
       </div>
     </div>
   </div>
-  <el-empty v-else description="商品不存在" style="padding-top:60px" />
+  <el-empty v-else description="商品暂无可售内容" style="padding-top:60px" />
 </template>

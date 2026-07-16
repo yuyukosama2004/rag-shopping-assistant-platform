@@ -222,6 +222,21 @@ test('merchant publishes a product, customer orders it, and merchant ships it', 
   expect(await page.locator('img[src="x"]').count()).toBe(0)
   expect(await page.evaluate(() => (window as typeof window & { __biyeshejiXss?: number }).__biyeshejiXss)).toBeUndefined()
 
+  await envelope(await request.put(`${apiBaseUrl}/api/merchant/products/skus/${xssSku.id}/stock`, {
+    headers: ownerHeaders,
+    data: { quantity: -1, reason: 'Playwright 验证售罄状态' },
+  }))
+  await page.reload()
+  await expect(page.getByText('缺货', { exact: false })).toBeVisible()
+  await expect(page.getByRole('button', { name: '加入购物车' })).toBeDisabled()
+
+  await page.route('**/api/product/page**', route => route.abort())
+  await page.goto(`/products?keyword=network-${suffix}`)
+  await expect(page.locator('.el-alert__title').filter({ hasText: '网络连接失败，请检查网络后重试' })).toBeVisible()
+  await page.unroute('**/api/product/page**')
+  await page.goto(`/products?keyword=missing-${suffix}`)
+  await expect(page.getByText(`没有找到“missing-${suffix}”相关商品`)).toBeVisible()
+
   const maliciousUpload = await request.post(`${apiBaseUrl}/api/merchant/media`, {
     headers: ownerHeaders,
     multipart: {
