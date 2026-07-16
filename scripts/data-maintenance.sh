@@ -9,10 +9,13 @@ validate_s3_media_env() {
 run_s3_cli() {
   local bind_mount="$1"
   shift
+  export AWS_ACCESS_KEY_ID="$MEDIA_S3_ACCESS_KEY"
+  export AWS_SECRET_ACCESS_KEY="$MEDIA_S3_SECRET_KEY"
+  export AWS_DEFAULT_REGION="${MEDIA_S3_REGION:-us-east-1}"
   local -a command=(docker run --rm --network biyesheji-internal
-    -e "AWS_ACCESS_KEY_ID=$MEDIA_S3_ACCESS_KEY"
-    -e "AWS_SECRET_ACCESS_KEY=$MEDIA_S3_SECRET_KEY"
-    -e "AWS_DEFAULT_REGION=${MEDIA_S3_REGION:-us-east-1}"
+    -e AWS_ACCESS_KEY_ID
+    -e AWS_SECRET_ACCESS_KEY
+    -e AWS_DEFAULT_REGION
     -v "$bind_mount"
     "${BACKUP_AWS_CLI_IMAGE:-amazon/aws-cli:2.27.55}")
   if [ -n "${MEDIA_S3_ENDPOINT:-}" ]; then
