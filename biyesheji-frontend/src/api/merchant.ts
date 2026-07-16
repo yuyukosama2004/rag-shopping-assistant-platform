@@ -232,6 +232,19 @@ export interface MerchantAiIndexTask {
   createdAt: string
 }
 
+export interface MerchantOrderNotification {
+  id: number
+  eventId: string
+  eventType: string
+  orderNo: string
+  status: 'PENDING' | 'RUNNING' | 'RETRY' | 'SUCCESS' | 'FAILED'
+  attempts: number
+  nextAttemptAt?: string
+  lastError?: string
+  deliveredAt?: string
+  createdAt: string
+}
+
 export function getPublicStoreSetting() {
   return request.get('/api/store/setting')
 }
@@ -295,3 +308,5 @@ export function updateMerchantAiKnowledge(id: number, data: MerchantAiKnowledgeI
 export function deleteMerchantAiKnowledge(id: number) { return request.delete(`/api/merchant/ai/knowledge/${id}`) }
 export function getMerchantAiIndexTasks() { return request.get('/api/merchant/ai/index-tasks') }
 export function retryMerchantAiIndexTask(id: number) { return request.post(`/api/merchant/ai/index-tasks/${id}/retry`) }
+export function getMerchantOrderNotifications() { return request.get('/api/merchant/notifications') }
+export function retryMerchantOrderNotification(id: number) { return request.post(`/api/merchant/notifications/${id}/retry`) }

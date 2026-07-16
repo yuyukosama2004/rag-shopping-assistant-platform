@@ -278,6 +278,22 @@ $env:OPENROUTER_API_KEY="你的 OpenRouter API Key"
 
 未配置 AI 密钥时，用户、商品、购物车和订单等基础电商功能仍可独立运行。
 
+### 4.1 配置订单 Webhook（可选）
+
+商家可在 `.env` 中启用订单事件通知：
+
+```dotenv
+ORDER_WEBHOOK_ENABLED=true
+ORDER_WEBHOOK_URL=https://merchant.example/webhooks/orders
+ORDER_WEBHOOK_SECRET=请使用至少32字符的独立随机签名密钥
+```
+
+系统对订单创建、取消、确认收款、发货和完成事件使用事务 Outbox 持久化，并在失败时指数退避重试。
+请求包含 `X-Webhook-Id`、`X-Webhook-Event` 和
+`X-Webhook-Signature: sha256=<HMAC-SHA256>`；签名原文是未经修改的 JSON 请求体。
+接收方应按 `X-Webhook-Id` 幂等处理。Webhook 负载只含事件、订单号和状态，不包含密码、Token、
+收货信息或商家内部备注。正式环境应使用 HTTPS，签名密钥不得与 JWT、数据库或备份密钥复用。
+
 ### 5. 构建后端
 
 使用本机 Maven：

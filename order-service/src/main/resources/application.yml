@@ -73,6 +73,14 @@ jwt:
   access-token-expire: 7200
   refresh-token-expire: 604800
 
+notification:
+  webhook:
+    enabled: ${ORDER_WEBHOOK_ENABLED:false}
+    url: ${ORDER_WEBHOOK_URL:}
+    secret: ${ORDER_WEBHOOK_SECRET:}
+    max-attempts: ${ORDER_WEBHOOK_MAX_ATTEMPTS:6}
+    dispatch-delay-ms: ${ORDER_WEBHOOK_DISPATCH_DELAY_MS:10000}
+
 ai:
   system-prompt: |
     你是拥有5年经验的手机评测师。系统已通过RAG语义检索为你匹配了最相关的机型。

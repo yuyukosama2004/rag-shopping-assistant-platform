@@ -43,13 +43,14 @@ class FlywayMigrationIntegrationTest {
                 .load();
 
         MigrateResult first = flyway.migrate();
-        assertEquals(16, first.migrationsExecuted);
+        assertEquals(17, first.migrationsExecuted);
         assertTrue(columnExists("t_product_sku", "sku_code"));
         assertTrue(columnExists("t_stock", "sku_id"));
         assertTrue(columnExists("t_order", "tracking_no"));
         assertTrue(columnExists("t_order", "merchant_note"));
         assertTrue(tableExists("t_shipping_rule"));
         assertTrue(tableExists("t_ai_setting"));
+        assertTrue(tableExists("t_order_notification_outbox"));
 
         MigrateResult second = flyway.migrate();
         assertEquals(0, second.migrationsExecuted);

@@ -33,6 +33,7 @@ const routes = [
       { path: 'orders', name: 'MerchantOrders', component: () => import('../views/MerchantOrders.vue') },
       { path: 'shipping-rules', name: 'MerchantShippingRules', component: () => import('../views/MerchantShippingRules.vue') },
       { path: 'refunds', name: 'MerchantRefunds', component: () => import('../views/MerchantRefunds.vue') },
+      { path: 'notifications', name: 'MerchantNotifications', component: () => import('../views/MerchantNotifications.vue') },
       { path: 'ai', name: 'MerchantAiSetting', component: () => import('../views/MerchantAiSetting.vue') },
     ],
   },

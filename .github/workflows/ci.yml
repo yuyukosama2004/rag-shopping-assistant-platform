@@ -67,6 +67,9 @@ jobs:
           sed -i 's|^JWT_SECRET=.*|JWT_SECRET=ci-jwt-secret-that-is-at-least-thirty-two-bytes|' .env
           sed -i 's|^GATEWAY_HOST_PORT=.*|GATEWAY_HOST_PORT=18080|' .env
           sed -i 's|^CORS_ALLOWED_ORIGIN_PATTERN=.*|CORS_ALLOWED_ORIGIN_PATTERN=http://127.0.0.1:4173|' .env
+          sed -i 's|^ORDER_WEBHOOK_ENABLED=.*|ORDER_WEBHOOK_ENABLED=true|' .env
+          sed -i 's|^ORDER_WEBHOOK_URL=.*|ORDER_WEBHOOK_URL=http://127.0.0.1:9/order-events|' .env
+          sed -i 's|^ORDER_WEBHOOK_SECRET=.*|ORDER_WEBHOOK_SECRET=ci-order-webhook-secret-at-least-32-bytes|' .env
       - name: Start infrastructure
         run: docker compose --env-file .env -f docker/docker-compose.infrastructure.yml up -d --wait --wait-timeout 180
       - name: Build and start application services

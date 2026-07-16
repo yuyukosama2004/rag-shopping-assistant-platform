@@ -17,6 +17,7 @@ import com.biyesheji.order.mapper.OrderOperationMapper;
 import com.biyesheji.order.mapper.ProductMapper;
 import com.biyesheji.order.mapper.ProductSkuMapper;
 import com.biyesheji.order.service.StockService;
+import com.biyesheji.order.service.OrderNotificationOutboxService;
 import com.biyesheji.order.service.ShippingRuleService;
 import com.biyesheji.utils.RedisUtil;
 import org.junit.jupiter.api.Test;
@@ -54,6 +55,7 @@ class OrderServiceImplTest {
     @Mock private StockService stockService;
     @Mock private ShippingRuleService shippingRuleService;
     @Mock private RedisUtil redisUtil;
+    @Mock private OrderNotificationOutboxService notificationOutboxService;
     @InjectMocks private OrderServiceImpl orderService;
 
     @Test
