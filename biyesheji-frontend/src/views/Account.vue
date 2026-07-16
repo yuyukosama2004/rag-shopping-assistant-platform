@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getAddressList, addAddress, updateAddress, deleteAddress, setDefaultAddress } from '../api/user'
+import { getAddressList, addAddress, updateAddress, deleteAddress, setDefaultAddress, exportAccountData, deleteAccount } from '../api/user'
 import { getOrderPage } from '../api/order'
 import { ElMessage } from 'element-plus'
+import { useUserStore } from '../stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 const tab = ref('info')
 
 // 地址
@@ -13,15 +15,10 @@ const addresses = ref<any[]>([])
 const load = async () => {
   try {
     const r = await getAddressList();
-    console.log('地址列表', r.data);
     addresses.value = r.data.data || [];
-    if (addresses.value.length === 0) console.log('地址为空')
   } catch (e: any) { ElMessage.error('加载地址失败:' + (e?.response?.data?.message || '网络错误')) }
 }
-onMounted(() => {
-console.log('加载地址');
-  load()
-})
+onMounted(load)
 
 // 新增地址表单
 const nName = ref(''); const nPhone = ref(''); const nAddr = ref('')
@@ -50,6 +47,37 @@ const doSetDef = async (id: number) => { try { await setDefaultAddress(id); load
 
 const orders = ref<any[]>([])
 onMounted(async () => { try { const r = await getOrderPage({ pageNum:1, pageSize:10 }); orders.value = r.data.data.records } catch {} })
+
+const exporting = ref(false)
+const deleteVisible = ref(false)
+const deleting = ref(false)
+const deletePassword = ref('')
+const deletePhrase = ref('')
+const downloadExport = async () => {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    const data = (await exportAccountData()).data.data
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `account-export-${new Date().toISOString().slice(0, 10)}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('账户资料已导出')
+  } catch {} finally { exporting.value = false }
+}
+const confirmDelete = async () => {
+  if (!deletePassword.value) return ElMessage.warning('请输入当前密码')
+  if (deletePhrase.value !== '注销账户') return ElMessage.warning('请输入“注销账户”完成确认')
+  deleting.value = true
+  try {
+    await deleteAccount(deletePassword.value)
+    userStore.clearSession()
+    ElMessage.success('账户已注销，历史订单将按履约和合规要求保留')
+    await router.replace('/login')
+  } catch {} finally { deleting.value = false }
+}
 </script>
 
 <template>
@@ -93,6 +121,13 @@ onMounted(async () => { try { const r = await getOrderPage({ pageNum:1, pageSize
           <button @click="doAdd" style="padding:5px 16px;background:var(--jd-red);color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:12px">添加</button>
         </div>
       </div>
+
+      <div style="border-top:1px solid #eee;margin-top:20px;padding-top:16px">
+        <h4 style="margin-bottom:8px">数据与账户</h4>
+        <p style="color:#666;font-size:13px;line-height:1.7;margin-bottom:10px">你可以导出个人资料、地址和订单记录。导出内容不包含密码、Token 或商家内部备注。</p>
+        <el-button :loading="exporting" @click="downloadExport">导出账户资料（JSON）</el-button>
+        <el-button type="danger" plain @click="deleteVisible = true">注销账户</el-button>
+      </div>
     </div>
 
     <div v-if="tab==='orders'">
@@ -106,5 +141,14 @@ onMounted(async () => { try { const r = await getOrderPage({ pageNum:1, pageSize
         </div>
       </div>
     </div>
+
+    <el-dialog v-model="deleteVisible" title="注销账户" width="min(480px, 92vw)" :close-on-click-modal="!deleting">
+      <el-alert title="注销后将无法登录，地址和购物车会被清除；历史订单会为履约、售后及合规要求保留。进行中的订单或待处理退款会阻止注销。" type="warning" show-icon :closable="false" />
+      <el-form label-position="top" style="margin-top:16px">
+        <el-form-item label="当前密码" required><el-input v-model="deletePassword" type="password" show-password autocomplete="current-password" /></el-form-item>
+        <el-form-item label="输入“注销账户”确认" required><el-input v-model="deletePhrase" autocomplete="off" /></el-form-item>
+      </el-form>
+      <template #footer><el-button :disabled="deleting" @click="deleteVisible = false">取消</el-button><el-button type="danger" :loading="deleting" @click="confirmDelete">确认注销</el-button></template>
+    </el-dialog>
   </div>
 </template>

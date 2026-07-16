@@ -20,6 +20,14 @@ export function updateUserInfo(data: any) {
   return request.put('/api/user/info', data)
 }
 
+export function exportAccountData() {
+  return request.get('/api/user/export')
+}
+
+export function deleteAccount(password: string) {
+  return request.delete('/api/user/account', { data: { password, confirmation: 'DELETE_ACCOUNT' } })
+}
+
 // 地址管理
 export function getAddressList() {
   return request.get('/api/user/address')
