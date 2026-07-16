@@ -186,6 +186,8 @@ jobs:
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
           skip-setup-trivy: ${{ runner.environment == 'self-hosted' }}
+          cache: ${{ runner.environment != 'self-hosted' }}
+          cache-dir: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/.cache/trivy', github.workspace) }}
           scan-type: fs
           scan-ref: .
           version: v0.69.3
@@ -215,6 +217,8 @@ jobs:
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
           skip-setup-trivy: ${{ runner.environment == 'self-hosted' }}
+          cache: ${{ runner.environment != 'self-hosted' }}
+          cache-dir: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/.cache/trivy', github.workspace) }}
           image-ref: biyesheji-user-service:ci
           version: v0.69.3
           scanners: vuln
@@ -225,6 +229,8 @@ jobs:
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
           skip-setup-trivy: ${{ runner.environment == 'self-hosted' }}
+          cache: ${{ runner.environment != 'self-hosted' }}
+          cache-dir: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/.cache/trivy', github.workspace) }}
           image-ref: biyesheji-product-service:ci
           version: v0.69.3
           scanners: vuln
@@ -235,6 +241,8 @@ jobs:
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
           skip-setup-trivy: ${{ runner.environment == 'self-hosted' }}
+          cache: ${{ runner.environment != 'self-hosted' }}
+          cache-dir: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/.cache/trivy', github.workspace) }}
           image-ref: biyesheji-order-service:ci
           version: v0.69.3
           scanners: vuln
@@ -245,6 +253,8 @@ jobs:
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
           skip-setup-trivy: ${{ runner.environment == 'self-hosted' }}
+          cache: ${{ runner.environment != 'self-hosted' }}
+          cache-dir: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/.cache/trivy', github.workspace) }}
           image-ref: biyesheji-gateway-service:ci
           version: v0.69.3
           scanners: vuln
@@ -274,6 +284,8 @@ jobs:
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
           skip-setup-trivy: ${{ runner.environment == 'self-hosted' }}
+          cache: ${{ runner.environment != 'self-hosted' }}
+          cache-dir: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/.cache/trivy', github.workspace) }}
           image-ref: ${{ matrix.image }}
           version: v0.69.3
           scanners: vuln
@@ -313,6 +325,8 @@ jobs:
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
           skip-setup-trivy: ${{ runner.environment == 'self-hosted' }}
+          cache: ${{ runner.environment != 'self-hosted' }}
+          cache-dir: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/.cache/trivy', github.workspace) }}
           image-ref: ${{ matrix.image }}
           version: v0.69.3
           scanners: vuln
