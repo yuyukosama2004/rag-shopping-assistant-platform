@@ -11,6 +11,7 @@ vi.mock('./request', () => ({ default: request }))
 
 import {
   closeMerchantOrder,
+  getMerchantInventory,
   getMerchantOrderDetail,
   getMerchantProducts,
   shipMerchantOrder,
@@ -47,5 +48,12 @@ describe('merchant API client', () => {
     expect(request.get).toHaveBeenCalledWith('/api/merchant/orders/ORDER-42')
     expect(request.put).toHaveBeenCalledWith('/api/merchant/orders/ORDER-42/note', { note: '周末送达' })
     expect(request.post).toHaveBeenCalledWith('/api/merchant/orders/ORDER-42/close', { reason: '无法配送' })
+  })
+
+  it('filters the inventory workbench without sending an empty keyword', () => {
+    getMerchantInventory(3, 50, '', true)
+    expect(request.get).toHaveBeenCalledWith('/api/merchant/inventory', {
+      params: { pageNum: 3, pageSize: 50, keyword: undefined, lowStockOnly: true },
+    })
   })
 })

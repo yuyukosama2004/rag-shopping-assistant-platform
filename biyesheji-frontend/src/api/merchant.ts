@@ -105,6 +105,25 @@ export interface MerchantStockLedger {
   createTime?: string
 }
 
+export interface MerchantInventoryItem {
+  productId: number
+  productName: string
+  productStatus: number
+  skuId: number
+  skuCode: string
+  specJson?: string
+  skuStatus: number
+  total: number
+  locked: number
+  available: number
+  updatedAt?: string
+}
+
+export interface MerchantInventorySummary {
+  lowStockCount: number
+  threshold: number
+}
+
 export interface MerchantOrder {
   id: number
   orderNo: string
@@ -250,6 +269,8 @@ export function updateMerchantSku(skuId: number, data: MerchantSkuUpdateInput) {
 export function getMerchantSkuStock(skuId: number) { return request.get(`/api/merchant/products/skus/${skuId}/stock`) }
 export function adjustMerchantSkuStock(skuId: number, quantity: number, reason: string) { return request.put(`/api/merchant/products/skus/${skuId}/stock`, { quantity, reason }) }
 export function getMerchantSkuStockLedger(skuId: number) { return request.get(`/api/merchant/products/skus/${skuId}/stock/ledger`) }
+export function getMerchantInventory(pageNum = 1, pageSize = 20, keyword = '', lowStockOnly = false) { return request.get('/api/merchant/inventory', { params: { pageNum, pageSize, keyword: keyword || undefined, lowStockOnly } }) }
+export function getMerchantInventorySummary() { return request.get('/api/merchant/inventory/summary') }
 export function getMerchantOrders(pageNum = 1, pageSize = 20, status?: number) { return request.get('/api/merchant/orders', { params: { pageNum, pageSize, status } }) }
 export function getMerchantOrderDetail(orderNo: string) { return request.get(`/api/merchant/orders/${orderNo}`) }
 export function updateMerchantOrderNote(orderNo: string, note: string) { return request.put(`/api/merchant/orders/${orderNo}/note`, { note }) }
