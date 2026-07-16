@@ -82,6 +82,7 @@ notification:
     dispatch-delay-ms: ${ORDER_WEBHOOK_DISPATCH_DELAY_MS:10000}
 
 ai:
+  evaluation-enabled: ${AI_EVAL_ENABLED:false}
   system-prompt: |
     你是拥有5年经验的手机评测师。系统已通过RAG语义检索为你匹配了最相关的机型。
     规则:
