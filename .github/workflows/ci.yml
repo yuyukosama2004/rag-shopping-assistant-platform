@@ -11,11 +11,10 @@ permissions:
 
 jobs:
   backend:
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
-        if: runner.environment != 'self-hosted'
         with:
           distribution: temurin
           java-version: '17'
@@ -24,11 +23,10 @@ jobs:
         run: ./mvnw -B verify
 
   frontend:
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        if: runner.environment != 'self-hosted'
         with:
           node-version: '22'
           cache: npm
@@ -47,19 +45,17 @@ jobs:
         run: npm audit --audit-level=high
 
   full-stack-e2e:
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     needs: [backend, frontend]
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
-        if: runner.environment != 'self-hosted'
         with:
           distribution: temurin
           java-version: '17'
           cache: maven
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        if: runner.environment != 'self-hosted'
         with:
           node-version: '22'
           cache: npm
@@ -124,7 +120,7 @@ jobs:
           rm -f .env
 
   configuration:
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     env:
       MYSQL_ROOT_PASSWORD: ci-mysql-password
       REDIS_PASSWORD: ci-redis-password
@@ -173,7 +169,7 @@ jobs:
             check-config /etc/alertmanager/alertmanager.yml
 
   source-security:
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: read
@@ -189,16 +185,15 @@ jobs:
         run: gitleaks detect --source . --redact -v --exit-code=2 --no-banner
       - name: Scan source, dependencies, and configuration
         env:
-          TRIVY_CACHE_DIR: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/trivy-cache', runner.temp) }}
+          TRIVY_CACHE_DIR: ${{ format('{0}/trivy-cache', runner.temp) }}
         run: bash scripts/ci-trivy-scan.sh fs . .trivyignore.yaml
 
   image-security:
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     needs: backend
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
-        if: runner.environment != 'self-hosted'
         with:
           distribution: temurin
           java-version: '17'
@@ -215,23 +210,23 @@ jobs:
         run: bash scripts/ci-install-security-tools.sh trivy
       - name: Scan user service image
         env:
-          TRIVY_CACHE_DIR: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/trivy-cache', runner.temp) }}
+          TRIVY_CACHE_DIR: ${{ format('{0}/trivy-cache', runner.temp) }}
         run: bash scripts/ci-trivy-scan.sh image biyesheji-user-service:ci
       - name: Scan product service image
         env:
-          TRIVY_CACHE_DIR: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/trivy-cache', runner.temp) }}
+          TRIVY_CACHE_DIR: ${{ format('{0}/trivy-cache', runner.temp) }}
         run: bash scripts/ci-trivy-scan.sh image biyesheji-product-service:ci
       - name: Scan order service image
         env:
-          TRIVY_CACHE_DIR: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/trivy-cache', runner.temp) }}
+          TRIVY_CACHE_DIR: ${{ format('{0}/trivy-cache', runner.temp) }}
         run: bash scripts/ci-trivy-scan.sh image biyesheji-order-service:ci
       - name: Scan gateway service image
         env:
-          TRIVY_CACHE_DIR: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/trivy-cache', runner.temp) }}
+          TRIVY_CACHE_DIR: ${{ format('{0}/trivy-cache', runner.temp) }}
         run: bash scripts/ci-trivy-scan.sh image biyesheji-gateway-service:ci
 
   observability-image-security:
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -254,11 +249,11 @@ jobs:
         run: bash scripts/ci-install-security-tools.sh trivy
       - name: Scan ${{ matrix.component }} image
         env:
-          TRIVY_CACHE_DIR: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/trivy-cache', runner.temp) }}
+          TRIVY_CACHE_DIR: ${{ format('{0}/trivy-cache', runner.temp) }}
         run: bash scripts/ci-trivy-scan.sh image "${{ matrix.image }}" "${{ matrix.trivyignores }}"
 
   infrastructure-image-security:
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -290,5 +285,5 @@ jobs:
         run: bash scripts/ci-install-security-tools.sh trivy
       - name: Scan ${{ matrix.component }} image
         env:
-          TRIVY_CACHE_DIR: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/trivy-cache', runner.temp) }}
+          TRIVY_CACHE_DIR: ${{ format('{0}/trivy-cache', runner.temp) }}
         run: bash scripts/ci-trivy-scan.sh image "${{ matrix.image }}" "${{ matrix.trivyignores }}"
