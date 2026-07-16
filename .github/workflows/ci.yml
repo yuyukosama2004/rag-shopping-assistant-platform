@@ -140,7 +140,7 @@ jobs:
           docker compose --env-file .env -f docker/docker-compose.app.yml config -q
           docker compose --env-file .env -f docker/docker-compose.observability.yml config -q
       - name: Validate shell syntax
-        run: bash -n start.sh deploy/e5-deploy.sh deploy/e5-ctl.sh deploy/setup-tls.sh scripts/smoke-test.sh scripts/data-maintenance.sh scripts/release-maintenance.sh scripts/ci-fault-drill.sh
+        run: bash -n start.sh deploy/e5-deploy.sh deploy/e5-ctl.sh deploy/setup-tls.sh scripts/smoke-test.sh scripts/data-maintenance.sh scripts/release-maintenance.sh scripts/ci-fault-drill.sh scripts/ci-install-security-tools.sh scripts/ci-trivy-scan.sh
       - name: Validate Nginx syntax template
         run: |
           docker build -f docker/Dockerfile.nginx-validation -t biyesheji-nginx-validation:ci .
@@ -181,29 +181,16 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
-      - name: Scan Git history for leaked secrets
-        if: runner.environment != 'self-hosted'
-        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+      - name: Prepare pinned security scanners
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_ENABLE_COMMENTS: false
-      - name: Scan complete Git history with preinstalled Gitleaks
-        if: runner.environment == 'self-hosted'
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/ci-install-security-tools.sh gitleaks trivy
+      - name: Scan complete Git history for leaked secrets
         run: gitleaks detect --source . --redact -v --exit-code=2 --no-banner
       - name: Scan source, dependencies, and configuration
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
-        with:
-          skip-setup-trivy: ${{ runner.environment == 'self-hosted' }}
-          cache: ${{ runner.environment != 'self-hosted' }}
-          cache-dir: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/.cache/trivy', github.workspace) }}
-          scan-type: fs
-          scan-ref: .
-          version: v0.69.3
-          scanners: vuln,misconfig
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          trivyignores: .trivyignore.yaml
-          exit-code: 1
+        env:
+          TRIVY_CACHE_DIR: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/trivy-cache', runner.temp) }}
+        run: bash scripts/ci-trivy-scan.sh fs . .trivyignore.yaml
 
   image-security:
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
@@ -222,54 +209,26 @@ jobs:
           cp .env.example .env
           trap 'rm -f .env' EXIT
           APP_IMAGE_TAG=ci docker compose --env-file .env -f docker/docker-compose.app.yml build
+      - name: Prepare pinned Trivy scanner
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/ci-install-security-tools.sh trivy
       - name: Scan user service image
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
-        with:
-          skip-setup-trivy: ${{ runner.environment == 'self-hosted' }}
-          cache: ${{ runner.environment != 'self-hosted' }}
-          cache-dir: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/.cache/trivy', github.workspace) }}
-          image-ref: biyesheji-user-service:ci
-          version: v0.69.3
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: 1
+        env:
+          TRIVY_CACHE_DIR: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/trivy-cache', runner.temp) }}
+        run: bash scripts/ci-trivy-scan.sh image biyesheji-user-service:ci
       - name: Scan product service image
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
-        with:
-          skip-setup-trivy: ${{ runner.environment == 'self-hosted' }}
-          cache: ${{ runner.environment != 'self-hosted' }}
-          cache-dir: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/.cache/trivy', github.workspace) }}
-          image-ref: biyesheji-product-service:ci
-          version: v0.69.3
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: 1
+        env:
+          TRIVY_CACHE_DIR: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/trivy-cache', runner.temp) }}
+        run: bash scripts/ci-trivy-scan.sh image biyesheji-product-service:ci
       - name: Scan order service image
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
-        with:
-          skip-setup-trivy: ${{ runner.environment == 'self-hosted' }}
-          cache: ${{ runner.environment != 'self-hosted' }}
-          cache-dir: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/.cache/trivy', github.workspace) }}
-          image-ref: biyesheji-order-service:ci
-          version: v0.69.3
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: 1
+        env:
+          TRIVY_CACHE_DIR: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/trivy-cache', runner.temp) }}
+        run: bash scripts/ci-trivy-scan.sh image biyesheji-order-service:ci
       - name: Scan gateway service image
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
-        with:
-          skip-setup-trivy: ${{ runner.environment == 'self-hosted' }}
-          cache: ${{ runner.environment != 'self-hosted' }}
-          cache-dir: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/.cache/trivy', github.workspace) }}
-          image-ref: biyesheji-gateway-service:ci
-          version: v0.69.3
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: 1
+        env:
+          TRIVY_CACHE_DIR: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/trivy-cache', runner.temp) }}
+        run: bash scripts/ci-trivy-scan.sh image biyesheji-gateway-service:ci
 
   observability-image-security:
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
@@ -289,19 +248,14 @@ jobs:
     name: observability-image-security (${{ matrix.component }})
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Prepare pinned Trivy scanner
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/ci-install-security-tools.sh trivy
       - name: Scan ${{ matrix.component }} image
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
-        with:
-          skip-setup-trivy: ${{ runner.environment == 'self-hosted' }}
-          cache: ${{ runner.environment != 'self-hosted' }}
-          cache-dir: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/.cache/trivy', github.workspace) }}
-          image-ref: ${{ matrix.image }}
-          version: v0.69.3
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          trivyignores: ${{ matrix.trivyignores }}
-          exit-code: 1
+        env:
+          TRIVY_CACHE_DIR: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/trivy-cache', runner.temp) }}
+        run: bash scripts/ci-trivy-scan.sh image "${{ matrix.image }}" "${{ matrix.trivyignores }}"
 
   infrastructure-image-security:
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
@@ -330,16 +284,11 @@ jobs:
       - name: Verify MySQL privilege-drop wrapper
         if: matrix.component == 'mysql'
         run: docker run --rm --entrypoint /bin/sh "${{ matrix.image }}" -ec 'test "$(head -n 1 /usr/local/bin/gosu)" = "#!/bin/sh"; ! grep -aq "Go build" /usr/local/bin/gosu'
+      - name: Prepare pinned Trivy scanner
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/ci-install-security-tools.sh trivy
       - name: Scan ${{ matrix.component }} image
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
-        with:
-          skip-setup-trivy: ${{ runner.environment == 'self-hosted' }}
-          cache: ${{ runner.environment != 'self-hosted' }}
-          cache-dir: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/.cache/trivy', github.workspace) }}
-          image-ref: ${{ matrix.image }}
-          version: v0.69.3
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          trivyignores: ${{ matrix.trivyignores }}
-          exit-code: 1
+        env:
+          TRIVY_CACHE_DIR: ${{ runner.environment == 'self-hosted' && '/home/runner/_work/_trivy_cache' || format('{0}/trivy-cache', runner.temp) }}
+        run: bash scripts/ci-trivy-scan.sh image "${{ matrix.image }}" "${{ matrix.trivyignores }}"
