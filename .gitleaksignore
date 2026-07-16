@@ -1,0 +1,5 @@
+# Historical localhost RabbitMQ health checks used the standard development-only
+# credentials. Keep these exact fingerprints as an auditable baseline while all
+# new occurrences of curl basic-auth credentials continue to fail CI.
+bcf10ffa8b74b2f802e68bac0c67f96f2d3784f7:.claude/settings.local.json:curl-auth-user:26
+c94d51464d4f8c1c8604b408154e2e7ffe4c299c:.claude/settings.local.json:curl-auth-user:12
