@@ -33,6 +33,8 @@ args=(
   --severity HIGH,CRITICAL
   --ignore-unfixed
   --no-progress
+  --skip-version-check
+  --timeout "${TRIVY_TIMEOUT:-15m}"
   --exit-code 1
 )
 
