@@ -33,11 +33,11 @@ class InventoryServiceImplTest {
 
     @Test
     void returnsConfiguredThresholdWithLowStockCount() {
-        when(inventoryMapper.countLowStock(8)).thenReturn(3L);
+        when(inventoryMapper.countLowStock(8)).thenReturn(3);
 
         var summary = service.summary(8);
 
-        assertEquals(3L, summary.getLowStockCount());
+        assertEquals(3, summary.getLowStockCount());
         assertEquals(8, summary.getThreshold());
     }
 }

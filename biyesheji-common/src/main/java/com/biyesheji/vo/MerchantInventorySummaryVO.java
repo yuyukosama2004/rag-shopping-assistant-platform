@@ -6,6 +6,6 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 public class MerchantInventorySummaryVO {
-    private long lowStockCount;
+    private int lowStockCount;
     private int threshold;
 }
