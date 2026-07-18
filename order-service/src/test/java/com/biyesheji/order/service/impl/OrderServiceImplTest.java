@@ -68,7 +68,7 @@ class OrderServiceImplTest {
         when(productMapper.selectById(1L)).thenReturn(product);
         when(productSkuMapper.selectById(11L)).thenReturn(sku);
         when(redisUtil.setIfAbsent(anyString(), eq("processing"), eq(5L), eq(TimeUnit.MINUTES))).thenReturn(true);
-        when(stockService.deduct(11L, 2)).thenReturn(true);
+        when(stockService.deduct(anyString(), eq(11L), eq(2))).thenReturn(true);
         ShippingRule shippingRule = new ShippingRule();
         shippingRule.setId(1L); shippingRule.setRuleType("DELIVERY"); shippingRule.setName("Standard delivery"); shippingRule.setBaseFee(new BigDecimal("12.00"));
         when(shippingRuleService.requireActive(1L)).thenReturn(shippingRule);
@@ -82,7 +82,7 @@ class OrderServiceImplTest {
         String orderNo = orderService.submit(7L, dto);
 
         assertNotNull(orderNo);
-        verify(stockService).deduct(11L, 2);
+        verify(stockService).deduct(orderNo, 11L, 2);
         ArgumentCaptor<OrderItem> captor = ArgumentCaptor.forClass(OrderItem.class);
         verify(orderItemMapper).insert(captor.capture());
         assertEquals(11L, captor.getValue().getSkuId());
@@ -94,6 +94,35 @@ class OrderServiceImplTest {
         assertEquals(new BigDecimal("398.00"), orderCaptor.getValue().getProductAmount());
         assertEquals(new BigDecimal("12.00"), orderCaptor.getValue().getShippingFee());
         assertEquals(new BigDecimal("410.00"), orderCaptor.getValue().getTotalAmount());
+    }
+
+    @Test
+    void submitFailureRestoresRedisReservationWithTheSameStableOrderNo() {
+        Product product = new Product();
+        product.setId(1L); product.setStatus(1); product.setName("测试商品");
+        ProductSku sku = new ProductSku();
+        sku.setId(11L); sku.setProductId(1L); sku.setSkuCode("SKU-11");
+        sku.setStatus(1); sku.setPrice(new BigDecimal("199.00"));
+        when(productMapper.selectById(1L)).thenReturn(product);
+        when(productSkuMapper.selectById(11L)).thenReturn(sku);
+        when(redisUtil.setIfAbsent(anyString(), eq("processing"), eq(5L), eq(TimeUnit.MINUTES))).thenReturn(true);
+        when(stockService.deduct(anyString(), eq(11L), eq(2))).thenReturn(true);
+        ShippingRule shippingRule = new ShippingRule();
+        shippingRule.setId(1L); shippingRule.setRuleType("DELIVERY"); shippingRule.setName("Standard delivery");
+        when(shippingRuleService.requireActive(1L)).thenReturn(shippingRule);
+        when(shippingRuleService.calculateFee(shippingRule, new BigDecimal("398.00"))).thenReturn(BigDecimal.ZERO);
+        when(orderMapper.insert(any(Order.class))).thenThrow(new RuntimeException("insert failed"));
+
+        OrderSubmitDTO dto = new OrderSubmitDTO();
+        OrderSubmitDTO.OrderItemDTO item = new OrderSubmitDTO.OrderItemDTO();
+        item.setProductId(1L); item.setSkuId(11L); item.setQuantity(2);
+        dto.setItems(List.of(item)); dto.setShippingRuleId(1L);
+
+        assertThrows(RuntimeException.class, () -> orderService.submit(7L, dto));
+
+        ArgumentCaptor<String> orderNoCaptor = ArgumentCaptor.forClass(String.class);
+        verify(stockService).deduct(orderNoCaptor.capture(), eq(11L), eq(2));
+        verify(stockService).restore(orderNoCaptor.getValue(), 11L, 2);
     }
 
     @Test
@@ -183,7 +212,7 @@ class OrderServiceImplTest {
 
         orderService.close(9L, "ORDER-CLOSE", "无法配送");
 
-        verify(stockService).restore(11L, 2);
+        verify(stockService).restore("ORDER-CLOSE", 11L, 2);
         ArgumentCaptor<OrderOperation> captor = ArgumentCaptor.forClass(OrderOperation.class);
         verify(orderOperationMapper).insert(captor.capture());
         assertEquals("MERCHANT_CLOSE", captor.getValue().getAction());
@@ -199,6 +228,6 @@ class OrderServiceImplTest {
         assertThrows(RuntimeException.class, () -> orderService.close(9L, "ORDER-PAID", "错误关单"));
 
         verify(orderMapper, never()).update(any(), any());
-        verify(stockService, never()).restore(anyLong(), anyInt());
+        verify(stockService, never()).restore(anyString(), anyLong(), anyInt());
     }
 }
