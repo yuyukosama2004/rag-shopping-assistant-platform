@@ -308,6 +308,8 @@ public class ProductServiceImpl implements ProductService {
         syncStockCache(stock);
         StockLedger ledger = new StockLedger();
         ledger.setSkuId(sku.getId()); ledger.setAction("INITIAL_STOCK"); ledger.setQuantity(dto.getInitialStock());
+        ledger.setBeforeTotal(0); ledger.setAfterTotal(dto.getInitialStock());
+        ledger.setBeforeLocked(0); ledger.setAfterLocked(0);
         ledger.setBeforeAvailable(0); ledger.setAfterAvailable(dto.getInitialStock()); ledger.setOperatorId(operatorId);
         stockLedgerMapper.insert(ledger);
         clearCache(productId);
@@ -358,6 +360,8 @@ public class ProductServiceImpl implements ProductService {
             if (rows == 1) {
                 StockLedger ledger = new StockLedger();
                 ledger.setSkuId(skuId); ledger.setAction("MANUAL_ADJUST"); ledger.setQuantity(dto.getQuantity());
+                ledger.setBeforeTotal(stock.getTotal()); ledger.setAfterTotal(nextTotal);
+                ledger.setBeforeLocked(stock.getLocked()); ledger.setAfterLocked(stock.getLocked());
                 ledger.setBeforeAvailable(stock.getAvailable()); ledger.setAfterAvailable(nextAvailable);
                 ledger.setOperatorId(operatorId); ledger.setReferenceNo(dto.getReason());
                 stockLedgerMapper.insert(ledger);

@@ -81,18 +81,18 @@ public class OrderServiceImpl implements OrderService {
             throw new BizException(ResultCode.ORDER_DUPLICATE, "请勿重复提交订单");
         }
 
+        String orderNo = IdUtil.getSnowflake().nextIdStr();
         List<OrderSubmitDTO.OrderItemDTO> reserved = new ArrayList<>();
         boolean created = false;
         try {
             for (OrderSubmitDTO.OrderItemDTO item : dto.getItems()) {
-                if (!stockService.deduct(item.getSkuId(), item.getQuantity())) {
+                if (!stockService.deduct(orderNo, item.getSkuId(), item.getQuantity())) {
                     throw new BizException(ResultCode.STOCK_INSUFFICIENT,
                             "SKU [" + item.getSkuId() + "] 库存不足");
                 }
                 reserved.add(item);
             }
 
-            String orderNo = IdUtil.getSnowflake().nextIdStr();
             Order order = createOrder(orderNo, userId, productAmount, shippingFee, shippingRule, dto);
             orderMapper.insert(order);
             for (OrderSubmitDTO.OrderItemDTO item : dto.getItems()) {
@@ -107,7 +107,7 @@ public class OrderServiceImpl implements OrderService {
         } catch (RuntimeException exception) {
             for (OrderSubmitDTO.OrderItemDTO item : reserved) {
                 try {
-                    stockService.restore(item.getSkuId(), item.getQuantity());
+                    stockService.restore(orderNo, item.getSkuId(), item.getQuantity());
                 } catch (RuntimeException restoreException) {
                     exception.addSuppressed(restoreException);
                 }
@@ -191,7 +191,7 @@ public class OrderServiceImpl implements OrderService {
             throw new BizException("订单不存在或状态不允许支付");
         }
         for (OrderItem item : orderItems(orderNo)) {
-            stockService.confirmDeduct(item.getSkuId(), item.getQuantity());
+            stockService.confirmDeduct(orderNo, item.getSkuId(), item.getQuantity());
         }
         recordOperation(orderNo, operatorId, action, note);
         notificationOutboxService.enqueue(orderNo, "ORDER_PAYMENT_CONFIRMED", OrderStatus.PAID.getCode());
@@ -443,7 +443,7 @@ public class OrderServiceImpl implements OrderService {
 
     private void restoreOrderItems(String orderNo) {
         for (OrderItem item : orderItems(orderNo)) {
-            stockService.restore(item.getSkuId(), item.getQuantity());
+            stockService.restore(orderNo, item.getSkuId(), item.getQuantity());
         }
     }
 
