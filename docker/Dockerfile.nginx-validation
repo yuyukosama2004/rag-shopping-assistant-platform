@@ -1,5 +1,5 @@
 FROM alpine:3.23
 
-RUN apk add --no-cache nginx=1.28.3-r4
+RUN apk add --no-cache nginx=1.28.3-r5
 
 COPY docker/nginx-validation.conf /etc/nginx/nginx.conf
