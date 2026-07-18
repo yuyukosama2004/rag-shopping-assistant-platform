@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.biyesheji.order.mapper.InventoryInsightMapper">
+
+    <sql id="snapshotColumns">
+        p.id AS product_id,
+        p.name AS product_name,
+        sku.id AS sku_id,
+        sku.sku_code,
+        sku.spec_json AS sku_spec_json,
+        p.status AS product_status,
+        sku.status AS sku_status,
+        COALESCE(s.total, 0) AS total,
+        COALESCE(s.locked, 0) AS locked,
+        COALESCE(s.available, 0) AS available,
+        COALESCE(SUM(CASE
+            WHEN o.pay_time &gt;= #{start7} AND o.pay_time &lt;= #{asOf}
+            THEN oi.quantity ELSE 0 END), 0) AS confirmed_qty7d,
+        COALESCE(SUM(CASE
+            WHEN o.pay_time &gt;= #{start30} AND o.pay_time &lt;= #{asOf}
+            THEN oi.quantity ELSE 0 END), 0) AS confirmed_qty30d,
+        COALESCE(SUM(CASE
+            WHEN o.pay_time &gt;= #{start90} AND o.pay_time &lt;= #{asOf}
+            THEN oi.quantity ELSE 0 END), 0) AS confirmed_qty90d,
+        COALESCE(SUM(CASE
+            WHEN o.created_at &gt;= #{start30}
+                AND o.created_at &lt;= #{asOf}
+                AND o.status NOT IN (4, 5)
+            THEN oi.quantity ELSE 0 END), 0) AS demand_qty30d,
+        COALESCE(SUM(CASE
+            WHEN o.pay_time &gt;= #{start30} AND o.pay_time &lt;= #{asOf}
+            THEN oi.subtotal ELSE 0 END), 0.00) AS confirmed_revenue30d,
+        MAX(CASE
+            WHEN o.pay_time IS NOT NULL AND o.pay_time &lt;= #{asOf}
+            THEN o.pay_time ELSE NULL END) AS last_confirmed_sale_at,
+        sku.created_at AS sku_created_at
+    </sql>
+
+    <sql id="snapshotFrom">
+        FROM t_product_sku sku
+        JOIN t_product p
+            ON p.id = sku.product_id
+            AND p.deleted = 0
+        LEFT JOIN t_stock s
+            ON s.sku_id = sku.id
+        LEFT JOIN t_order_item oi
+            ON oi.sku_id = sku.id
+        LEFT JOIN t_order o
+            ON o.id = oi.order_id
+            AND o.deleted = 0
+    </sql>
+
+    <sql id="snapshotGroupBy">
+        GROUP BY
+            p.id,
+            p.name,
+            sku.id,
+            sku.sku_code,
+            sku.spec_json,
+            p.status,
+            sku.status,
+            s.total,
+            s.locked,
+            s.available,
+            sku.created_at
+    </sql>
+
+    <select id="selectSnapshots"
+            resultType="com.biyesheji.order.dto.InventoryInsightRow">
+        SELECT
+            <include refid="snapshotColumns"/>
+        <include refid="snapshotFrom"/>
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (
+                    p.name LIKE CONCAT('%', #{keyword}, '%')
+                    OR sku.sku_code LIKE CONCAT('%', #{keyword}, '%')
+                )
+            </if>
+        </where>
+        <include refid="snapshotGroupBy"/>
+    </select>
+
+    <select id="selectSnapshotBySkuId"
+            resultType="com.biyesheji.order.dto.InventoryInsightRow">
+        SELECT
+            <include refid="snapshotColumns"/>
+        <include refid="snapshotFrom"/>
+        WHERE sku.id = #{skuId}
+        <include refid="snapshotGroupBy"/>
+    </select>
+
+    <select id="selectRecentConfirmedSales"
+            resultType="com.biyesheji.order.dto.InventorySaleEvidenceRow">
+        SELECT
+            o.pay_time AS paid_at,
+            oi.quantity,
+            oi.subtotal
+        FROM t_order_item oi
+        JOIN t_order o
+            ON o.id = oi.order_id
+            AND o.deleted = 0
+        WHERE oi.sku_id = #{skuId}
+          AND o.pay_time IS NOT NULL
+          AND o.pay_time &lt;= #{asOf}
+        ORDER BY o.pay_time DESC, oi.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectRecentStockLedgers"
+            resultType="com.biyesheji.order.dto.InventoryLedgerEvidenceRow">
+        SELECT
+            action,
+            quantity,
+            before_total,
+            after_total,
+            before_locked,
+            after_locked,
+            before_available,
+            after_available,
+            reference_no,
+            created_at
+        FROM t_stock_ledger
+        WHERE sku_id = #{skuId}
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit}
+    </select>
+</mapper>

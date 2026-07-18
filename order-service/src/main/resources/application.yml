@@ -94,6 +94,15 @@ ai:
     6. 用户需求模糊时，主动追问预算、用途等关键信息
     7. 语气亲切专业，控制在200字以内
 
+inventory:
+  insight:
+    low-stock-threshold: 5
+    dead-stock-min-age-days: 30
+    dead-stock-window-days: 90
+    overstock-min-available: 10
+    overstock-cover-days: 90
+    time-zone: Asia/Shanghai
+
 openrouter:
   api-key: ${OPENROUTER_API_KEY:}
   embedding-model: qwen/qwen3-embedding-4b
