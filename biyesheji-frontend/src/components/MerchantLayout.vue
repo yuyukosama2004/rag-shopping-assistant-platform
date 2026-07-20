@@ -17,6 +17,7 @@ const userStore = useUserStore()
         <el-menu-item index="/merchant/catalog"><el-icon><Collection /></el-icon><span>品牌与分类</span></el-menu-item>
         <el-menu-item index="/merchant/products"><el-icon><Goods /></el-icon><span>商品管理</span></el-menu-item>
         <el-menu-item index="/merchant/inventory"><el-icon><Box /></el-icon><span>库存管理</span></el-menu-item>
+        <el-menu-item index="/merchant/ai-operations"><el-icon><DataAnalysis /></el-icon><span>AI 经营助手</span></el-menu-item>
         <el-menu-item index="/merchant/shipping-rules"><el-icon><Van /></el-icon><span>配送规则</span></el-menu-item>
         <el-menu-item index="/merchant/orders"><el-icon><Tickets /></el-icon><span>订单管理</span></el-menu-item>
         <el-menu-item index="/merchant/refunds"><el-icon><RefreshLeft /></el-icon><span>退款管理</span></el-menu-item>

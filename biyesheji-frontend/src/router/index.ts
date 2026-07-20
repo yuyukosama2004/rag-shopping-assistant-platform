@@ -30,6 +30,7 @@ const routes = [
       { path: 'catalog', name: 'MerchantCatalog', component: () => import('../views/MerchantCatalog.vue') },
       { path: 'products', name: 'MerchantProducts', component: () => import('../views/MerchantProducts.vue') },
       { path: 'inventory', name: 'MerchantInventory', component: () => import('../views/MerchantInventory.vue') },
+      { path: 'ai-operations', name: 'MerchantAiOperations', component: () => import('../views/MerchantAiOperations.vue') },
       { path: 'orders', name: 'MerchantOrders', component: () => import('../views/MerchantOrders.vue') },
       { path: 'shipping-rules', name: 'MerchantShippingRules', component: () => import('../views/MerchantShippingRules.vue') },
       { path: 'refunds', name: 'MerchantRefunds', component: () => import('../views/MerchantRefunds.vue') },

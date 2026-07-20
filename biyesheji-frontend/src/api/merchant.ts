@@ -124,6 +124,83 @@ export interface MerchantInventorySummary {
   threshold: number
 }
 
+export type InventoryInsightRisk =
+  | 'OUT_OF_STOCK'
+  | 'LOW_STOCK'
+  | 'DEAD_STOCK'
+  | 'SLOW_MOVING'
+  | 'OVERSTOCK'
+  | 'HEALTHY'
+
+export interface InventoryInsightItem {
+  productId: string
+  productName: string
+  skuId: string
+  skuCode: string
+  skuSpecJson?: string | null
+  productStatus: number
+  skuStatus: number
+  total: number
+  locked: number
+  available: number
+  confirmedQty7d: number
+  confirmedQty30d: number
+  confirmedQty90d: number
+  demandQty30d: number
+  confirmedRevenue30d: number
+  dailyVelocity30d: number
+  daysOfCover: number | null
+  lastConfirmedSaleAt: string | null
+  daysSinceLastSale: number | null
+  skuAgeDays: number
+  sellThrough90d: number | null
+  risk: InventoryInsightRisk
+  ruleCode: string
+  calculatedAt: string
+}
+
+export interface InventoryInsightPage {
+  records: InventoryInsightItem[]
+  total: number
+  pageNum: number
+  pageSize: number
+  pages: number
+}
+
+export interface InventoryInsightSummary {
+  riskCounts: Record<InventoryInsightRisk, number>
+  totalAvailable: number
+  confirmedQty30d: number
+  noSalesAvailable: number
+  calculatedAt: string
+}
+
+export interface InventoryInsightConfirmedSale {
+  paidAt: string
+  quantity: number
+  subtotal: number
+}
+
+export interface InventoryInsightLedger {
+  action: string
+  quantity: number
+  beforeTotal: number | null
+  afterTotal: number | null
+  beforeLocked: number | null
+  afterLocked: number | null
+  beforeAvailable: number
+  afterAvailable: number
+  referenceNo: string | null
+  createdAt: string
+}
+
+export interface InventoryInsightEvidence {
+  insight: InventoryInsightItem
+  recentConfirmedSales: InventoryInsightConfirmedSale[]
+  recentStockLedgers: InventoryInsightLedger[]
+  limitations: string[]
+}
+
 export interface MerchantOrder {
   id: number
   orderNo: string
@@ -284,6 +361,21 @@ export function adjustMerchantSkuStock(skuId: number, quantity: number, reason: 
 export function getMerchantSkuStockLedger(skuId: number) { return request.get(`/api/merchant/products/skus/${skuId}/stock/ledger`) }
 export function getMerchantInventory(pageNum = 1, pageSize = 20, keyword = '', lowStockOnly = false) { return request.get('/api/merchant/inventory', { params: { pageNum, pageSize, keyword: keyword || undefined, lowStockOnly } }) }
 export function getMerchantInventorySummary() { return request.get('/api/merchant/inventory/summary') }
+export function getMerchantInventoryInsights(
+  pageNum = 1,
+  pageSize = 20,
+  keyword = '',
+  risk?: InventoryInsightRisk,
+  sort = 'RISK_DESC',
+) {
+  return request.get('/api/merchant/ai/inventory-insights', {
+    params: { pageNum, pageSize, keyword: keyword || undefined, risk: risk || undefined, sort },
+  })
+}
+export function getMerchantInventoryInsightSummary() { return request.get('/api/merchant/ai/inventory-insights/summary') }
+export function getMerchantInventoryInsightEvidence(skuId: string | number) {
+  return request.get(`/api/merchant/ai/inventory-insights/${skuId}/evidence`)
+}
 export function getMerchantOrders(pageNum = 1, pageSize = 20, status?: number) { return request.get('/api/merchant/orders', { params: { pageNum, pageSize, status } }) }
 export function getMerchantOrderDetail(orderNo: string) { return request.get(`/api/merchant/orders/${orderNo}`) }
 export function updateMerchantOrderNote(orderNo: string, note: string) { return request.put(`/api/merchant/orders/${orderNo}/note`, { note }) }
