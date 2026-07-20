@@ -12,6 +12,9 @@ vi.mock('./request', () => ({ default: request }))
 import {
   closeMerchantOrder,
   getMerchantInventory,
+  getMerchantInventoryInsightEvidence,
+  getMerchantInventoryInsights,
+  getMerchantInventoryInsightSummary,
   getMerchantOrderDetail,
   getMerchantProducts,
   shipMerchantOrder,
@@ -55,5 +58,28 @@ describe('merchant API client', () => {
     expect(request.get).toHaveBeenCalledWith('/api/merchant/inventory', {
       params: { pageNum: 3, pageSize: 50, keyword: undefined, lowStockOnly: true },
     })
+  })
+
+  it('queries deterministic inventory insights with stable sorting and optional filters', () => {
+    getMerchantInventoryInsights(2, 40, '', 'DEAD_STOCK')
+    expect(request.get).toHaveBeenCalledWith('/api/merchant/ai/inventory-insights', {
+      params: {
+        pageNum: 2,
+        pageSize: 40,
+        keyword: undefined,
+        risk: 'DEAD_STOCK',
+        sort: 'RISK_DESC',
+      },
+    })
+  })
+
+  it('uses summary and evidence endpoints without losing string SKU ids', () => {
+    getMerchantInventoryInsightSummary()
+    getMerchantInventoryInsightEvidence('9223372036854775806')
+    getMerchantInventoryInsightEvidence(-42)
+
+    expect(request.get).toHaveBeenNthCalledWith(1, '/api/merchant/ai/inventory-insights/summary')
+    expect(request.get).toHaveBeenNthCalledWith(2, '/api/merchant/ai/inventory-insights/9223372036854775806/evidence')
+    expect(request.get).toHaveBeenNthCalledWith(3, '/api/merchant/ai/inventory-insights/-42/evidence')
   })
 })
