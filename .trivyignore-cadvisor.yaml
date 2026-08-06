@@ -1,0 +1,5 @@
+vulnerabilities:
+  - id: GHSA-hrxh-6v49-42gf
+    paths: [usr/bin/cadvisor]
+    expired_at: 2026-08-15
+    statement: Official latest image bundles google.golang.org/grpc v1.81.1; the affected xDS RBAC/HTTP/2 paths require xDS control plane configuration which cadvisor does not use here; recheck the next upstream release.

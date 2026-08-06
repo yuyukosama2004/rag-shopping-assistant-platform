@@ -179,7 +179,7 @@ jobs:
             -v "$PWD/deploy/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
             -v "$PWD/deploy/observability/alerts.yml:/etc/prometheus/alerts.yml:ro" \
             --entrypoint /bin/promtool \
-            prom/prometheus:v3.13.1 \
+            prom/prometheus:v3.13.2 \
             check config /etc/prometheus/prometheus.yml
           docker run --rm \
             -v "$PWD/deploy/observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro" \
@@ -251,7 +251,8 @@ jobs:
       matrix:
         include:
           - component: prometheus
-            image: prom/prometheus:v3.13.1
+            image: prom/prometheus:v3.13.2
+            trivyignores: .trivyignore-prometheus.yaml
           - component: alertmanager
             image: prom/alertmanager:v0.33.1
             trivyignores: .trivyignore-alertmanager.yaml
@@ -259,6 +260,7 @@ jobs:
             image: prom/node-exporter:v1.12.1
           - component: cadvisor
             image: ghcr.io/google/cadvisor:v0.60.5
+            trivyignores: .trivyignore-cadvisor.yaml
     name: observability-image-security (${{ matrix.component }})
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
