@@ -43,3 +43,7 @@ vulnerabilities:
     paths: [bin/alertmanager, bin/amtool]
     expired_at: 2026-08-15
     statement: Official latest image bundles golang.org/x/text below 0.39.0; the CVE needs attacker-controlled Unicode normalization input, and alertmanager configuration is a trusted read-only mount; recheck the next upstream release.
+  - id: GHSA-hrxh-6v49-42gf
+    paths: [bin/alertmanager, bin/amtool]
+    expired_at: 2026-08-15
+    statement: Official latest image bundles google.golang.org/grpc v1.80.0; the affected xDS RBAC/HTTP/2 paths require an xDS control plane which alertmanager does not use; recheck the next upstream release.
