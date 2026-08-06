@@ -1,16 +1,16 @@
 {
   "schema_version": "1",
   "project_name": "phonemall",
-  "created_at": "2026-07-16T12:27:25.853970+00:00",
+  "created_at": "2026-08-06T07:23:56.678230+00:00",
   "dataset": {
-    "version": "2026-07-16-candidate",
-    "hash": "sha256:d1156c23b86d9d1213e02b101541196058a812bac13a351ffd4ebee4bd83ae40"
+    "version": "2026-08-06-gold",
+    "hash": "sha256:5b6286c24f4c7c2dfa11a860f29c6cf70495d3499a33b91834e791ceb754bce8"
   },
   "run_fingerprint": {
     "target_revision": "fixture",
     "adapter_version": "phonemall-http-v1",
     "eval42_version": "phonemall-phase2",
-    "config_hash": "sha256:a63ed5ffbbcd23d318976ce5d88cfc8b9a4f6ddaa4b8039cdd08be22865a79fd",
+    "config_hash": "sha256:380fb3862ebb141f78908ce2e924e47a2b485c7db74863b8b737a6c1fb3aa214",
     "metric_hash": "sha256:6df7009bff9e0173f6101a424d462ddda549f49ba1fab7fc88a2bbbf7f941fb6",
     "environment": "fixture"
   },
@@ -24,7 +24,7 @@
   "cases": [
     {
       "case_id": "phone-budget-camera-001",
-      "case_hash": "sha256:d256ececf82f3732f1b3b6976ac50ae2339fc08b47cc74a8a2b541bdf21705e9",
+      "case_hash": "sha256:4e5d7b5c83f605c945cda873e7dec43ac7a3dfc5c34baecab499f092c12184f2",
       "status": "completed",
       "metrics": {
         "recall_at_5": 1.0,
@@ -36,7 +36,7 @@
     },
     {
       "case_id": "phone-budget-battery-002",
-      "case_hash": "sha256:63fe866e8b7a47e06361d01394ed40a4d2aab377d57a24264d234024d1d88ba7",
+      "case_hash": "sha256:5e7ca64f0d7c5393745b17d47cece70cd5a08e9a61bf4afff2611c2b0ddf7b45",
       "status": "completed",
       "metrics": {
         "recall_at_5": 1.0,
@@ -48,7 +48,7 @@
     },
     {
       "case_id": "phone-gaming-refresh-003",
-      "case_hash": "sha256:2bebd0d6283dff2352f374d2fbe2a70d0d8ec9ca6c4359729af88b17c1753a83",
+      "case_hash": "sha256:8c2ffc2cd592a702d0b553a062479fb556148168386d10b3d4eb9c912fe525a3",
       "status": "completed",
       "metrics": {
         "recall_at_5": 1.0,
@@ -60,7 +60,7 @@
     },
     {
       "case_id": "phone-concert-zoom-004",
-      "case_hash": "sha256:294f0c7aae572a705e3dd7af7cce30c6eacbbf5f37615c80bd624e3d56a9c7f3",
+      "case_hash": "sha256:e59b298f1657ee2fc12f6fe1ade140f613ee66802c9d03cf0128eb567f3d81b8",
       "status": "completed",
       "metrics": {
         "recall_at_5": 1.0,
@@ -72,7 +72,7 @@
     },
     {
       "case_id": "phone-ios-budget-005",
-      "case_hash": "sha256:f9d7b46391dd5c1b85d3f0e8065489a5ed392774b8baa555935c08847d4fd0ef",
+      "case_hash": "sha256:3eb4c6f80c062a5802521e29907fd114c5725f1711febcc40f1f83356b18efbd",
       "status": "completed",
       "metrics": {
         "recall_at_5": 1.0,
@@ -84,7 +84,7 @@
     },
     {
       "case_id": "phone-compact-flagship-006",
-      "case_hash": "sha256:1c479413c5d548f77371d6af4e75352401c37d25eeec29cf51a02e411de9afc6",
+      "case_hash": "sha256:fcb5a8a73cbcc0a0d9b428155f436be62b5d24daac481bfed0c9fc1eb9755294",
       "status": "completed",
       "metrics": {
         "recall_at_5": 1.0,
@@ -96,7 +96,7 @@
     },
     {
       "case_id": "phone-esports-165hz-007",
-      "case_hash": "sha256:315fb08cc10ea093354493f388d09801d012c1635746cba60a1c014f2a74409c",
+      "case_hash": "sha256:2e30145cb3faa489a12c5adc160805139d34606bdd9c856b0ed819e40e68842b",
       "status": "completed",
       "metrics": {
         "recall_at_5": 1.0,
@@ -108,7 +108,7 @@
     },
     {
       "case_id": "phone-4k-display-008",
-      "case_hash": "sha256:d84fb10c42c35a5270596d5c0977cba10effd95da08ed053869b9c6560be2570",
+      "case_hash": "sha256:a668e89ccf6bfb1eb6211ef4409d0f0d4935208e4e3f93bfb8f196a1a1b22f85",
       "status": "completed",
       "metrics": {
         "recall_at_5": 1.0,
@@ -120,7 +120,7 @@
     },
     {
       "case_id": "phone-full-screen-009",
-      "case_hash": "sha256:bb6882199212f10b6c8451f5f6da1b7893c0cda46d8bd5689017c9536d871631",
+      "case_hash": "sha256:d343b1300a9e76ccd38753ceefffcf06df2409254e564560e29b448c228ff779",
       "status": "completed",
       "metrics": {
         "recall_at_5": 1.0,
@@ -132,7 +132,7 @@
     },
     {
       "case_id": "phone-business-satellite-010",
-      "case_hash": "sha256:f8d0de2f23fb9b15833c0af6cb2d6484292ba19e9da39fab10317a7c8077b383",
+      "case_hash": "sha256:c1e41f5fd94da78d45e14b957321c3bf18cd52edaac40f355f0b7f208d27af9d",
       "status": "completed",
       "metrics": {
         "recall_at_5": 1.0,
@@ -144,7 +144,7 @@
     },
     {
       "case_id": "phone-clean-android-011",
-      "case_hash": "sha256:e45441c7be28d91805cc1ac5f349f8c069301abddef63a056126346d19067717",
+      "case_hash": "sha256:30e335a6992f7b6d3bd0405f214f270b928931fc45a646730916df4f01a699cb",
       "status": "completed",
       "metrics": {
         "recall_at_5": 1.0,
@@ -156,7 +156,7 @@
     },
     {
       "case_id": "phone-design-unique-012",
-      "case_hash": "sha256:45371a5bcd2151bf943fe351caf50ee1748eea443f5ae12cf48dc37e5bd28386",
+      "case_hash": "sha256:13830edb47fece7f6417ba885c4d0f411b242f4aef4855128fdc2785ffe7e478",
       "status": "completed",
       "metrics": {
         "recall_at_5": 1.0,
@@ -168,7 +168,7 @@
     },
     {
       "case_id": "phone-selfie-light-013",
-      "case_hash": "sha256:331ce551d19e37b3709f63c7c5fe6c635b5b9a6170234047ece10e70ed2e25d5",
+      "case_hash": "sha256:f290bed39cf9adb0feff4da4236b3f1776d70266b08a0856516fc89a31d2f061",
       "status": "completed",
       "metrics": {
         "recall_at_5": 1.0,
@@ -180,7 +180,7 @@
     },
     {
       "case_id": "phone-portrait-014",
-      "case_hash": "sha256:746bff04a7c2acbc0bd9fbb1a5aa6f84be1e8b348c01628635685df757f5e979",
+      "case_hash": "sha256:0a13e286a503307520cb503eec83014bc70b4866c6fb03e20466977d4c5b0d58",
       "status": "completed",
       "metrics": {
         "recall_at_5": 1.0,
@@ -192,7 +192,7 @@
     },
     {
       "case_id": "phone-fast-charge-015",
-      "case_hash": "sha256:3312ed89cad7e61412c93987d1bab52d74896502233316b68f23e6c4e4a941d3",
+      "case_hash": "sha256:bdb09b0cd6a46daa62b530e2ef9af9bb44135ec1ad58c804f488e2eff8329283",
       "status": "completed",
       "metrics": {
         "recall_at_5": 1.0,
@@ -204,7 +204,7 @@
     },
     {
       "case_id": "phone-200mp-budget-016",
-      "case_hash": "sha256:1c72602c0a86688278f68c1dd6134b44f45580ee7f7b1c8427307f6c0ac71b00",
+      "case_hash": "sha256:423ae54e90cd6723fad29d129a2a5dafa9c1a310fb90ee8e8cbf11f32fad67eb",
       "status": "completed",
       "metrics": {
         "recall_at_5": 1.0,
@@ -216,7 +216,7 @@
     },
     {
       "case_id": "phone-large-battery-017",
-      "case_hash": "sha256:d6e3cbb5dd1151de13499a18ac584fc4bbcfe797b1be72bd5f9271b612d0af19",
+      "case_hash": "sha256:eda5c1a28e420c439289e78ae81da8dd030c88ae08ff6063db136fabc5f7073b",
       "status": "completed",
       "metrics": {
         "recall_at_5": 1.0,
@@ -228,7 +228,7 @@
     },
     {
       "case_id": "phone-wireless-charge-018",
-      "case_hash": "sha256:6fa4360197761419c65eebadfddb7fbd7a18dec95aa76a4736cfe2524750e79e",
+      "case_hash": "sha256:eceb859d72c0d2edfd3df2ea9ab5c7339d887131f57b8be91d5d31aef6a714d3",
       "status": "completed",
       "metrics": {
         "recall_at_5": 1.0,
@@ -240,7 +240,7 @@
     },
     {
       "case_id": "phone-huawei-battery-019",
-      "case_hash": "sha256:53e6e4a875d55d76dc0e3ad15fb8e1eaabcf10b8edeaf9b6960c5159a4ca64ff",
+      "case_hash": "sha256:847cff1e5cce716debf6e33e406a822b65aa9e121d57d3f72b6c7f48bfc8cf0f",
       "status": "completed",
       "metrics": {
         "recall_at_5": 1.0,
@@ -252,7 +252,7 @@
     },
     {
       "case_id": "phone-spen-020",
-      "case_hash": "sha256:08cb4f11b475efbbf8a7142f7d49a4d1918ba09bae3e23680620dca77f586db5",
+      "case_hash": "sha256:1b89af62fc6fc820f752181f6b020a4d8bb966a488be8073ba76921b72c96272",
       "status": "completed",
       "metrics": {
         "recall_at_5": 1.0,
