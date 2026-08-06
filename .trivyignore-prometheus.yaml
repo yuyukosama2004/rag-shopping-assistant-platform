@@ -1,0 +1,5 @@
+vulnerabilities:
+  - id: CVE-2026-56852
+    paths: [bin/prometheus]
+    expired_at: 2026-08-15
+    statement: Official image pinned to v3.13.2; if it still bundles golang.org/x/text below 0.39.0, the CVE needs attacker-controlled Unicode normalization input while prometheus configuration is a trusted read-only mount; recheck the next upstream release.
