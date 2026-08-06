@@ -15,6 +15,8 @@
   <img alt="Vue" src="https://img.shields.io/badge/Vue-3.5-42b883">
   <img alt="MySQL" src="https://img.shields.io/badge/MySQL-8.0-blue">
   <img alt="Redis" src="https://img.shields.io/badge/Redis-7-red">
+  <img alt="License" src="https://img.shields.io/badge/License-MIT-yellow">
+  <img alt="CI" src="https://github.com/yuyukosama2004/rag-shopping-assistant-platform/actions/workflows/ci.yml/badge.svg">
 </p>
 
 ## 项目介绍
