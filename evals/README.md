@@ -39,7 +39,8 @@ python -m evals.eval42 \
 Baseline review must accompany any dataset, metric, adapter, or fixture change. A changed
 `case_hash` is listed as changed rather than silently compared with an old annotation.
 The committed fixture baseline verifies deterministic evaluation and regression plumbing; it is
-not evidence of live recommendation quality while the candidate labels remain pending review.
+not evidence of live recommendation quality. The 20 Gold labels were reviewed by
+`yuyukosama2004` on 2026-08-06.
 
 ## Live protected run
 
@@ -72,7 +73,9 @@ baseline documents.
 
 ## Dataset status
 
-`shopping_queries.pending.jsonl` is deliberately marked `pending-human-review`. Its queries and
-candidate labels were derived from the frozen mock product snapshot, but they are not a Gold Set
-until a maintainer reviews every relevant-product label and annotation note. CI uses the dataset
-only to validate the deterministic runner and fixture path.
+`shopping_queries.gold.jsonl` is the reviewed Gold Set: all 20 queries and labels were confirmed by
+`yuyukosama2004` on 2026-08-06 against the frozen mock product snapshot. The `snapshot_hash` was
+updated to the current Git blob of `sql/mock_data.sql`
+(`sha256:8eb4f4579fce1bacec7746e59aee8f7d8b03bccc43cfd8ae41313db021ddbc39`); the originally
+recorded hash (`580e0058…`) is not reproducible from the current repository, and this was noted in
+the review record. CI now validates the deterministic runner against the Gold Set.

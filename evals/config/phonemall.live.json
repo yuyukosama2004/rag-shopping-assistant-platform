@@ -5,7 +5,7 @@
     "revision": "${GIT_SHA:-local}"
   },
   "dataset": {
-    "path": "evals/datasets/shopping_queries.pending.jsonl"
+    "path": "evals/datasets/shopping_queries.gold.jsonl"
   },
   "adapter": {
     "type": "http",
