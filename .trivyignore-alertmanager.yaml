@@ -39,3 +39,7 @@ vulnerabilities:
     paths: [bin/alertmanager, bin/amtool]
     expired_at: 2026-08-15
     statement: Configuration is a trusted read-only mount and the UI is bound to loopback; recheck the next upstream release.
+  - id: CVE-2026-56852
+    paths: [bin/alertmanager, bin/amtool]
+    expired_at: 2026-08-15
+    statement: Official latest image bundles golang.org/x/text below 0.39.0; the CVE needs attacker-controlled Unicode normalization input, and alertmanager configuration is a trusted read-only mount; recheck the next upstream release.

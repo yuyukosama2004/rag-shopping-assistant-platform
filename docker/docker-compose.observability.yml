@@ -2,7 +2,7 @@ name: biyesheji-observability
 
 services:
   prometheus:
-    image: prom/prometheus:v3.13.1
+    image: prom/prometheus:v3.13.2
     container_name: biyesheji-prometheus
     restart: unless-stopped
     command:

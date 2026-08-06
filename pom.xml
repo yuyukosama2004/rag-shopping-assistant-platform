@@ -42,6 +42,14 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- Netty BOM override: CVE-2026-59901 fixed in 4.1.136.Final -->
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-bom</artifactId>
+                <version>4.1.136.Final</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <!-- Spring Boot BOM -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>
